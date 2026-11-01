@@ -84,7 +84,7 @@ describe('con la autora', () => {
     await show(`/apices/${APICE_IDS.withImage}/editar`);
     expect(location.pathname).toBe(`/apices/${APICE_IDS.withImage}/editar`);
     await waitFor(() => host!.querySelector('main form'));
-    expect(host!.querySelector('main')!.textContent).not.toContain('Sitio en construcción');
+    expect(host!.querySelector('main')!.textContent).not.toContain('No encontramos esta página');
   });
 
   it('RF-13 (002) · 13.1, 13.3: el estado aparece como etiqueta en el ápice con imagen', async () => {
@@ -110,7 +110,7 @@ describe('con la autora', () => {
     await waitFor(() => host!.querySelectorAll('[aria-label="Ejes"] li').length === 5);
     await show(`/apices/${APICE_IDS.withProposal}`);
     await waitFor(() => host!.querySelector('main section[aria-label]') !== null);
-    expect(host!.querySelector('main')!.textContent).not.toContain('Sitio en construcción');
+    expect(host!.querySelector('main')!.textContent).not.toContain('No encontramos esta página');
   });
   it('RF-11 (003) · 11.1, 11.2: /tablero saluda a la autora con su @usuario, lista sus ápices y no el archivado (D-T22 (003))', async () => {
     await show('/tablero');

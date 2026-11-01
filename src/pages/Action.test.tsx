@@ -126,4 +126,10 @@ describe('/accion · lote (003)', () => {
     expect(link.matches(plain)).toBe(false);
     expect(link.closest('.lot')).not.toBeNull();
   });
+
+  it('RF-2 (017): la página fija su propio título de documento', async () => {
+    open(fakeAuth());
+    await screen.findByRole('heading', { level: 1, name: 'Elegir contraseña nueva' });
+    expect(document.title).toBe('Elegir contraseña nueva · APICCA COMÚN');
+  });
 });

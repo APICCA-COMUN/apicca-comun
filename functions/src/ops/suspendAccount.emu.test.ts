@@ -161,4 +161,14 @@ describe('suspensión y reservas de subida (spec 016)', () => {
     const left = (await ctx.db.collection('uploadReservations').get()).docs.map((doc) => doc.id);
     expect(left).toEqual(['r3']);
   });
+
+  it('RF-4 (017): las reservas se borran en la misma transacción que suspende, aunque falle lo que viene después (D-T4 (017))', async () => {
+    // Una cuenta sin usuario de Auth: la revocación de tokens, posterior a la transacción, falla.
+    await ctx.db.doc('accounts/sin-auth').set({ email: 'sin-auth@ejemplo.org', name: 'Sin Auth', username: 'sinauth', role: 'member', status: 'active' });
+    const expiresAt = new Date(ctx.now().getTime() + 3600 * 1000);
+    await ctx.db.doc('uploadReservations/r9').set({ uid: 'sin-auth', createdAt: ctx.now(), expiresAt });
+    await handleSuspendAccount(ctx, { uid: 'sin-auth' }, facilitator).catch(() => undefined);
+    expect((await ctx.db.doc('accounts/sin-auth').get()).get('status')).toBe('suspended');
+    expect((await ctx.db.doc('uploadReservations/r9').get()).exists).toBe(false);
+  });
 });

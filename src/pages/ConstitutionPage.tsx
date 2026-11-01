@@ -1,5 +1,5 @@
 // RF-11 (008) · 11.1 a 11.6, D-13 (008): entrada del lienzo, camino continuo con un nodo por tarjeta y pie con la fecha real.
-// RF-15 (003) · 15.1–15.3, RF-9 (003) · 9.4 · Página `/constitucion`: las secciones como bloques unidos por un camino vertical con nodos.
+// RF-15 (003) · 15.1–15.3, RF-9 (003) · 9.4, RF-2 (017) · Página `/constitucion`: las secciones como bloques unidos por un camino vertical con nodos.
 // RF-1 (004) · 1.2, 1.3; RF-2 (004) · 2.1, 2.2; RF-4 (004) · 4.1–4.3, 4.5, 4.6, 4.10; RF-5 (004) · 5.1, 5.3;
 // RF-12 (004) · 12.5; RF-15 (004) · 15.1; RF-17 (004) · 17.1 · Las secciones vigentes salen de Firestore; sin ellas la página lo dice,
 // sin texto de respaldo (T-11.4). El facilitador edita antes de la apertura.
@@ -15,6 +15,7 @@ import {
 } from '../../shared/domain/constitution';
 import { todayInColombia } from '../../shared/domain/dates';
 import { Link } from '../app/router';
+import { usePageTitle } from '../app/usePageTitle';
 import { useSession } from '../app/session';
 import { api, ApiClientError, type ApiOps, type OpClient } from '../data/api';
 import {
@@ -55,6 +56,7 @@ export function ConstitutionPage({
   settle,
 }: Props) {
   const session = useSession();
+  usePageTitle({ area: 'Constitución' });
   const audience = session.status === 'loading' ? null : session.status === 'person' ? 'member' : 'visitor';
   const isMember = session.status === 'person';
   const isFacilitator = session.status === 'person' && session.role === 'facilitator';

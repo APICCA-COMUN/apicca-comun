@@ -1,4 +1,4 @@
-// RF-6 (013), RF-7 (013), RF-8 (013), RNF-1 (013), RNF-2 (013) · D-T13 (013): los documentos de operación,
+// RF-6 (013), RF-7 (013), RF-8 (013), RNF-1 (013), RNF-2 (013), RF-8 (017) · D-T13 (013): los documentos de operación,
 // la CI y la lista de dependencias se vigilan como texto, sin red ni nube.
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -28,6 +28,17 @@ describe.skipIf(!internalDocs)('operación · documentos', () => {
         'Plantilla del correo',
       ]),
     );
+  });
+
+  it('RF-8 (017): el runbook documenta el rol IAM que necesitan las reglas de Storage, cómo concederlo y cómo comprobarlo', () => {
+    const runbook = read('docs/operacion.md');
+    expect(headings(runbook)).toContain('Permiso de las reglas de Storage');
+    const section = runbook.split('## Permiso de las reglas de Storage')[1]?.split('\n## ')[0] ?? '';
+    expect(section).toContain('roles/firebaserules.firestoreServiceAgent');
+    expect(section).toContain('gcp-sa-firebasestorage.iam.gserviceaccount.com');
+    expect(section).toMatch(/gcloud projects add-iam-policy-binding apicca-com\b/);
+    expect(section).toMatch(/gcloud projects get-iam-policy apicca-com\b/);
+    expect(section).toContain('npx firebase deploy --only storage --project apicca-com');
   });
 
   it('RF-7 (013) · 7.2: todo `firebase deploy` del runbook lleva `--only` y `--project apicca-com`', () => {

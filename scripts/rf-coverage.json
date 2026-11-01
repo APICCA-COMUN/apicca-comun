@@ -323,5 +323,9 @@
       "RNF-2"
     ],
     "pending": ["RF-3", "RF-10", "RNF-1", "RNF-2"]
+  },
+  "017": {
+    "all": ["RF-1", "RF-2", "RF-3", "RF-4", "RF-5", "RF-6", "RF-7", "RF-8", "RF-9", "RNF-1", "RNF-2"],
+    "pending": ["RNF-1", "RNF-2"]
   }
 }

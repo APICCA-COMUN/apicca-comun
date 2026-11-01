@@ -311,4 +311,10 @@ describe('Prototyping · RF-8 (005)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Marcador Ápice 1' }));
     expect(window.location.pathname).toBe('/apices/a1');
   });
+
+  it('RF-2 (017): la página fija su propio título de documento', async () => {
+    setup(person, emptyListSource().source);
+    await screen.findByRole('heading', { level: 1, name: 'Prototipado de ápices' });
+    expect(document.title).toBe('Prototipado · APICCA COMÚN');
+  });
 });

@@ -528,7 +528,17 @@
     "visitante": []
   },
   "/ruta-que-no-existe": {
-    "facilitador": [],
-    "visitante": []
+    "facilitador": [
+      {
+        "role": "link",
+        "name": "Volver al inicio"
+      }
+    ],
+    "visitante": [
+      {
+        "role": "link",
+        "name": "Volver al inicio"
+      }
+    ]
   }
 }

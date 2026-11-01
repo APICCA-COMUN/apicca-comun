@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { APICE_STATUSES, AXES } from './apice';
 import { listQueryShape, NO_FILTERS, type ListAudience, type ListFilters } from './discovery';
 import { constitutionQueryShapes } from './constitution/queries';
+import { messagesQuery } from './forum/queries';
 import type { QueryShape } from './discovery';
 import {
   indexForShape,
@@ -173,5 +174,18 @@ describe('índices del descubrimiento', () => {
     for (const shape of constitutionQueryShapes()) {
       expect(missingIndexes(committed, [indexForShape(shape)]), shape.collection).toEqual([]);
     }
+  });
+
+  it('RF-1 (017) · 1.2: el archivo declara el índice de los mensajes visibles de un hilo (D-T1 (017))', () => {
+    const index = indexForShape(messagesQuery({ includeArchived: false }));
+    expect(index).toEqual({
+      collectionGroup: 'messages',
+      queryScope: 'COLLECTION',
+      fields: [
+        { fieldPath: 'isArchived', order: 'ASCENDING' },
+        { fieldPath: 'createdAt', order: 'ASCENDING' },
+      ],
+    });
+    expect(missingIndexes(committed, [index])).toEqual([]);
   });
 });

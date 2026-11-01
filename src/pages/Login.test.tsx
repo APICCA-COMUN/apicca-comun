@@ -160,4 +160,10 @@ describe('/entrar · regreso tras entrar (004)', () => {
     renderLogin(fakeAuth(), member);
     expect(window.location.pathname).toBe('/tablero');
   });
+
+  it('RF-2 (017): la página fija su propio título de documento, también al cargarla directamente', async () => {
+    renderLogin();
+    await screen.findByRole('heading', { level: 1, name: 'Entrar' });
+    expect(document.title).toBe('Entrar · APICCA COMÚN');
+  });
 });

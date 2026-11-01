@@ -32,6 +32,6 @@ describe('rutas de la constitución común', () => {
   it.each(CASES)('RF-7 (004) · 7.3: %s monta su página, no la de ruta desconocida', async (path, marker) => {
     renderAt(path);
     expect(await screen.findAllByText(marker)).not.toHaveLength(0);
-    expect(screen.queryByText('Sitio en construcción.')).toBeNull();
+    expect(screen.queryByText('No encontramos esta página')).toBeNull();
   });
 });

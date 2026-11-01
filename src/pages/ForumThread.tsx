@@ -1,6 +1,6 @@
 // RF-4 (009), RF-5 (009), RF-6 (009), RF-7 (009), RNF-4 (009) · Hilo abierto (`/foro/:id`): título y eje, mensajes en orden
 // cronológico con inicial, autoría, fecha y texto, y «Tu respuesta» con «Responder» para quien puede. La autora edita y archiva lo
-// suyo; un facilitador archiva cualquier hilo o mensaje y ve lo archivado. Un hilo que no existe o está archivado es «no encontrado».
+// suyo; un facilitador archiva cualquier hilo o mensaje y ve lo archivado. Un hilo que no existe o está archivado es «no encontrado»; un fallo de lectura se avisa como error (RF-1 (017)).
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { parseMarkdown } from '../../shared/domain/docs/markdown';
 import { validateMessage } from '../../shared/domain/forum';
@@ -39,18 +39,19 @@ export function ForumThread({ source = firestoreForumSource, client = api }: Pro
   const session = useSession();
   const person = session.status === 'person' ? session : null;
   const moderates = person?.role === 'facilitator';
-  const [data, setData] = useState<{ thread: Thread; messages: ForumMessage[] } | null | undefined>(undefined);
+  // `undefined` mientras carga, `null` si no existe y `'failed'` si la lectura falló por otro motivo (RF-1 (017) · 1.3).
+  const [data, setData] = useState<{ thread: Thread; messages: ForumMessage[] } | null | 'failed' | undefined>(undefined);
   const [reply, setReply] = useState('');
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  usePageTitle({ contentTitle: data?.thread.title ?? 'Foro' });
+  usePageTitle({ contentTitle: (typeof data === 'object' && data !== null ? data.thread.title : null) ?? 'Foro' });
 
   const load = useCallback(async () => {
     try {
       setData(await source.fetchThread(id, { includeArchived: moderates }));
     } catch {
-      setData(null);
+      setData('failed');
     }
   }, [source, id, moderates]);
 
@@ -60,6 +61,19 @@ export function ForumThread({ source = firestoreForumSource, client = api }: Pro
   }, [load, session.status]);
 
   if (data === undefined) return <p>Cargando…</p>;
+  if (data === 'failed') {
+    return (
+      <div className="forum-thread">
+        <h1>Foro</h1>
+        <p role="alert" className="block">
+          No se pudo cargar este hilo. Inténtalo de nuevo en un momento.
+        </p>
+        <p>
+          <Link href="/foro">Volver al foro</Link>
+        </p>
+      </div>
+    );
+  }
   if (data === null || (data.thread.isArchived && !moderates)) {
     return (
       <div className="forum-thread">

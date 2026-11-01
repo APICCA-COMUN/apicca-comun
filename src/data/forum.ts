@@ -1,8 +1,9 @@
-// RF-1 (009), RF-2 (009), RF-7 (009), D-T6 (009) · Lectura del foro: lista de hilos por tandas con filtro de eje y un hilo con
+// RF-1 (009), RF-2 (009), RF-7 (009), D-T6 (009), RF-1 (017) · Lectura del foro: lista de hilos por tandas con filtro de eje y un hilo con
 // sus mensajes. Escribir es cosa de las ops. La fuente se recibe por props, como las demás.
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, startAfter, where, type Firestore, type QueryConstraint, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { AXES, type Axis } from '../../shared/domain/apice';
 import { FORUM_LIMITS, type ThreadSummary } from '../../shared/domain/forum';
+import { messagesQuery } from '../../shared/domain/forum/queries';
 import { toMs } from './constitution/read';
 import { firebase } from './firebase';
 
@@ -74,22 +75,28 @@ export function createForumSource(db: Firestore): ForumSource {
       let head;
       try {
         head = await getDoc(doc(db, 'threads', id));
-      } catch {
-        return null;
+      } catch (caught) {
+        // Un hilo archivado ajeno se lee como inexistente; cualquier otro fallo se propaga (RF-1 (017) · 1.3, D-T2 (017)).
+        if ((caught as { code?: string }).code === 'permission-denied') return null;
+        throw caught;
       }
       if (!head.exists()) return null;
       const data = head.data();
       const summary = toSummary(id, data);
       if (summary === null) return null;
-      const constraints: QueryConstraint[] = includeArchived ? [] : [where('isArchived', '==', false)];
-      const snap = await getDocs(query(collection(db, 'threads', id, 'messages'), ...constraints, orderBy('createdAt', 'asc')));
+      const thread = { ...summary, authorUid: str(data['authorUid']), createdAt: toMs(data['createdAt']) ?? summary.lastMessageAt, isArchived: data['isArchived'] === true };
+      // Sin moderar, un hilo archivado no se muestra: no se piden mensajes que las reglas negarían (RF-1 (017) · 1.3).
+      if (thread.isArchived && !includeArchived) return { thread, messages: [] };
+      const shape = messagesQuery({ includeArchived });
+      const constraints: QueryConstraint[] = shape.conditions.map((c) => where(c.field, c.op, c.value));
+      const snap = await getDocs(query(collection(db, 'threads', id, 'messages'), ...constraints, orderBy(shape.orderBy.field, shape.orderBy.direction)));
       const messages = snap.docs.flatMap((d): ForumMessage[] => {
         const m = d.data();
         const createdAt = toMs(m['createdAt']);
         if (createdAt === null) return [];
         return [{ id: d.id, authorUid: str(m['authorUid']), authorUsername: str(m['authorUsername']), text: str(m['text']), createdAt, editedAt: toMs(m['editedAt']), isArchived: m['isArchived'] === true, isOpening: m['isOpening'] === true }];
       });
-      return { thread: { ...summary, authorUid: str(data['authorUid']), createdAt: toMs(data['createdAt']) ?? summary.lastMessageAt, isArchived: data['isArchived'] === true }, messages };
+      return { thread, messages };
     },
   };
 }

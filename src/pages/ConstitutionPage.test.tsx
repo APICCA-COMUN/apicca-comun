@@ -172,3 +172,12 @@ describe('ConstitutionPage, lectura de Firestore (004)', () => {
     expectBlocks(container, { nesting: true });
   });
 });
+
+describe('ConstitutionPage · título (017)', () => {
+  it('RF-2 (017): la página fija su propio título de documento', async () => {
+    const { source } = fakeSections({ state: stateOf({ isOpen: true, order: ['a'], updatedAt: Date.parse('2026-10-05T15:00:00Z') }), sections: [sec('a', 'Primera')] });
+    render(withSession(visitor, <ConstitutionPage sectionsSource={source} documentsSource={noDocs} />));
+    await screen.findByRole('heading', { level: 2, name: 'Primera' });
+    expect(document.title).toBe('Constitución · APICCA COMÚN');
+  });
+});

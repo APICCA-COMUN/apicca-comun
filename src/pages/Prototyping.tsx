@@ -1,4 +1,4 @@
-// RF-12 (003) · 12.4, RF-18 (003) · 18.1 a 18.5, RF-21 (001), RF-6 (002) · 6.3, RF-8 (002) · 8.3, D-T11 (003) · Prototipado (`/prototipado`):
+// RF-12 (003) · 12.4, RF-18 (003) · 18.1 a 18.5, RF-21 (001), RF-6 (002) · 6.3, RF-8 (002) · 8.3, D-T11 (003), RF-2 (017) · Prototipado (`/prototipado`):
 // mapa y lista de ápices con los mismos filtros en la URL, dentro de un lote. Todo lo del mapa se hace desde la
 // lista, y si el mapa falla la lista sigue entera (RNF-10 (001)). Con sesión, «Nuevo ápice» es la acción principal.
 // RF-9 (008) · 9.1 a 9.6, D-13 (008): sin lote envolvente; el título, el contador y las acciones van en una fila.
@@ -29,7 +29,7 @@ interface Props {
 }
 
 export function Prototyping({ source = firestoreListSource, apiceSource, client }: Props) {
-  usePageTitle({});
+  usePageTitle({ contentTitle: 'Prototipado' });
   const session = useSession();
   const [filters, setFilters] = useState<ListFilters>(() => filtersFromSearch(window.location.search));
   const [items, setItems] = useState<readonly ListedApice[]>([]);

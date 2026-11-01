@@ -1,4 +1,5 @@
 // RF-6 (016), D-T13 (016): encabezados de seguridad del hosting. La CSP admite el script en línea del tema solo por su hash.
+// RF-5 (017), D-T5 (017): el HTML de las rutas se revalida siempre; los recursos con hash se guardan un año.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -6,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 const root = resolve(import.meta.dirname, '../..');
 const config = JSON.parse(readFileSync(resolve(root, 'firebase.json'), 'utf8'));
-const entries = config.hosting.headers as Array<{ source: string; headers: Array<{ key: string; value: string }> }>;
+const entries = config.hosting.headers as Array<{ source?: string; regex?: string; headers: Array<{ key: string; value: string }> }>;
 const all = entries.find((entry) => entry.source === '**')?.headers ?? [];
 const header = (key: string): string | undefined => all.find((h) => h.key === key)?.value;
 const csp = header('Content-Security-Policy') ?? '';
@@ -61,5 +62,23 @@ describe('hosting-headers · Firebase Hosting', () => {
 
   it('RF-6 (016) · 6.3: cada respuesta lleva Referrer-Policy: strict-origin-when-cross-origin', () => {
     expect(header('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
+  });
+
+  // Firebase compara los encabezados con la ruta pedida, no con el archivo servido: `/foro` recibe index.html por la
+  // reescritura, pero no la regla de `/index.html`. Las rutas del sitio no llevan punto; los archivos, sí.
+  const cacheOf = (path: string): string[] =>
+    entries
+      .filter((entry) => (entry.regex !== undefined ? new RegExp(entry.regex).test(path) : entry.source === path || (entry.source?.endsWith('/**') === true && path.startsWith(entry.source.slice(0, -2)))))
+      .flatMap((entry) => entry.headers.filter((h) => h.key === 'Cache-Control').map((h) => h.value));
+
+  it('RF-5 (017): el HTML de toda ruta del sitio lleva Cache-Control: no-cache', () => {
+    for (const path of ['/', '/foro', '/foro/abc123', '/documentacion/01-que-es', '/mi-tablero', '/index.html', '/ruta-que-no-existe']) {
+      expect(cacheOf(path), path).toEqual(['no-cache']);
+    }
+  });
+
+  it('RF-5 (017): /assets/** conserva immutable y no recibe no-cache', () => {
+    expect(cacheOf('/assets/index-C65DHrFX.js')).toEqual(['public, max-age=31536000, immutable']);
+    expect(cacheOf('/brand/manglerojo.svg')).toEqual(['public, max-age=86400']);
   });
 });

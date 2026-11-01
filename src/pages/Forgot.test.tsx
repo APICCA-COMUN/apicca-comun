@@ -96,3 +96,16 @@ describe('/olvide · lote (003)', () => {
     expect(link.matches('.block, .action-primary, .action-secondary, .action-destructive, .icon-button')).toBe(false);
   });
 });
+
+describe('/olvide · título (017)', () => {
+  it('RF-2 (017): la página fija su propio título de documento', async () => {
+    window.history.replaceState(null, '', '/olvide');
+    render(
+      <AuthServiceContext.Provider value={fakeAuth()}>
+        <App />
+      </AuthServiceContext.Provider>,
+    );
+    await screen.findByRole('heading', { level: 1, name: 'Restablecer contraseña' });
+    expect(document.title).toBe('Restablecer contraseña · APICCA COMÚN');
+  });
+});

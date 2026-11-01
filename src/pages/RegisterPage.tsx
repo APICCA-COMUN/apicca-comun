@@ -2,7 +2,7 @@
 // RF-13 (003) · 13.1, 13.2, D-T19 (003): formulario en un lote angosto; «Entrar» es un enlace de texto.
 // RF-6 (002) · 6.1, 6.3: campos, avisos y envío como bloques; «Crear mi acceso» es la acción principal.
 // Ante cualquier error del servidor conserva lo escrito mientras la página siga abierta.
-import { signInWithEmailAndPassword } from 'firebase/auth';
+// RF-6 (017): inicia sesión con el servicio de autenticación de `src/data/`, como Entrar.
 import { useEffect, useState, type FormEvent } from 'react';
 import { messageFor } from '../../shared/domain/messages';
 import { isSignedIn, useSession } from '../app/session';
@@ -10,20 +10,16 @@ import { Link, navigate } from '../app/router';
 import { usePageTitle } from '../app/usePageTitle';
 import { SignedInNotice } from '../components/SignedInNotice';
 import { api, ApiClientError, type ApiOps } from '../data/api';
-import { firebase } from '../data/firebase';
+import { useAuthService } from '../data/authService';
 
 export interface RegisterOps {
   inspect(token: string): Promise<ApiOps['inspectInvitation']['out']>;
   register(input: ApiOps['register']['in']): Promise<ApiOps['register']['out']>;
-  signIn(email: string, password: string): Promise<void>;
 }
 
 export const realRegisterOps: RegisterOps = {
   inspect: (token) => api.call('inspectInvitation', { token }),
   register: (input) => api.call('register', input),
-  signIn: async (email, password) => {
-    await signInWithEmailAndPassword(firebase().auth, email, password);
-  },
 };
 
 const NEW_INVITATION = 'Pide una invitación nueva a un facilitador.';
@@ -45,6 +41,7 @@ type Inspection =
 export function RegisterPage({ token, ops = realRegisterOps }: { token: string; ops?: RegisterOps }) {
   usePageTitle({ contentTitle: 'Crear acceso' });
   const session = useSession();
+  const auth = useAuthService();
   const [inspection, setInspection] = useState<Inspection>({ kind: 'loading' });
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -78,7 +75,7 @@ export function RegisterPage({ token, ops = realRegisterOps }: { token: string; 
     setError(null);
     try {
       await ops.register({ token, password, name, username });
-      await ops.signIn(inspection.email, password);
+      await auth.signIn(inspection.email, password);
       navigate('/');
     } catch (e: unknown) {
       setError(describe(e));

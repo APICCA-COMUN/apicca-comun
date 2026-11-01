@@ -1,5 +1,6 @@
 // RF-12 (001) · Escritura transaccional del ápice y su versión (D-T5 (001)): cada guardado crea `versions/{n}` con el
 // contenido completo y sube `version` del ápice en la misma transacción. Las ops reutilizan estas dos funciones.
+import type { Transaction } from 'firebase-admin/firestore';
 import { writeApiceNotice } from './noticeStore';
 import type { ApiceContent, ApiceStatus, Visibility } from '../../shared/domain/apice';
 import { displayLocation, type Location, type Point, type Precision } from '../../shared/domain/location';
@@ -72,44 +73,49 @@ const pickContent = (data: Record<string, unknown>): StoredContent =>
 
 const pointOf = (point: Point): Point => ({ lat: point.lat, lng: point.lng });
 
-/** Crea el ápice privado, no archivado, con su versión 1. */
+/**
+ * Crea el ápice privado, no archivado, con su versión 1. `charge` lee el cupo dentro de la transacción y lo cobra con la
+ * creación (RF-3 (017), D-T3 (017)).
+ */
 export async function createApiceDoc(
   ctx: Ctx,
-  input: { content: StoredContent; author: Saver; location?: NewLocation },
+  input: { content: StoredContent; author: Saver; location?: NewLocation; charge?: (tx: Transaction) => Promise<() => void> },
 ): Promise<{ id: string }> {
   const id = newId(ctx);
   const now = ctx.now();
   const { content, author } = input;
   const location = input.location === undefined ? null : displayLocation(input.location.point, input.location.precision);
-  const batch = ctx.db.batch();
-  batch.create(ctx.db.doc(`apices/${id}`), {
-    ...content,
-    visibility: 'private',
-    isArchived: false,
-    archive: null,
-    authorUid: author.uid,
-    authorUsername: author.username,
-    createdAt: now,
-    updatedAt: now,
-    lastEditedByUsername: author.username,
-    version: 1,
-    location,
-    hasLocation: location !== null,
-    image: null,
-    activeReferenceCount: 0,
+  await ctx.db.runTransaction(async (tx) => {
+    const charge = input.charge === undefined ? null : await input.charge(tx);
+    charge?.();
+    tx.create(ctx.db.doc(`apices/${id}`), {
+      ...content,
+      visibility: 'private',
+      isArchived: false,
+      archive: null,
+      authorUid: author.uid,
+      authorUsername: author.username,
+      createdAt: now,
+      updatedAt: now,
+      lastEditedByUsername: author.username,
+      version: 1,
+      location,
+      hasLocation: location !== null,
+      image: null,
+      activeReferenceCount: 0,
+    });
+    tx.create(ctx.db.doc(`apices/${id}/versions/1`), {
+      n: 1,
+      content,
+      location,
+      kind: 'create',
+      restoredFromN: null,
+      savedByUid: author.uid,
+      savedByUsername: author.username,
+      savedAt: now,
+    });
+    if (input.location !== undefined) tx.create(ctx.db.doc(EXACT_PATH(id, 1)), pointOf(input.location.point));
   });
-  batch.create(ctx.db.doc(`apices/${id}/versions/1`), {
-    n: 1,
-    content,
-    location,
-    kind: 'create',
-    restoredFromN: null,
-    savedByUid: author.uid,
-    savedByUsername: author.username,
-    savedAt: now,
-  });
-  if (input.location !== undefined) batch.create(ctx.db.doc(EXACT_PATH(id, 1)), pointOf(input.location.point));
-  await batch.commit();
   return { id };
 }
 

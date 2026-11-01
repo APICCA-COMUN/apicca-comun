@@ -27,6 +27,12 @@ button {
   font-size: 1rem;
 }
 
+/* El monoespaciado genérico lo elige el sistema y cambia entre máquinas; una pila explícita fija cómo se ve el enlace
+   de invitación y las capturas de los dos carriles (RF-9 (017) · 9.2, D-2 (017)). La misma que `DocBlocks.css`. */
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 p {
   font-size: 1rem;
 }

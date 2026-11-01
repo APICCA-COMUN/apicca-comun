@@ -8,14 +8,14 @@ beforeEach(() => {
 });
 
 describe('App', () => {
-  it('muestra el título del sitio y el aviso de obra', () => {
+  it('RF-7 (017): una ruta desconocida dice que no encontró la página, con enlace a la portada (D-1 (017))', () => {
     render(<App />);
-    expect(screen.getByRole('heading', { level: 1, name: 'APICCA COMÚN' })).toBeTruthy();
-    expect(screen.getByText('Sitio en construcción.')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'No encontramos esta página' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Volver al inicio' })).toBeTruthy();
   });
 
-  it('pone el nombre del sitio como título del documento', () => {
+  it('RF-7 (017): una ruta desconocida lleva su propio título de documento', () => {
     render(<App />);
-    expect(document.title).toBe('APICCA COMÚN');
+    expect(document.title).toBe('No encontramos esta página · APICCA COMÚN');
   });
 });

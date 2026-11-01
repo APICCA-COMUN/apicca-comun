@@ -16,7 +16,19 @@ export function threadsQuery(axis: Axis | null): QueryShape {
   };
 }
 
-/** Las dos formas de la lista: todos los temas y un eje. */
+/**
+ * Los mensajes de un hilo, del primero al último (RF-7 (009)). Sin moderar se piden solo los visibles, y esa forma
+ * necesita el índice compuesto `isArchived` + `createdAt` (RF-1 (017) · 1.2, D-T1 (017)).
+ */
+export function messagesQuery({ includeArchived }: { includeArchived: boolean }): QueryShape {
+  return {
+    collection: 'messages',
+    conditions: includeArchived ? [] : [{ field: 'isArchived', op: '==', value: false }],
+    orderBy: { field: 'createdAt', direction: 'asc' },
+  };
+}
+
+/** Las formas que piden índice compuesto: la lista (todos los temas y un eje) y los mensajes visibles de un hilo. */
 export function forumQueryShapes(): QueryShape[] {
-  return [threadsQuery(null), threadsQuery('agua')];
+  return [threadsQuery(null), threadsQuery('agua'), messagesQuery({ includeArchived: false })];
 }

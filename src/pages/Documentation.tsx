@@ -1,5 +1,5 @@
 // RF-10 (008) · 10.1 a 10.6, D-13 (008): columna de 1040 px, grupos del lienzo y anterior/siguiente como texto.
-// RF-14 (003) · 14.1–14.7, RNF-4 (003), D-T10 (003), D-T14 (003), D-T16 (003) · Página `/documentacion[/:articulo]`:
+// RF-14 (003) · 14.1–14.7, RNF-4 (003), D-T10 (003), D-T14 (003), D-T16 (003), RF-2 (017) · Página `/documentacion[/:articulo]`:
 // índice de texto, artículo con «Documentación › <sección>» sobre el `h1`, y anterior/siguiente. Los `.md` se leen
 // con `import.meta.glob` (trozo propio); la carga está separada (`loadArticles`) para poder inyectarla en pruebas.
 // Si la carga falla, el error sube a `LazyBoundary`, que muestra el aviso con «Reintentar».
@@ -8,8 +8,9 @@ import { flattenIndex, neighbours, type DocsIndex } from '../../shared/domain/do
 import { parseMarkdown, inlineText, type Block } from '../../shared/domain/docs/markdown';
 import indexData from '../../docs/documentacion/indice.json';
 import { Link } from '../app/router';
+import { usePageTitle } from '../app/usePageTitle';
 import { DocBlocks } from '../components/DocBlocks';
-import { NotFound } from './NotFound';
+import { NOT_FOUND_TITLE, NotFound } from './NotFound';
 import './Documentation.css';
 
 /** Devuelve el texto de todos los artículos, por nombre de archivo. */
@@ -53,6 +54,11 @@ export function Documentation({ slug, index = indexData as DocsIndex, loadArticl
       alive = false;
     };
   }, [loadArticles]);
+  // Título del documento (RF-2 (017)): el artículo y «Documentación»; un artículo inexistente, el de la ruta desconocida (RF-7 (017)).
+  const wanted = slug ?? flattenIndex(index)[0]?.slug;
+  const entry = flattenIndex(index).find((a) => a.slug === wanted);
+  const articleTitle = entry !== undefined && files !== null ? (titleOf(parseMarkdown(files[entry.archivo] ?? '')) ?? entry.slug) : undefined;
+  usePageTitle(entry === undefined ? { contentTitle: NOT_FOUND_TITLE } : { area: 'Documentación', ...(articleTitle === undefined ? {} : { contentTitle: articleTitle }) });
   // El error sube a `LazyBoundary`, que muestra el aviso; «Reintentar» remonta la página y vuelve a cargar.
   if (failure) throw failure;
   if (!files) return <p>Cargando…</p>;

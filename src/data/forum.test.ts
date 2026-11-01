@@ -1,6 +1,7 @@
 // T-4 (009) · Fuente del foro: lista por tandas con filtro de eje, y un hilo con sus mensajes.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fake, fakeDb } from './constitution/fakeFirestore';
+import { messagesQuery } from '../../shared/domain/forum/queries';
 import { createForumSource } from './forum';
 
 vi.mock('firebase/firestore', async () => (await import('./constitution/fakeFirestore')).fakeFirestoreModule);
@@ -70,5 +71,28 @@ describe('forum.ts', () => {
 
   it('RF-7 (009) · 7.1: un hilo inexistente da null', async () => {
     expect(await createForumSource(fakeDb).fetchThread('nada', { includeArchived: false })).toBeNull();
+  });
+
+  it('RF-1 (017) · 1.2: la consulta de mensajes es la forma declarada, la que tiene índice (D-T1 (017))', async () => {
+    fake.set('threads', [{ id: 'a', data: head('Cisterna', 'agua', 10) }]);
+    fake.set('threads/a/messages', []);
+    for (const includeArchived of [false, true]) {
+      await createForumSource(fakeDb).fetchThread('a', { includeArchived });
+      const shape = messagesQuery({ includeArchived });
+      const asked = fake.queries[fake.queries.length - 1]!;
+      expect(asked.path).toBe('threads/a/messages');
+      expect(asked.cs).toEqual([
+        ...shape.conditions.map((c) => ({ t: 'where', field: c.field, op: c.op, value: c.value })),
+        { t: 'orderBy', field: shape.orderBy.field, direction: shape.orderBy.direction },
+      ]);
+    }
+  });
+
+  it('RF-1 (017) · 1.3: un hilo archivado sin permiso de moderar no pide sus mensajes', async () => {
+    fake.set('threads', [{ id: 'a', data: head('Cisterna', 'agua', 10, { isArchived: true }) }]);
+    const found = await createForumSource(fakeDb).fetchThread('a', { includeArchived: false });
+    expect(found?.thread.isArchived).toBe(true);
+    expect(found?.messages).toEqual([]);
+    expect(fake.queries.some((q) => q.path === 'threads/a/messages')).toBe(false);
   });
 });

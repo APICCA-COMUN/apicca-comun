@@ -142,4 +142,26 @@ describe('foro · cuota diaria de respuestas', () => {
     await handleEditMessage(ctx, { threadId: id, messageId, text: 'Primera, editada.' }, ana);
     expect((await ctx.db.doc(`rateLimits/daily-reply-${ana}`).get()).get('count')).toBe(50);
   });
+
+  it('RF-3 (017) · 3.1: una respuesta rechazada (hilo archivado o inexistente) no descuenta el cupo (D-3 (017))', async () => {
+    const { id } = await open(fabi);
+    await handleArchiveThread(ctx, { threadId: id }, fabi);
+    await seedDaily('reply', ana, 49);
+    expect(await codeOf(handleReplyThread(ctx, { threadId: id, text: 'Tarde.' }, ana))).toBe('thread-archived');
+    expect(await codeOf(handleReplyThread(ctx, { threadId: 'nada', text: 'Nada.' }, ana))).toBe('thread-not-found');
+    expect((await ctx.db.doc(`rateLimits/daily-reply-${ana}`).get()).get('count')).toBe(49);
+  });
+
+  it('RF-3 (017) · 3.2: con el cupo agotado la respuesta se sigue rechazando con rate-limited', async () => {
+    const { id } = await open(fabi);
+    await seedDaily('reply', ana, 50);
+    expect(await codeOf(handleReplyThread(ctx, { threadId: id, text: 'Una más.' }, ana))).toBe('rate-limited');
+    expect((await messages(id)).length).toBe(1);
+  });
+
+  it('RF-3 (017) · 3.1: abrir un hilo descuenta el cupo en la misma escritura que lo crea', async () => {
+    await open(ana);
+    expect((await ctx.db.doc(`rateLimits/forum-thread-${ana}`).get()).get('count')).toBe(1);
+    expect((await ctx.db.collection('threads').get()).size).toBe(1);
+  });
 });

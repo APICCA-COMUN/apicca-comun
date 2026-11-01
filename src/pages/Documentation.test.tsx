@@ -95,8 +95,8 @@ describe('Documentation (003)', () => {
 
   it('RF-14 (003) · 14.7: un artículo inexistente muestra NotFound', async () => {
     mount('no-existe');
-    expect(await screen.findByRole('heading', { level: 1, name: 'APICCA COMÚN' })).toBeTruthy();
-    expect(screen.getByText('Sitio en construcción.')).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'No encontramos esta página' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Volver al inicio' })).toBeTruthy();
   });
 
   it('RNF-4 (003) · D-T16 (003): una carga fallida muestra el aviso con «Reintentar» y reintentar la recupera', async () => {
@@ -123,5 +123,17 @@ describe('Documentation (003)', () => {
     const { container } = mount('uno');
     await screen.findByRole('heading', { level: 1, name: 'Artículo uno' });
     expectBlocks(container, { nesting: true });
+  });
+
+  it('RF-2 (017): el título del documento nombra el artículo y la documentación', async () => {
+    mount('dos');
+    await screen.findByRole('heading', { level: 1, name: 'Artículo dos' });
+    expect(document.title).toBe('Artículo dos · Documentación · APICCA COMÚN');
+  });
+
+  it('RF-7 (017): un artículo inexistente lleva el título de la página no encontrada', async () => {
+    mount('nada');
+    await screen.findByRole('heading', { level: 1, name: 'No encontramos esta página' });
+    expect(document.title).toBe('No encontramos esta página · APICCA COMÚN');
   });
 });

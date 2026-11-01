@@ -1,6 +1,7 @@
 // RF-5 (001) · Suspender una cuenta: surte efecto de inmediato (D-T3 (001)); su nombre de usuario y contenido se conservan.
 // RF-14 (004) · 14.1, 14.7, RNF-1 (004), D-T9 (004) · En la misma transacción se retiran sus acuerdos y objeciones abiertas
-// y se marcan sus propuestas abiertas con `authorSuspended`. RF-7 (016) · 7.3: sus reservas de subida se revocan.
+// y se marcan sus propuestas abiertas con `authorSuspended`. RF-7 (016) · 7.3, RF-4 (017): sus reservas de subida se
+// borran en esa misma transacción, así que no sobreviven al cambio de estado.
 import { canSuspend } from '../../../shared/domain/access';
 import { requireFacilitator } from '../access';
 import type { Ctx } from '../context';
@@ -21,12 +22,13 @@ export async function handleSuspendAccount(ctx: Ctx, payload: Record<string, unk
     const recheck = canSuspend({ uid: actor.uid, role: actor.role }, { uid: target.uid, role: fresh.get('role') });
     if (!recheck.ok) throw new ApiError(recheck.code);
     const plan = await planStanceWithdrawals(ctx, tx, target.uid, fresh.get('username') as string);
+    // Las reglas de Storage no leen el estado de la cuenta: sin reservas, una cuenta suspendida ya no sube. Son como mucho
+    // 30 por día (RF-7 (016) · 7.3), lejos del tope de 500 escrituras por transacción.
+    const reservations = await tx.get(ctx.db.collection('uploadReservations').where('uid', '==', target.uid));
     tx.update(accountRef, { status: 'suspended', suspendedBy: actor.uid, suspendedAt: ctx.now() });
     applyStanceWithdrawals(ctx, tx, plan, { uid: actor.uid, username: actor.username });
+    for (const doc of reservations.docs) tx.delete(doc.ref);
   });
   await ctx.auth.revokeRefreshTokens(target.uid);
-  // Las reglas de Storage no leen el estado de la cuenta: sin reservas, una cuenta suspendida ya no sube (RF-7 (016) · 7.3).
-  const reservations = await ctx.db.collection('uploadReservations').where('uid', '==', target.uid).get();
-  await Promise.all(reservations.docs.map((doc) => doc.ref.delete()));
   return {};
 }

@@ -2,7 +2,6 @@
 // La cabecera va fuera de `<main>` para que esté en toda ruta, incluida la desconocida (D-T16 (002)).
 import type { ReactElement } from 'react';
 import { useRoute, type PageId } from './app/router';
-import { usePageTitle } from './app/usePageTitle';
 import { ReauthDialog } from './components/ReauthDialog';
 import { SiteFooter } from './components/SiteFooter';
 import { SiteHeader } from './components/SiteHeader';
@@ -89,7 +88,6 @@ const PAGES: Partial<Record<PageId, (params: Record<string, string>) => ReactEle
 };
 
 export function App() {
-  usePageTitle({});
   const route = useRoute();
   const page = PAGES[route.page];
   return (

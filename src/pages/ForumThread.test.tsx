@@ -147,4 +147,16 @@ describe('ForumThread', () => {
     await screen.findByRole('heading', { level: 1 });
     expectBlocks(container);
   });
+
+  it('RF-1 (017) · 1.3: si la lectura falla por otro motivo, avisa del error y no dice que el hilo no existe', async () => {
+    const failing: ForumSource = {
+      fetchThreads: async () => ({ threads: [], next: null }),
+      fetchThread: async () => {
+        throw new Error('The query requires an index.');
+      },
+    };
+    setup(member, failing);
+    expect((await screen.findByRole('alert')).textContent).toBe('No se pudo cargar este hilo. Inténtalo de nuevo en un momento.');
+    expect(screen.queryByText('No encontramos ese hilo')).toBeNull();
+  });
 });

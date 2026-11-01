@@ -91,4 +91,11 @@ describe('commentAmendment · cuota diaria', () => {
     expect(await codeOf(handleCommentAmendment(ctx, { amendmentId: 'a1', text: 'Hola' }, null))).toBe('unauthenticated');
     expect((await ctx.db.doc(`rateLimits/daily-comment-${beto}`).get()).get('count')).toBe(49);
   });
+
+  it('RF-3 (017) · 3.1: un comentario rechazado por propuesta cerrada no descuenta el cupo (D-3 (017))', async () => {
+    await seedAmendment(ctx, { id: 'a2', sectionId: 's1', author: { uid: ana, username: 'ana' }, isOpen: false, result: 'rejected' });
+    await seedDaily('comment', beto, 49);
+    expect(await codeOf(handleCommentAmendment(ctx, { amendmentId: 'a2', text: 'Tarde' }, beto))).toBe('amendment-closed');
+    expect((await ctx.db.doc(`rateLimits/daily-comment-${beto}`).get()).get('count')).toBe(49);
+  });
 });

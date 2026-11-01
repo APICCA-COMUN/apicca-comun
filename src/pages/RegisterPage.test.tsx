@@ -1,15 +1,36 @@
-// T-1.36: formulario de registro por invitación (RF-2 (001)).
+// T-1.36: formulario de registro por invitación (RF-2 (001)). RF-6 (017): inicia sesión por el servicio de `src/data/`.
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiClientError } from '../data/api';
 import { SessionProvider } from '../app/session';
-import { RegisterPage, type RegisterOps } from './RegisterPage';
+import { AuthServiceContext, type AuthService } from '../data/authService';
+import { RegisterPage as Page, realRegisterOps, type RegisterOps } from './RegisterPage';
 import { expectBlocks } from '../testing/expectBlocks';
 
 const pending = { state: 'pending' as const, email: 'ana@ejemplo.org', accountExists: false };
 
-function ops(overrides: Partial<RegisterOps> = {}): RegisterOps {
+type TestOps = RegisterOps & Pick<AuthService, 'signIn'>;
+
+const unusedAuth: AuthService = {
+  signIn: () => Promise.reject(new Error('sin uso')),
+  sendReset: () => Promise.reject(new Error('sin uso')),
+  verifyResetCode: () => Promise.reject(new Error('sin uso')),
+  confirmReset: () => Promise.reject(new Error('sin uso')),
+};
+
+/** La página con el `signIn` del doble inyectado por el contexto de autenticación, como en la app (RF-6 (017)). */
+function RegisterPage({ token, ops: o }: { token: string; ops: TestOps }) {
+  return (
+    <AuthServiceContext.Provider value={{ ...unusedAuth, signIn: o.signIn }}>
+      <Page token={token} ops={o} />
+    </AuthServiceContext.Provider>
+  );
+}
+
+function ops(overrides: Partial<TestOps> = {}): TestOps {
   return {
     inspect: vi.fn().mockResolvedValue(pending),
     register: vi.fn().mockResolvedValue({ uid: 'u1' }),
@@ -157,5 +178,20 @@ describe('RegisterPage · lote (003)', () => {
     expect(link.tagName).toBe('A');
     expect(link.matches('.block, .action-primary, .action-secondary, .action-destructive, .icon-button')).toBe(false);
     expect(container.querySelector('.lot')!.contains(link)).toBe(true);
+  });
+});
+
+describe('RegisterPage · acceso a Auth', () => {
+  it('RF-6 (017): inicia sesión con el servicio de autenticación del contexto, no con Firebase Auth directo', async () => {
+    const o = ops();
+    const user = userEvent.setup();
+    render(<RegisterPage token="tok" ops={o} />);
+    await screen.findByLabelText('Correo');
+    await fill(user);
+    await user.click(screen.getByRole('button', { name: 'Crear mi acceso' }));
+    await waitFor(() => expect(o.signIn).toHaveBeenCalledWith('ana@ejemplo.org', 'una-clave-larga'));
+    expect('signIn' in realRegisterOps).toBe(false);
+    const source = readFileSync(resolve(import.meta.dirname, 'RegisterPage.tsx'), 'utf8');
+    expect(source).not.toMatch(/from 'firebase\/auth'/);
   });
 });
