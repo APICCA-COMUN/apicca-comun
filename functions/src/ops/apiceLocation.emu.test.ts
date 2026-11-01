@@ -1,4 +1,4 @@
-// T-4.3 a T-4.4: la ubicación de un ápice al crear, editar y restaurar (RF-9 (001)).
+// T-4.3 a T-4.4: la ubicación de un ápice al crear, editar y restaurar (RF-9 (001)); permiso y purga (RF-1 (016), RF-2 (016)).
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../testing';
 import { codeOf, VALID } from '../testing/apiceKit';
@@ -78,10 +78,12 @@ describe('hasLocation en el ápice', () => {
     expect(await flag()).toBe(false);
     await edit(ana, 1, { mode: 'set', ...EXACT });
     expect(await flag()).toBe(true);
-    await edit(ana, 2, { mode: 'remove' });
+    await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 2 }, ana);
     expect(await flag()).toBe(false);
-    await handleRestoreVersion(ctx, { id, n: 2, baseVersion: 3 }, ana);
+    await edit(ana, 3, { mode: 'set', ...EXACT });
     expect(await flag()).toBe(true);
+    await edit(ana, 4, { mode: 'remove' });
+    expect(await flag()).toBe(false);
     id = ((await create({ mode: 'set', ...EXACT })) as { id: string }).id;
     expect(await flag()).toBe(true);
   });
@@ -158,14 +160,45 @@ describe('editApice con ubicación', () => {
     expect(await edit(ana, 2, { mode: 'precision', precision: 'approximate' })).toEqual({ ok: true, version: 2 });
   });
 
-  it('RF-9 (001): cualquier persona inscrita cambia la precisión sin recibir el punto exacto', async () => {
+  it('RF-1 (016) · 1.1: un miembro que no es la autora no puede volver exacta la ubicación; Facilitación sí, sin recibir el punto', async () => {
     await edit(ana, 1, { mode: 'set', ...EXACT });
-    const result = await edit(beto, 2, { mode: 'precision', precision: 'exact' });
+    expect(await codeOf(edit(beto, 2, { mode: 'precision', precision: 'exact' }))).toBe('forbidden');
+    expect((await apice())['version']).toBe(2);
+    expect((await apice())['location']).toEqual({ ...ZONE, precision: 'approximate' });
+    const result = await edit(fabi, 2, { mode: 'precision', precision: 'exact' });
     expect(result).toEqual({ ok: true, version: 3 });
     expect(JSON.stringify(result)).not.toContain(String(EXACT.lat));
     expect((await apice())['location']).toEqual({ ...EXACT, precision: 'exact' });
-    expect(await exactOf(3)).toEqual(EXACT);
-    expect(await edit(fabi, 3, { mode: 'precision', precision: 'approximate' })).toEqual({ ok: true, version: 4 });
+  });
+
+  it('RF-1 (016) · 1.1: un miembro que no es la autora no puede fijar ni cambiar el punto, ni con otros cambios', async () => {
+    expect(await codeOf(edit(beto, 1, { mode: 'set', ...EXACT }))).toBe('forbidden');
+    await edit(ana, 1, { mode: 'set', ...EXACT });
+    expect(await codeOf(edit(beto, 2, { mode: 'set', lat: 1, lng: 1, precision: 'approximate' }, { name: 'Otro' }))).toBe('forbidden');
+    expect((await apice())['version']).toBe(2);
+    expect(await exactOf(2)).toEqual(EXACT);
+    expect(await edit(fabi, 2, { mode: 'set', lat: 1, lng: 1 })).toEqual({ ok: true, version: 3 });
+  });
+
+  it('RF-1 (016) · 1.2: un miembro que no es la autora puede volverla aproximada o quitarla', async () => {
+    await edit(ana, 1, { mode: 'set', ...EXACT, precision: 'exact' });
+    expect(await edit(beto, 2, { mode: 'precision', precision: 'approximate' })).toEqual({ ok: true, version: 3 });
+    expect((await apice())['location']).toEqual({ ...ZONE, precision: 'approximate' });
+    expect(await edit(beto, 3, { mode: 'remove' })).toEqual({ ok: true, version: 4 });
+    expect((await apice())['location']).toBeNull();
+  });
+
+  it('RF-2 (016) · 2.2: quitar la ubicación borra los puntos exactos y la ubicación exacta del historial', async () => {
+    await edit(ana, 1, { mode: 'set', ...EXACT, precision: 'exact' });
+    await edit(ana, 2, { mode: 'precision', precision: 'approximate' });
+    expect(await exactOf(2)).toEqual(EXACT);
+    expect(await edit(beto, 3, { mode: 'remove' })).toEqual({ ok: true, version: 4 });
+    for (const n of [1, 2, 3, 4]) expect(await exactOf(n)).toBeUndefined();
+    expect((await version(2))['location']).toBeNull();
+    expect((await version(2))['locationPurged']).toBe(true);
+    expect((await version(3))['location']).toEqual({ ...ZONE, precision: 'approximate' });
+    expect((await version(2))['content']).toBeDefined();
+    for (const n of [1, 2, 3, 4]) expect(JSON.stringify(await version(n))).not.toContain('4.3567891');
   });
 
   it('RF-9 (001): cambiar la precisión de un ápice sin ubicación o con una forma inválida se rechaza', async () => {
@@ -181,12 +214,37 @@ describe('editApice con ubicación', () => {
 describe('restoreVersion con ubicación', () => {
   it('RF-9 (001): restaurar una versión devuelve su ubicación y copia su punto exacto', async () => {
     id = ((await create({ mode: 'set', ...EXACT })) as { id: string }).id;
-    await edit(ana, 1, { mode: 'remove' });
-    expect((await apice())['location']).toBeNull();
-    expect(await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 2 }, beto)).toEqual({ ok: true, version: 3 });
+    await edit(ana, 1, { mode: 'set', lat: 1, lng: 1 });
+    expect(await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 2 }, ana)).toEqual({ ok: true, version: 3 });
     expect((await apice())['location']).toEqual({ ...ZONE, precision: 'approximate' });
     expect((await version(3))['location']).toEqual({ ...ZONE, precision: 'approximate' });
     expect(await exactOf(3)).toEqual(EXACT);
+  });
+
+  it('RF-2 (016) · 2.1: quien no es la autora ni facilita restaura el contenido y conserva la ubicación vigente', async () => {
+    id = ((await create({ mode: 'set', ...EXACT, precision: 'exact' })) as { id: string }).id;
+    await edit(ana, 1, { mode: 'precision', precision: 'approximate' }, { name: 'Segundo' });
+    expect(await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 2 }, beto)).toEqual({ ok: true, version: 3 });
+    expect((await apice())['name']).toBe(VALID.name);
+    expect((await apice())['location']).toEqual({ ...ZONE, precision: 'approximate' });
+    expect(await exactOf(3)).toEqual(EXACT);
+    await edit(ana, 3, { mode: 'remove' });
+    id = ((await create()) as { id: string }).id;
+    await edit(ana, 1, { mode: 'set', ...EXACT });
+    expect(await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 2 }, beto)).toEqual({ ok: true, version: 3 });
+    expect((await apice())['location']).toEqual({ ...ZONE, precision: 'approximate' });
+  });
+
+  it('RF-2 (016) · 2.3: tras quitar la ubicación, restaurar una versión que la tenía no la devuelve', async () => {
+    id = ((await create({ mode: 'set', ...EXACT, precision: 'exact' })) as { id: string }).id;
+    await edit(ana, 1, { mode: 'precision', precision: 'approximate' });
+    await edit(ana, 2, { mode: 'remove' });
+    expect(await handleRestoreVersion(ctx, { id, n: 2, baseVersion: 3 }, ana)).toEqual({ ok: true, version: 4 });
+    expect((await apice())['location']).toBeNull();
+    await edit(ana, 4, { mode: 'set', lat: 1, lng: 1 });
+    expect(await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 5 }, fabi)).toEqual({ ok: true, version: 6 });
+    expect((await apice())['location']).toEqual({ lat: 1.005, lng: 1.005, precision: 'approximate' });
+    expect(await exactOf(6)).toEqual({ lat: 1, lng: 1 });
   });
 
   it('RF-9 (001): restaurar una versión sin ubicación quita la ubicación vigente', async () => {

@@ -1,4 +1,4 @@
-// RF-1 (001), RF-6 (002) · 6.1, 6.3, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1 · Invitaciones: invitar un correo, ver y copiar el enlace de las pendientes, renovar y anular.
+// RF-1 (001), RF-8 (016) · 8.1, RF-6 (002) · 6.1, 6.3, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1 · Invitaciones: invitar un correo, ver y copiar el enlace de las pendientes, renovar y anular.
 import { useMemo, useState, type FormEvent } from 'react';
 import {
   compareInvitations,
@@ -125,7 +125,13 @@ function InvitationItem({
   return (
     <li className="block">
       {invitation.email} <strong>{INVITATION_STATE_LABELS[state]}</strong>{' '}
-      {state === 'pending' && invitation.token !== undefined ? <LinkBox path={`/registro/${invitation.token}`} /> : null}{' '}
+      {state === 'pending' ? (
+        invitation.token !== undefined ? (
+          <LinkBox path={`/registro/${invitation.token}`} />
+        ) : (
+          <span>Para compartir de nuevo el enlace, renueva la invitación.</span>
+        )
+      ) : null}{' '}
       {state !== 'accepted' ? (
         <button type="button" className="block action-secondary" disabled={busy} onClick={onRenew}>
           Renovar

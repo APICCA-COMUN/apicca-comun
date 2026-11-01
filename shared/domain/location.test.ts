@@ -5,6 +5,7 @@ import {
   DEFAULT_PRECISION,
   displayLocation,
   groupByLocation,
+  raisesLocation,
   validateCoordinates,
   zoneKey,
 } from './location';
@@ -161,5 +162,24 @@ describe('shared/domain/location · groupByLocation', () => {
 
   it('RF-9 (001): sin ápices no hay grupos', () => {
     expect(groupByLocation([])).toEqual({ groups: [], withoutLocation: [] });
+  });
+});
+
+describe('shared/domain/location · raisesLocation (spec 016)', () => {
+  it('RF-1 (016) · 1.1: fijar una ubicación la sube, aunque sea aproximada', () => {
+    expect(raisesLocation(null, { mode: 'set', precision: 'approximate' })).toBe(true);
+    expect(raisesLocation('exact', { mode: 'set', precision: 'approximate' })).toBe(true);
+  });
+
+  it('RF-1 (016) · 1.1: volver exacta una ubicación aproximada la sube', () => {
+    expect(raisesLocation('approximate', { mode: 'precision', precision: 'exact' })).toBe(true);
+    expect(raisesLocation(null, { mode: 'precision', precision: 'exact' })).toBe(true);
+  });
+
+  it('RF-1 (016) · 1.2: quitar, conservar o volver aproximada no la sube', () => {
+    expect(raisesLocation('exact', { mode: 'remove' })).toBe(false);
+    expect(raisesLocation('exact', { mode: 'keep' })).toBe(false);
+    expect(raisesLocation('exact', { mode: 'precision', precision: 'approximate' })).toBe(false);
+    expect(raisesLocation('exact', { mode: 'precision', precision: 'exact' })).toBe(false);
   });
 });

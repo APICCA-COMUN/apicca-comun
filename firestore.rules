@@ -50,7 +50,7 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // RF-1 (001): solo los facilitadores activos ven las invitaciones, con su token.
+    // RF-1 (001): solo los facilitadores activos ven las invitaciones, con el hash de su token (RF-8 (016)); las anteriores, con el token.
     match /invitations/{key} {
       allow read: if isActiveFacilitator();
       allow write: if false;

@@ -66,3 +66,26 @@ describe('createApice', () => {
     expect(await codeOf(handleCreateApice(ctx, { ...VALID, name: 7 }, ana))).toBe('invalid-request');
   });
 });
+
+/** Siembra el contador diario de la persona en `count` (ventana abierta ahora) para no repetir decenas de llamadas. */
+const seedDaily = (kind: string, uid: string, count: number) =>
+  ctx.db.doc(`rateLimits/daily-${kind}-${uid}`).set({ count, windowStart: ctx.now(), expiresAt: new Date(ctx.now().getTime() + 24 * 3600 * 1000) });
+
+describe('createApice · cuota diaria', () => {
+  it('RF-7 (016) · 7.1: el ápice 11 en 24 horas se rechaza con rate-limited y no escribe; otra persona no se ve afectada', async () => {
+    const beto = (await seedAccount(ctx, { username: 'beto' })).uid;
+    for (let i = 0; i < 10; i += 1) await handleCreateApice(ctx, VALID, ana);
+    expect(await codeOf(handleCreateApice(ctx, VALID, ana))).toBe('rate-limited');
+    expect((await ctx.db.collection('apices').get()).size).toBe(10);
+    await handleCreateApice(ctx, VALID, beto);
+    expect((await ctx.db.collection('apices').get()).size).toBe(11);
+  });
+
+  it('RF-7 (016) · 7.1: un ápice inválido no gasta cupo', async () => {
+    await seedDaily('apice', ana, 9);
+    expect(await codeOf(handleCreateApice(ctx, { ...VALID, name: '  ' }, ana))).toBe('field-required');
+    expect((await ctx.db.doc(`rateLimits/daily-apice-${ana}`).get()).get('count')).toBe(9);
+    await handleCreateApice(ctx, VALID, ana);
+    expect(await codeOf(handleCreateApice(ctx, VALID, ana))).toBe('rate-limited');
+  });
+});

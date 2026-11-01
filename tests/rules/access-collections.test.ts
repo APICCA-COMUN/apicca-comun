@@ -1,4 +1,4 @@
-// T-1.12 · Reglas de invitations, enrollmentRequests, usernames y rateLimits.
+// T-1.12 · Reglas de invitations, enrollmentRequests, usernames y rateLimits; uploadReservations (RF-7 (016) · 7.3).
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
@@ -76,6 +76,23 @@ describe('firestore.rules · usernames y rateLimits', () => {
         await assertFails(setDoc(doc(db, path), { x: 2 }));
         await assertFails(deleteDoc(doc(db, path)));
       }
+    }
+  });
+});
+
+describe('firestore.rules · uploadReservations (spec 016)', () => {
+  it('RF-7 (016) · 7.3: ningún cliente lee, crea ni borra una reserva de subida, ni la suya', async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'uploadReservations/u1'), { uid: 'ana' });
+    });
+    for (const db of [
+      env.authenticatedContext('fabi').firestore(),
+      env.authenticatedContext('ana').firestore(),
+      env.unauthenticatedContext().firestore(),
+    ]) {
+      await assertFails(getDoc(doc(db, 'uploadReservations/u1')));
+      await assertFails(setDoc(doc(db, 'uploadReservations/u2'), { uid: 'ana' }));
+      await assertFails(deleteDoc(doc(db, 'uploadReservations/u1')));
     }
   });
 });

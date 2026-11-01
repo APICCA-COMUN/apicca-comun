@@ -32,6 +32,8 @@ export interface LocationOptions {
   exact?: Point | undefined;
   /** Mapa para marcar el punto; `null` deja solo las coordenadas. */
   map?: ComponentType<PointMapProps> | null | undefined;
+  /** Si puede fijar un punto o volver exacta la ubicación (RF-1 (016)); por omisión, sí. */
+  mayRaise?: boolean | undefined;
 }
 
 interface ContentFormProps {
@@ -194,6 +196,7 @@ export function ContentForm({ initial, draftKey, submitLabel, onSubmit, showStat
           stored={location.stored}
           exact={location.exact}
           map={location.map}
+          mayRaise={location.mayRaise}
           value={locationDraft}
           onChange={updateLocation}
           error={locationError}

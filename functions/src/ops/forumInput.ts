@@ -1,7 +1,8 @@
-// RF-3 (009) · 3.1, 3.2, RF-4 (009), RF-6 (009) · Lectura común de los datos del foro que llegan en el payload.
+// RF-3 (009) · 3.1, 3.2, RF-4 (009), RF-6 (009), RF-9 (016) · 9.2 · Lectura común de los datos del foro que llegan en el payload.
 import { AXES, type Axis } from '../../../shared/domain/apice';
 import { validateMessage, validateThreadTitle } from '../../../shared/domain/forum';
 import { ApiError } from '../errors';
+import { readSafeId } from '../ids';
 import { ConstitutionTextError } from './constitutionInput';
 
 function read(raw: unknown, check: (text: string) => { ok: boolean; reason?: string }): string {
@@ -23,9 +24,7 @@ export function readAxis(raw: unknown): Axis {
 }
 
 function readIdField(payload: Record<string, unknown>, key: string): string {
-  const id = payload[key];
-  if (typeof id !== 'string' || id === '' || id.length > 128 || id.includes('/')) throw new ApiError('invalid-request');
-  return id;
+  return readSafeId(payload, key);
 }
 
 export const readThreadId = (payload: Record<string, unknown>): string => readIdField(payload, 'threadId');

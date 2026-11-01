@@ -47,6 +47,15 @@ describe('FacilitationEnrollments', () => {
     expect(within(resolved).getByText(/No es del barrio/)).toBeTruthy();
   });
 
+  it('RF-8 (016) · 8.3: la lista oculta las pendientes caducadas aunque el TTL aún no las haya borrado', () => {
+    setup([
+      row('vigente', { expiresAt: at('2999-01-01T00:00:00Z') }),
+      row('caducada', { expiresAt: at('2020-01-01T00:00:00Z') }),
+      row('antigua'),
+    ]);
+    expect(names('Pendientes').sort()).toEqual(['Nombre antigua', 'Nombre vigente']);
+  });
+
   it('RF-4 (001): aceptar crea la invitación y muestra su enlace completo', async () => {
     const user = userEvent.setup();
     const { calls } = setup([row('a')], { resolveEnrollment: () => ({ link: '/registro/xyz' }) });

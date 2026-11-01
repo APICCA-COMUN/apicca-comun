@@ -2,6 +2,7 @@
 // necesidad del mapa), y el mapa, que se carga aparte, solo ayuda a marcar el punto. El punto exacto solo lo
 // recibe quien es autora o facilitadora (`exact`); para las demás personas no existe en pantalla.
 // RF-6 (002) · 6.1, 6.3: campos y avisos como bloques, radios con «choice» y botones como acciones secundarias.
+// RF-1 (016), RNF-1 (016), D-T5 (016): sin `mayRaise` no se fija un punto ni se vuelve exacta; quitar y «Aproximada» siguen.
 import { Component, lazy, Suspense, useId, useState, type ComponentType, type ReactNode } from 'react';
 import { DEFAULT_PRECISION, displayLocation, validateCoordinates, type Location, type Point, type Precision } from '../../shared/domain/location';
 import { KEEP_LOCATION, resolveLocationDraft, typeCoordinates, type LocationDraft } from './locationDraft';
@@ -26,6 +27,8 @@ interface LocationPickerProps {
   error?: string | undefined;
   /** Mapa para marcar el punto; `null` lo quita y deja solo las coordenadas. */
   map?: ComponentType<PointMapProps> | null | undefined;
+  /** Si puede fijar un punto o volver exacta la ubicación: solo la autora y la facilitación (RF-1 (016)). */
+  mayRaise?: boolean | undefined;
 }
 
 class MapBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -50,13 +53,15 @@ const PRECISION_OPTIONS: { value: Precision; label: string }[] = [
   { value: 'exact', label: 'Exacta (el punto marcado)' },
 ];
 
-export function LocationPicker({ stored, exact, value, onChange, error, map = LazyPointMap }: LocationPickerProps) {
+export function LocationPicker({ stored, exact, value, onChange, error, map = LazyPointMap, mayRaise = true }: LocationPickerProps) {
   const id = useId();
   const [mapOpen, setMapOpen] = useState(false);
 
   const exactKnown: Point | undefined = exact ?? (stored?.precision === 'exact' ? stored : undefined);
   const hasLocation = value.mode === 'set' || (value.mode !== 'remove' && stored !== null);
   const canChangePrecision = hasLocation;
+  // Sin permiso, «Exacta» solo se puede conservar si ya lo era (RF-1 (016)).
+  const blocksOption = (option: Precision): boolean => !mayRaise && option === 'exact' && stored?.precision !== 'exact';
   const precision: Precision | undefined =
     value.mode === 'set' || value.mode === 'precision' ? value.precision : stored?.precision;
 
@@ -96,6 +101,7 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
         <p>{`Punto exacto: ${formatDegrees(exact.lat)}, ${formatDegrees(exact.lng)} (solo la autoría y la facilitación lo ven)`}</p>
       )}
 
+      {!mayRaise && <p className="block">Solo la autoría y la facilitación pueden fijar la ubicación o volverla exacta.</p>}
       <div>
         <label htmlFor={`${id}-lat`}>Latitud</label>
         <input
@@ -105,6 +111,7 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
           inputMode="decimal"
           value={value.mode === 'set' ? value.lat : ''}
           aria-invalid={error !== undefined}
+          disabled={!mayRaise}
           onChange={(event) => onChange(typeCoordinates(value, { lat: event.target.value }))}
         />
       </div>
@@ -117,6 +124,7 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
           inputMode="decimal"
           value={value.mode === 'set' ? value.lng : ''}
           aria-invalid={error !== undefined}
+          disabled={!mayRaise}
           onChange={(event) => onChange(typeCoordinates(value, { lng: event.target.value }))}
         />
       </div>
@@ -131,7 +139,7 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
                 className="choice"
                 name={`${id}-precision`}
                 checked={precision === option.value}
-                disabled={!canChangePrecision}
+                disabled={!canChangePrecision || blocksOption(option.value)}
                 onChange={() => choosePrecision(option.value)}
               />
               {option.label}
@@ -154,7 +162,13 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
 
       {PointMap !== null && (
         <>
-          <button type="button" className="block action-secondary" aria-expanded={mapOpen} onClick={() => setMapOpen(!mapOpen)}>
+          <button
+            type="button"
+            className="block action-secondary"
+            aria-expanded={mapOpen}
+            disabled={!mayRaise}
+            onClick={() => setMapOpen(!mapOpen)}
+          >
             Marcar en el mapa
           </button>
           {mapOpen && (

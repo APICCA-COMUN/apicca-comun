@@ -1,9 +1,12 @@
-# RF-8 (013), RNF-1 (013), D-T10 (013): camino reducido en cada push. RF-1 (014), RF-3 (014), D-T5 (014): auditoría. Sin secretos ni proyecto de producción;
-# las pruebas de emulador y de navegador quedan aplazadas (D-5 (013)).
+# RF-8 (013), RNF-1 (013), D-T10 (013): camino reducido en cada push. RF-1 (014), RF-3 (014), D-T5 (014): auditoría. RF-9 (016) · 9.3: permisos de solo lectura.
+# Sin secretos ni proyecto de producción; las pruebas de emulador y de navegador quedan aplazadas (D-5 (013)).
 name: CI
 
 on:
   push:
+
+permissions:
+  contents: read
 
 jobs:
   verify:

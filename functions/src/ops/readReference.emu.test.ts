@@ -1,9 +1,10 @@
-// T-2 (007): la op que entrega las imágenes de referencia (RF-1 (007) a RF-4 (007), D-T2 (007)).
+// T-2 (007): la op que entrega las imágenes de referencia (RF-1 (007) a RF-4 (007), D-T2 (007)); tope anónimo (RF-5 (016)).
 import { beforeEach, describe, expect, it } from 'vitest';
 import { APICE_ACCESS_TABLE, APICE_ACTORS, APICE_STATES, type ApiceActorName } from '../../../shared/domain/access';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../testing';
 import { codeOf, VALID } from '../testing/apiceKit';
 import { clearBucket, readFile, seedReference } from '../testing/mediaKit';
+import { ANONYMOUS_READS_PER_HOUR, originOf, withOrigin } from '../rateLimit';
 import { handleCreateApice } from './createApice';
 import { handleReadReference } from './readReference';
 
@@ -21,7 +22,7 @@ async function setState(state: keyof typeof APICE_STATES, actor: ApiceActorName)
 
 beforeEach(async () => {
   await clearEmulators();
-  ctx = createTestCtx({ now: new Date('2026-10-10T15:00:00Z') });
+  ctx = withOrigin(createTestCtx({ now: new Date('2026-10-10T15:00:00Z') }), '203.0.113.7', 'sal-de-prueba');
   await clearBucket(ctx);
   for (const [name, { viewer }] of Object.entries(APICE_ACTORS) as [ApiceActorName, (typeof APICE_ACTORS)[ApiceActorName]][]) {
     uids[name] = viewer === null ? null : (await seedAccount(ctx, { username: name.toLowerCase(), role: viewer.role, status: viewer.status })).uid;
@@ -80,5 +81,34 @@ describe('readReference', () => {
     expect(await codeOf(handleReadReference(ctx, { id, refId: 'vigente' }, 'sin-cuenta'))).toBe('reference-not-found');
     await setState('public', 'member');
     expect(await codeOf(handleReadReference(ctx, { id, refId: 'vigente' }, 'sin-cuenta'))).toBeUndefined();
+  });
+});
+
+describe('readReference · tope de lecturas anónimas (spec 016)', () => {
+  const seedReads = (count: number) =>
+    ctx.db.doc(`rateLimits/reference-ip-${originOf(ctx)}`).set({ count, windowStart: ctx.now(), expiresAt: new Date(ctx.now().getTime() + 3_600_000) });
+
+  it('RF-5 (016): sin sesión, la lectura 101 en una hora desde el mismo origen se rechaza con rate-limited', async () => {
+    await setState('public', 'visitor');
+    await seedReads(ANONYMOUS_READS_PER_HOUR - 1);
+    expect(await codeOf(read('vigente', 'visitor'))).toBeUndefined();
+    expect(await codeOf(read('vigente', 'visitor'))).toBe('rate-limited');
+    const other = withOrigin(ctx, '198.51.100.9', 'sal-de-prueba');
+    expect(await codeOf(handleReadReference(other, { id, refId: 'vigente' }, null))).toBeUndefined();
+  });
+
+  it('RF-5 (016): con sesión no se cobra el tope anónimo', async () => {
+    await setState('public', 'visitor');
+    await seedReads(ANONYMOUS_READS_PER_HOUR);
+    expect(await codeOf(read('vigente', 'member'))).toBeUndefined();
+    expect((await ctx.db.doc(`rateLimits/reference-ip-${originOf(ctx)}`).get()).get('count')).toBe(ANONYMOUS_READS_PER_HOUR);
+  });
+
+  it('RF-5 (016): una cuenta suspendida o un usuario de Auth sin cuenta leen como visitantes y se les cobra el tope', async () => {
+    await setState('public', 'visitor');
+    await seedReads(ANONYMOUS_READS_PER_HOUR);
+    expect(await codeOf(read('vigente', 'suspended'))).toBe('rate-limited');
+    expect(await codeOf(handleReadReference(ctx, { id, refId: 'vigente' }, 'sin-cuenta'))).toBe('rate-limited');
+    expect(await codeOf(read('vigente', 'member'))).toBeUndefined();
   });
 });

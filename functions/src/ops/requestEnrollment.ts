@@ -1,6 +1,6 @@
-// RF-4 (001) · Solicitud pública de inscripción: campo trampa, límite (D-T16 (001)), validación y guardado.
+// RF-4 (001), RF-8 (016) · 8.3 · Solicitud pública de inscripción: campo trampa, límite (D-T16 (001)), validación y guardado.
 // Responde siempre lo mismo, así que no revela si el correo ya tiene cuenta, invitación o solicitud.
-import { PRIVACY_TEXT_VERSION, validateEnrollmentRequest } from '../../../shared/domain/enrollment';
+import { ENROLLMENT_TTL_DAYS, PRIVACY_TEXT_VERSION, validateEnrollmentRequest } from '../../../shared/domain/enrollment';
 import type { Ctx } from '../context';
 import { ApiError } from '../errors';
 import { consumeEnrollmentSlot } from '../rateLimit';
@@ -28,6 +28,8 @@ export async function handleRequestEnrollment(
     createdAt: now,
     privacyVersion: PRIVACY_TEXT_VERSION,
     acceptedAt: now,
+    // Caduca a los 30 días (D-T12 (016)); el TTL de Firestore la borra si nadie la resuelve.
+    expiresAt: new Date(now.getTime() + ENROLLMENT_TTL_DAYS * 24 * 3600 * 1000),
   });
   return RECEIVED;
 }

@@ -74,6 +74,8 @@ beforeAll(async () => {
     for (const state of STATES) {
       const made: string[] = [];
       for (let copy = 0; copy < 2; copy += 1) {
+        // La cuenta sembradora crea más ápices que la cuota diaria (RF-7 (016) · 7.1): se libera su cupo antes de cada uno.
+        await ctx.db.doc(`rateLimits/daily-apice-${seeder}`).delete();
         const { id } = await handleCreateApice(ctx, VALID, seeder);
         const access = apiceFor(state, actor);
         await ctx.db.doc(`apices/${id}`).update({

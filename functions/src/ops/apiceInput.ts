@@ -1,8 +1,9 @@
-// RF-6 (001) · Lectura común del contenido de la ficha que llega en el payload de las ops de ápices.
+// RF-6 (001), RF-9 (016) · 9.2 · Lectura común del contenido de la ficha que llega en el payload de las ops de ápices.
 import { APICE_STATUSES, validateContent, type ApiceStatus } from '../../../shared/domain/apice';
 import { DEFAULT_PRECISION, validateCoordinates, type Precision } from '../../../shared/domain/location';
-import { ApiError } from '../errors';
 import type { LocationChange, StoredContent } from '../apiceStore';
+import { ApiError } from '../errors';
+import { readSafeId } from '../ids';
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -37,9 +38,7 @@ export function readContent(raw: unknown, fallbackStatus?: ApiceStatus): StoredC
 }
 
 export function readId(payload: Record<string, unknown>): string {
-  const id = payload['id'];
-  if (typeof id !== 'string' || id === '' || id.length > 128 || id.includes('/')) throw new ApiError('invalid-request');
-  return id;
+  return readSafeId(payload, 'id');
 }
 
 export function readInteger(payload: Record<string, unknown>, key: string): number {

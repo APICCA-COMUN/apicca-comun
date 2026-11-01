@@ -150,3 +150,15 @@ describe('suspensión y propuestas propias (D-T9 (004))', () => {
     expect(await flag('a1')).toBe(false);
   });
 });
+
+describe('suspensión y reservas de subida (spec 016)', () => {
+  it('RF-7 (016) · 7.3: suspender una cuenta revoca sus reservas de subida y deja las de otras personas', async () => {
+    const expiresAt = new Date(ctx.now().getTime() + 3_600_000);
+    await ctx.db.doc('uploadReservations/r1').set({ uid: member, createdAt: ctx.now(), expiresAt });
+    await ctx.db.doc('uploadReservations/r2').set({ uid: member, createdAt: ctx.now(), expiresAt });
+    await ctx.db.doc('uploadReservations/r3').set({ uid: facilitator, createdAt: ctx.now(), expiresAt });
+    await handleSuspendAccount(ctx, { uid: member }, facilitator);
+    const left = (await ctx.db.collection('uploadReservations').get()).docs.map((doc) => doc.id);
+    expect(left).toEqual(['r3']);
+  });
+});

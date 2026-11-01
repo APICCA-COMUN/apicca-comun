@@ -14,7 +14,7 @@ import { handleRegister } from './ops/register';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from './testing';
 import { VALID } from './testing/apiceKit';
 import { gatedModel, sampleImage, until, countOf, withModel } from './testing/generationKit';
-import { clearBucket, listPaths, png, putFile } from './testing/mediaKit';
+import { clearBucket, listPaths, png, putUpload } from './testing/mediaKit';
 
 const ROUNDS = Math.max(1, Number(process.env['CONCURRENCY_ROUNDS'] ?? 1));
 
@@ -73,8 +73,8 @@ for (let round = 1; round <= ROUNDS; round += 1) {
 
     it('RF-15 (001): si dos suben la quinta referencia a la vez, solo una queda y no sobra archivo', async () => {
       await ctx.db.doc(`apices/${id}`).update({ activeReferenceCount: 4 });
-      await putFile(ctx, `uploads/${ana}/ua`, await png(9, 9));
-      await putFile(ctx, `uploads/${beto}/ub`, await png(11, 11));
+      await putUpload(ctx, ana, 'ua', await png(9, 9));
+      await putUpload(ctx, beto, 'ub', await png(11, 11));
 
       const results = await Promise.allSettled([
         handleAddReference(ctx, { id, uploadId: 'ua', altText: 'De ana' }, ana),

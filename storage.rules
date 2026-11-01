@@ -8,18 +8,31 @@ rules_version = '2';
 // objetos desde el cliente.
 service firebase.storage {
   match /b/{bucket}/o {
-    // Ninguna regla consulta Firestore (RF-7 (007)): las imágenes de los ápices las entrega el servidor (D-T4 (007)).
+    // Las reglas solo consultan Firestore para comprobar la reserva de una subida (RF-7 (007), enmendada por
+    // RF-7 (016) · 7.3): las imágenes de los ápices las entrega el servidor (D-T4 (007)).
+    function reservationPath(uploadId) {
+      return /databases/(default)/documents/uploadReservations/$(uploadId);
+    }
 
-    // Subida temporal de una referencia (D-T9 (001)): solo a su propia carpeta, solo crear y borrar,
-    // hasta 5 MiB y solo JPG, PNG o WebP. Nadie la lee: la lee la op del servidor.
-    // RF-15 (001): la persona sube su imagen de referencia.
+    // La reserva existe, es de esta persona y no caducó (RF-7 (016) · 7.3, D-T9 (016)).
+    function hasReservation(uid, uploadId) {
+      return firestore.exists(reservationPath(uploadId))
+        && firestore.get(reservationPath(uploadId)).data.uid == uid
+        && firestore.get(reservationPath(uploadId)).data.expiresAt > request.time;
+    }
+
+    // Subida temporal de una referencia (D-T9 (001)): solo a su propia carpeta, solo crear (una vez por reserva),
+    // hasta 5 MiB y solo JPG, PNG o WebP, con una reserva vigente del servidor. Nadie la lee: la lee la op del servidor.
+    // RF-15 (001), RF-7 (016) · 7.3: la persona sube su imagen de referencia con la reserva que le dio el servidor.
     match /uploads/{uid}/{uploadId} {
       allow create: if request.auth != null
         && request.auth.uid == uid
         && resource == null
         && request.resource.size <= 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/(jpeg|png|webp)');
-      allow delete: if request.auth != null && request.auth.uid == uid;
+        && request.resource.contentType.matches('image/(jpeg|png|webp)')
+        && hasReservation(uid, uploadId);
+      // Sin borrado desde el cliente: borrar y volver a subir con la misma reserva saltaría la cuota (RF-7 (016) · 7.3).
+      // Los temporales los retiran `addReference` y `storageSweep`.
     }
 
     // RF-6 (007): `apices/**` queda cerrado a todo cliente; las referencias las entrega la op `readReference`.

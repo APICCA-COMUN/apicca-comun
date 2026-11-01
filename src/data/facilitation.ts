@@ -9,7 +9,7 @@ import { firebase } from './firebase';
 
 export interface InvitationRow extends InvitationDoc {
   email: string;
-  /** Solo las pendientes lo conservan: es lo que permite volver a ver el enlace. */
+  /** Solo las pendientes anteriores a RF-8 (016) · 8.1 lo conservan: las nuevas guardan solo el hash y su enlace se ve al crearlas o renovarlas. */
   token?: string;
 }
 

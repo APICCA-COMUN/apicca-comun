@@ -28,6 +28,7 @@ import { handleObjectAmendment } from './ops/objectAmendment';
 import { handleResolveObjection } from './ops/resolveObjection';
 import { handleWithdrawObjection } from './ops/withdrawObjection';
 import { handleRestoreVersion } from './ops/restoreVersion';
+import { handleReserveUpload } from './ops/reserveUpload';
 import { handleMarkNoticesSeen } from './ops/markNoticesSeen';
 import { handleOpenThread } from './ops/openThread';
 import { handleReplyThread } from './ops/replyThread';
@@ -52,6 +53,7 @@ export const API_OPS: Record<string, OpHandler> = {
   inspectInvitation: handleInspectInvitation,
   requestEnrollment: handleRequestEnrollment,
   register: handleRegister,
+  reserveUpload: handleReserveUpload,
   createApice: handleCreateApice,
   editApice: handleEditApice,
   restoreVersion: handleRestoreVersion,

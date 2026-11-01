@@ -1,6 +1,7 @@
 // RF-4 (001) · Límite de envíos del formulario público (D-T16 (001)): 5 por hora desde un mismo
 // origen y 200 al día en total. El origen se guarda como HMAC de la IP, nunca en claro, y cada
 // documento lleva `expiresAt` para que la política TTL de Firestore lo retire sola.
+// RF-5 (016), RF-7 (016): también cobra las cuotas diarias por persona y las lecturas anónimas por hora.
 import { createHmac } from 'node:crypto';
 import { FORUM_LIMITS } from '../../shared/domain/forum';
 import type { Ctx } from './context';
@@ -43,9 +44,14 @@ async function consume(ctx: Ctx, rules: readonly Rule[]): Promise<void> {
   });
 }
 
-export async function consumeEnrollmentSlot(ctx: Ctx): Promise<void> {
+/** HMAC de la IP de quien llama; nunca se guarda la IP en claro. Lanza si falta la sal. */
+export function originOf(ctx: Ctx): string {
   if (ctx.ipSalt === undefined || ctx.ipSalt === '') throw new Error('Falta la sal del hash de IP (secreto de Functions).');
-  const origin = createHmac('sha256', ctx.ipSalt).update(ctx.clientIp ?? 'desconocido').digest('hex');
+  return createHmac('sha256', ctx.ipSalt).update(ctx.clientIp ?? 'desconocido').digest('hex');
+}
+
+export async function consumeEnrollmentSlot(ctx: Ctx): Promise<void> {
+  const origin = originOf(ctx);
   await consume(ctx, [
     { key: `enrollment-ip-${origin}`, limit: ENROLLMENT_PER_IP_PER_HOUR, windowMs: HOUR_MS },
     { key: DAILY_KEY, limit: ENROLLMENT_PER_DAY, windowMs: DAY_MS },
@@ -55,4 +61,20 @@ export async function consumeEnrollmentSlot(ctx: Ctx): Promise<void> {
 /** RF-3 (009) · 3.3, RNF-5 (009): cupo de 10 hilos nuevos por persona en 24 horas (D-T4 (009)). */
 export async function consumeThreadSlot(ctx: Ctx, uid: string): Promise<void> {
   await consume(ctx, [{ key: `forum-thread-${uid}`, limit: FORUM_LIMITS.threadsPerDay, windowMs: DAY_MS }]);
+}
+
+/** RF-7 (016) · 7.1, D-5 (016), D-7 (016): topes por persona y por día de cada tipo de escritura. */
+export const DAILY_QUOTAS = { reply: 50, comment: 50, apice: 10, upload: 30 } as const;
+
+/** RF-7 (016) · 7.1, D-T8 (016): toma un cupo diario del tipo dado a la persona (ventana de 24 horas). */
+export async function consumeDailySlot(ctx: Ctx, kind: keyof typeof DAILY_QUOTAS, uid: string): Promise<void> {
+  await consume(ctx, [{ key: `daily-${kind}-${uid}`, limit: DAILY_QUOTAS[kind], windowMs: DAY_MS }]);
+}
+
+/** RF-5 (016): tope de lecturas de referencias sin sesión, por origen y por hora. */
+export const ANONYMOUS_READS_PER_HOUR = 100;
+
+/** RF-5 (016), D-T8 (016): toma un cupo de lectura anónima del origen de quien llama (ventana de 1 hora). */
+export async function consumeAnonymousReadSlot(ctx: Ctx): Promise<void> {
+  await consume(ctx, [{ key: `reference-ip-${originOf(ctx)}`, limit: ANONYMOUS_READS_PER_HOUR, windowMs: HOUR_MS }]);
 }

@@ -17,6 +17,7 @@ export const MESSAGES = {
   'invitation-expired': 'Este enlace de invitación venció. Pide que te envíen uno nuevo.',
   'invitation-cancelled': 'Esta invitación fue anulada. Pide que te envíen una nueva.',
   'invitation-used': 'Esta invitación ya se usó. Si es tu cuenta, inicia sesión.',
+  'enrollment-expired': 'Esta solicitud caducó. Quien la envió puede volver a pedir su ingreso.',
   'invitation-not-cancellable': 'Una invitación ya aceptada no se puede anular.',
   // Registro (RF-2 (001)).
   'password-too-short': 'La contraseña debe tener al menos 8 caracteres.',

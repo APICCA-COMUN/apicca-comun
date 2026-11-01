@@ -68,6 +68,19 @@ describe('FacilitationInvitations', () => {
     expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/registro/tok-ana`);
   });
 
+  it('RF-8 (016) · 8.1: una pendiente sin token guardado no muestra enlace y dice cómo compartirlo de nuevo', () => {
+    const { token: _guardado, ...sinToken } = row('nueva@ejemplo.org');
+    setup([sinToken, row('vieja@ejemplo.org')]);
+    const nueva = screen.getByText('nueva@ejemplo.org').closest('li')!;
+    expect(nueva.textContent).toContain('Para compartir de nuevo el enlace, renueva la invitación.');
+    expect(within(nueva).queryByRole('button', { name: 'Copiar enlace' })).toBeNull();
+    expect(within(nueva).getByRole('button', { name: 'Renovar' })).toBeTruthy();
+    // La heredada con token en claro sigue mostrando su enlace.
+    const vieja = screen.getByText('vieja@ejemplo.org').closest('li')!;
+    expect(within(vieja).getByRole('button', { name: 'Copiar enlace' })).toBeTruthy();
+    expect(vieja.textContent).not.toContain('Para compartir de nuevo');
+  });
+
   it('RF-1 (001): no muestra enlace de las vencidas, anuladas ni aceptadas', () => {
     setup([
       row('a@ejemplo.org', { expiresAt: at('2026-09-01T00:00:00Z') }),

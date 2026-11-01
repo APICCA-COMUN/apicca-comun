@@ -1,11 +1,11 @@
-// RF-15 (001), RF-16 (001), RNF-2 (007) · Lecturas y subida de las referencias de un ápice. Las reglas de Firestore
+// RF-15 (001), RF-16 (001), RNF-2 (007), RF-7 (016) · 7.3 · Lecturas y subida de las referencias de un ápice. Las reglas de Firestore
 // deciden quién ve cada documento: quien no facilita pide solo las no quitadas. La imagen la entrega la op
 // `readReference` y se pinta desde un `blob:`, sin URLs públicas ni firmadas (D-T3 (007)). La página recibe estas
 // fuentes por props para probarse con dobles.
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { ref as storageRef, uploadBytesResumable } from 'firebase/storage';
 import type { TimestampLike } from '../../shared/domain/order';
-import { media, type MediaOps, type OpClient } from './api';
+import { api, media, type MediaOps, type OpClient } from './api';
 import { firebase } from './firebase';
 
 export interface ReferenceRemoval {
@@ -43,7 +43,7 @@ export interface ReferenceSource {
 }
 
 export interface ReferenceUploader {
-  /** Sube el archivo a `uploads/{uid}/{uploadId}` y devuelve `uploadId` (D-T9 (001)). */
+  /** Pide la reserva al servidor, sube el archivo a `uploads/{uid}/{uploadId}` y devuelve `uploadId` (D-T9 (001), RF-7 (016) · 7.3). */
   upload(file: File, onProgress: (fraction: number) => void): Promise<string>;
 }
 
@@ -71,15 +71,13 @@ export const firestoreReferenceSource: ReferenceSource = {
 };
 
 export const storageReferenceUploader: ReferenceUploader = {
-  upload: (file, onProgress) =>
-    new Promise<string>((resolve, reject) => {
-      const { auth, storage } = firebase();
-      const uid = auth.currentUser?.uid;
-      if (uid === undefined) {
-        reject(new Error('Sin sesión.'));
-        return;
-      }
-      const uploadId = crypto.randomUUID();
+  upload: async (file, onProgress) => {
+    const { auth, storage } = firebase();
+    const uid = auth.currentUser?.uid;
+    if (uid === undefined) throw new Error('Sin sesión.');
+    // Las reglas de Storage solo admiten la subida con una reserva vigente del servidor (RF-7 (016) · 7.3).
+    const { uploadId } = await api.call('reserveUpload', {});
+    return new Promise<string>((resolve, reject) => {
       const task = uploadBytesResumable(storageRef(storage, `uploads/${uid}/${uploadId}`), file, {
         contentType: file.type,
       });
@@ -89,5 +87,6 @@ export const storageReferenceUploader: ReferenceUploader = {
         reject,
         () => resolve(uploadId),
       );
-    }),
+    });
+  },
 };

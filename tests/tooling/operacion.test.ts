@@ -78,6 +78,10 @@ describe('operación · CI', () => {
     expect(ci).not.toContain('secrets.');
     expect(ci).not.toContain('apicca-com');
   });
+
+  it('RF-9 (016) · 9.3: la CI declara permisos de solo lectura', () => {
+    expect(read('.github/workflows/ci.yml')).toMatch(/^permissions:\s*\n\s+contents:\s*read\s*$/m);
+  });
 });
 
 describe('operación · dependencias', () => {

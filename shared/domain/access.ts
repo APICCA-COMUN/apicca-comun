@@ -65,6 +65,11 @@ export function canReadReference(viewer: ApiceViewer | null, apice: ApiceAccessS
 const isAuthorOrFacilitator = (viewer: ApiceViewer, apice: ApiceAccessState): boolean =>
   viewer.role === 'facilitator' || apice.authorUid === viewer.uid;
 
+/** Fijar una ubicación o volverla exacta: autora o facilitadora activas (RF-1 (016), D-1 (016)). */
+export function canSetLocation(viewer: ApiceViewer | null, apice: ApiceAccessState): boolean {
+  return isActive(viewer) && isAuthorOrFacilitator(viewer, apice);
+}
+
 /** Autora o facilitadora activas, y solo mientras el ápice no está archivado (RF-13 (001), RF-14 (001)). */
 export function canChangeVisibility(viewer: ApiceViewer | null, apice: ApiceAccessState): boolean {
   return isActive(viewer) && !apice.isArchived && isAuthorOrFacilitator(viewer, apice);

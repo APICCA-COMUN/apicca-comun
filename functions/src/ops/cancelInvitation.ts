@@ -1,4 +1,4 @@
-// RF-1 (001) · Anular una invitación pendiente o vencida: su enlace deja de existir.
+// RF-1 (001), RF-8 (016) · Anular una invitación pendiente o vencida: su enlace (token o hash) deja de existir.
 import { FieldValue } from 'firebase-admin/firestore';
 import { emailKey } from '../../../shared/domain/invitations';
 import { requireFacilitator } from '../access';
@@ -13,7 +13,7 @@ export async function handleCancelInvitation(ctx: Ctx, payload: Record<string, u
     const snap = await tx.get(ref);
     if (!snap.exists) throw new ApiError('invitation-not-found');
     if (snap.get('status') !== 'pending') throw new ApiError('invitation-not-cancellable');
-    tx.update(ref, { status: 'cancelled', token: FieldValue.delete(), cancelledBy: actor.uid, cancelledAt: ctx.now() });
+    tx.update(ref, { status: 'cancelled', token: FieldValue.delete(), tokenHash: FieldValue.delete(), cancelledBy: actor.uid, cancelledAt: ctx.now() });
   });
   return {};
 }

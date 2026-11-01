@@ -26,6 +26,26 @@ export async function putFile(ctx: Ctx, path: string, bytes: Uint8Array, content
   await ctx.storage.bucket().file(path).save(Buffer.from(bytes), { contentType });
 }
 
+/**
+ * Lo que hace el cliente antes de `addReference`: la reserva del servidor (RF-7 (016) · 7.3) y el temporal en
+ * `uploads/{uid}/{uploadId}`. `expiresInMs` negativo deja la reserva caducada.
+ */
+export async function putUpload(
+  ctx: Ctx,
+  uid: string,
+  uploadId: string,
+  bytes: Uint8Array,
+  options: { contentType?: string; expiresInMs?: number } = {},
+): Promise<void> {
+  const now = ctx.now();
+  await ctx.db.doc(`uploadReservations/${uploadId}`).set({
+    uid,
+    createdAt: now,
+    expiresAt: new Date(now.getTime() + (options.expiresInMs ?? 60 * 60 * 1000)),
+  });
+  await putFile(ctx, `uploads/${uid}/${uploadId}`, bytes, options.contentType);
+}
+
 export async function listPaths(ctx: Ctx, prefix: string): Promise<string[]> {
   const [files] = await ctx.storage.bucket().getFiles({ prefix });
   return files.map((file) => file.name).sort();

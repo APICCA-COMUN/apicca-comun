@@ -1,15 +1,12 @@
-// RF-15 (001), RF-16 (001) · Lectura común del payload y permiso sobre las referencias de un ápice.
+// RF-15 (001), RF-16 (001), RF-9 (016) · 9.2 · Lectura común del payload y permiso sobre las referencias de un ápice.
 import { canEdit, type ApiceAccessState } from '../../../shared/domain/access';
 import type { Actor } from '../access';
 import { ApiError } from '../errors';
+import { readSafeId } from '../ids';
 
 /** Identificador opaco que viaja en el payload y entra en una ruta: sin separadores ni puntos relativos. */
 export function readToken(payload: Record<string, unknown>, key: string): string {
-  const value = payload[key];
-  if (typeof value !== 'string' || value === '' || value.length > 128 || value.includes('/') || value === '.' || value === '..') {
-    throw new ApiError('invalid-request');
-  }
-  return value;
+  return readSafeId(payload, key);
 }
 
 export const accessStateOf = (apice: Record<string, unknown>): ApiceAccessState => ({

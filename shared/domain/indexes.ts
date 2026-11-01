@@ -30,7 +30,13 @@ export interface IndexFile {
 }
 
 /** Colecciones cuyos documentos caducan solos por `expiresAt` (RNF-7 (001), plan §4.4). */
-export const TTL_COLLECTIONS = ['proposals', 'rateLimits', 'generationDays'] as const;
+export const TTL_COLLECTIONS = [
+  'proposals',
+  'rateLimits',
+  'generationDays',
+  'enrollmentRequests', // RF-8 (016) · 8.3, D-T12 (016)
+  'uploadReservations', // RF-7 (016) · 7.3, D-T9 (016)
+] as const;
 
 /** Política TTL de Firestore sin índices de campo único: nadie consulta por `expiresAt`. */
 export const ttlOverrides = (): FieldOverride[] =>

@@ -1,4 +1,4 @@
-// RF-15 (001) · Subir una referencia a un ápice (D-T9 (001)): descarga el temporal, valida el formato real,
+// RF-15 (001), RF-7 (016) · 7.3 · Subir una referencia a un ápice (D-T9 (001)): descarga el temporal, valida el formato real,
 // reescribe sin metadatos, lo coloca y recién entonces crea el documento dentro de la transacción que cuenta.
 import { MAX_IMAGE_DIMENSION, REFERENCE_MAX_BYTES, validateAltText, validateReferenceMeta } from '../../../shared/domain/images';
 import { requireActor } from '../access';
@@ -48,6 +48,14 @@ export async function handleAddReference(ctx: Ctx, payload: Record<string, unkno
     await ctx.db.runTransaction(async (tx) => {
       const accountSnap = await tx.get(ctx.db.doc(`accounts/${actor.uid}`));
       if (accountSnap.data()?.['status'] !== 'active') throw new ApiError('account-suspended');
+      // Una reserva vigente y propia por referencia, y se gasta aquí: dos llamadas con el mismo temporal no crean dos
+      // referencias (RF-7 (016) · 7.3).
+      const reservationRef = ctx.db.doc(`uploadReservations/${uploadId}`);
+      const reservation = await tx.get(reservationRef);
+      const expiresAt = reservation.get('expiresAt') as { toMillis(): number } | undefined;
+      if (!reservation.exists || reservation.get('uid') !== actor.uid || expiresAt === undefined || expiresAt.toMillis() <= ctx.now().getTime()) {
+        throw new ApiError('invalid-request');
+      }
       const apiceRef = ctx.db.doc(`apices/${id}`);
       const snap = await tx.get(apiceRef);
       if (!snap.exists) throw new ApiError('invalid-request');
@@ -72,6 +80,7 @@ export async function handleAddReference(ctx: Ctx, payload: Record<string, unkno
         removal: null,
       });
       tx.update(apiceRef, { activeReferenceCount: active + 1 });
+      tx.delete(reservationRef);
       tx.set(ctx.db.doc(`apices/${id}/events/${newId(ctx.random)}`), {
         type: 'reference-added',
         byUid: actor.uid,

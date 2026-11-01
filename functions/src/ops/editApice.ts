@@ -1,5 +1,6 @@
-// RF-10 (001), RF-9 (001) · Editar el contenido y el estado de un ápice con `baseVersion` (D-T5 (001)): versión nueva, conflicto o sin cambios.
-import { canEdit } from '../../../shared/domain/access';
+// RF-10 (001), RF-9 (001), RF-1 (016) · Editar el contenido y el estado de un ápice con `baseVersion` (D-T5 (001)): versión nueva, conflicto o sin cambios.
+import { canEdit, canSetLocation } from '../../../shared/domain/access';
+import { raisesLocation } from '../../../shared/domain/location';
 import { isNoopEdit } from '../../../shared/domain/versions';
 import { requireActor, type Actor } from '../access';
 import { saveVersion, type CurrentApice, type LocationChange, type SaveVersionResult, type StoredContent } from '../apiceStore';
@@ -14,12 +15,19 @@ export type EditResult =
 export const toEditResult = (result: SaveVersionResult): EditResult =>
   result.ok ? result : { ok: false, conflict: true, current: result.current };
 
-/** Archivado y permisos, dentro de la transacción (RF-10 (001), RF-14 (001)). */
+/**
+ * Archivado y permisos, dentro de la transacción (RF-10 (001), RF-14 (001)). Fijar una ubicación o volverla exacta
+ * es solo de la autora o de Facilitación (RF-1 (016), D-T2 (016)).
+ */
 export const checkEditable =
-  (actor: Actor) =>
+  (actor: Actor, change: LocationChange = { mode: 'keep' }) =>
   (current: CurrentApice): void => {
     if (current.isArchived) throw new ApiError('apice-archived');
-    if (!canEdit({ uid: actor.uid, role: actor.role, status: actor.status }, current)) throw new ApiError('forbidden');
+    const viewer = { uid: actor.uid, role: actor.role, status: actor.status };
+    if (!canEdit(viewer, current)) throw new ApiError('forbidden');
+    if (raisesLocation(current.location?.precision ?? null, change) && !canSetLocation(viewer, current)) {
+      throw new ApiError('forbidden');
+    }
   };
 
 /** Si el cambio de ubicación no cambia nada con la ubicación vigente (RF-9 (001)). */
@@ -37,7 +45,7 @@ export async function handleEditApice(ctx: Ctx, payload: Record<string, unknown>
   const content = readContent(payload['content']);
   // La interfaz manda `location` junto a `content`; se admite también dentro de él.
   const location = readLocationChange(payload['location'] ?? (payload['content'] as Record<string, unknown>)['location']);
-  const checkEdit = checkEditable(actor);
+  const checkEdit = checkEditable(actor, location);
   const result = await saveVersion(ctx, id, {
     baseVersion,
     content,

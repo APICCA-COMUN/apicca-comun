@@ -149,6 +149,9 @@ export async function saveVersion(ctx: Ctx, id: string, input: SaveVersionInput)
       if (!stored.exists) throw new ApiError('invalid-request');
       exact = pointOf(stored.data() as Point);
     }
+    // Quitar la ubicación purga el historial: los puntos exactos y la ubicación de las versiones que la mostraban
+    // exacta (RF-2 (016) · 2.2, D-T4 (016)). Lectura antes de cualquier escritura.
+    const located = change.mode === 'remove' ? (await tx.get(ref.collection('versions').where('location', '!=', null))).docs : [];
     let location: Location | null;
     if (change.mode === 'remove') location = null;
     else if (change.mode === 'set') {
@@ -160,6 +163,10 @@ export async function saveVersion(ctx: Ctx, id: string, input: SaveVersionInput)
     const now = ctx.now();
     tx.update(ref, { ...input.content, location, hasLocation: location !== null, version: n, updatedAt: now, lastEditedByUsername: input.saver.username });
     if (exact !== null && location !== null) tx.create(ctx.db.doc(EXACT_PATH(id, n)), exact);
+    for (const doc of located) {
+      tx.delete(ctx.db.doc(EXACT_PATH(id, doc.get('n') as number)));
+      if ((doc.get('location') as Location).precision === 'exact') tx.update(doc.ref, { location: null, locationPurged: true });
+    }
     tx.create(ctx.db.doc(`apices/${id}/versions/${n}`), {
       n,
       content: input.content,

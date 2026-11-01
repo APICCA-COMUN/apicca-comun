@@ -61,6 +61,23 @@ export function displayLocation(point: Point, precision: Precision = DEFAULT_PRE
   return { ...approximateZone(point), precision };
 }
 
+/** Lo que pide un cambio de ubicación, en lo que importa para el permiso (RF-1 (016)). */
+export type LocationRequest =
+  | { mode: 'keep' }
+  | { mode: 'remove' }
+  | { mode: 'set'; precision: Precision }
+  | { mode: 'precision'; precision: Precision };
+
+/**
+ * Si el cambio fija una ubicación nueva o la vuelve exacta (RF-1 (016), D-T1 (016)). Quitarla, volverla aproximada o
+ * conservarla no la sube.
+ */
+export function raisesLocation(current: Precision | null, change: LocationRequest): boolean {
+  if (change.mode === 'set') return true;
+  if (change.mode === 'precision') return change.precision === 'exact' && current !== 'exact';
+  return false;
+}
+
 /** Clave de la celda de un punto: dos puntos de la misma zona comparten clave (RF-9 (001)). */
 export function zoneKey(point: Point): string {
   return `${cellOf(point.lat, MAX_LAT_CELL)}:${cellOf(point.lng, MAX_LNG_CELL)}`;

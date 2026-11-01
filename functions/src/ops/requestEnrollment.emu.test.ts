@@ -49,6 +49,12 @@ describe('requestEnrollment', () => {
     expect(doc?.get('acceptedAt').toDate().toISOString()).toBe('2026-09-01T15:00:00.000Z');
   });
 
+  it('RF-8 (016) · 8.3: la solicitud nueva caduca a los 30 días de crearse', async () => {
+    await handleRequestEnrollment(from(), valid('ana@ejemplo.org'), null);
+    const [doc] = (await ctx.db.collection('enrollmentRequests').get()).docs;
+    expect(doc?.get('expiresAt').toDate().toISOString()).toBe('2026-10-01T15:00:00.000Z');
+  });
+
   it('RF-4 (001): la respuesta es idéntica para correo nuevo, con cuenta, con invitación y con solicitud previa', async () => {
     const facilitator = (await seedAccount(ctx, { username: 'fabi', role: 'facilitator' })).uid;
     await seedAccount(ctx, { email: 'cuenta@ejemplo.org', username: 'cuenta' });

@@ -74,6 +74,25 @@ describe('DocBlocks (003)', () => {
     expect(container.textContent).toContain('malo');
   });
 
+  it('RF-9 (016) · 9.1: pinta solo como texto los enlaces con «/\\» o «//»', () => {
+    for (const href of ['/\\evil.example', '//evil.example']) {
+      const { container, unmount } = render(<DocBlocks blocks={parseMarkdown(`Ver [engaño](${href}).`)} />);
+      expect(container.querySelector('a')).toBeNull();
+      expect(container.textContent).toBe('Ver engaño.');
+      unmount();
+    }
+  });
+
+  it('RF-9 (016) · 9.1: conserva «/foro» como enlace interno', async () => {
+    const { container } = render(<DocBlocks blocks={parseMarkdown('Ir al [foro](/foro).')} />);
+    const link = screen.getByRole('link', { name: 'foro' });
+    expect(link.getAttribute('href')).toBe('/foro');
+    expect(link.getAttribute('target')).toBeNull();
+    await userEvent.setup().click(link);
+    expect(window.location.pathname).toBe('/foro');
+    expect(container.querySelector('a')).toBe(link);
+  });
+
   it('RF-14 (003) · 14.1: Inlines pinta texto en línea para otras páginas', () => {
     const [block] = parseMarkdown('Un **dato** claro.');
     const children = block?.type === 'paragraph' ? block.children : [];

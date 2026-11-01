@@ -114,7 +114,7 @@ describe('LocationPicker por mapa y precisión', () => {
     expect(screen.getByText(/solo la autoría y la facilitación/)).toBeTruthy();
   });
 
-  it('RF-9 (001): quien no es autora ni facilitadora no ve el punto exacto pero sí cambia la precisión guardada', async () => {
+  it('RF-9 (001): quien puede fijarla y no recibe el punto exacto no lo ve, pero sí cambia la precisión guardada', async () => {
     render(<Harness stored={stored} />);
     expect(screen.queryByText(/Punto exacto/)).toBeNull();
     expect(screen.queryByText(/-33.4512/)).toBeNull();
@@ -168,3 +168,23 @@ describe('LocationPicker por mapa y precisión', () => {
   });
 });
 
+
+describe('LocationPicker sin permiso para subir la ubicación (spec 016)', () => {
+  it('RF-1 (016) · 1.1: sin mayRaise no se escriben coordenadas, no se abre el mapa ni se elige «Exacta», y lo dice', () => {
+    render(<Harness stored={stored} mayRaise={false} />);
+    expect((screen.getByLabelText('Latitud') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText('Longitud') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Marcar en el mapa' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('radio', { name: /Exacta/ }) as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getByText(/Solo la autoría y la facilitación pueden fijar la ubicación/)).toBeTruthy();
+  });
+
+  it('RF-1 (016) · 1.2: sin mayRaise se puede volver aproximada una ubicación exacta y quitarla', async () => {
+    render(<Harness stored={{ lat: -33.4512, lng: -70.6612, precision: 'exact' }} mayRaise={false} />);
+    expect((screen.getByRole('radio', { name: /Exacta/ }) as HTMLInputElement).disabled).toBe(false);
+    await userEvent.click(screen.getByRole('radio', { name: /Aproximada/ }));
+    expect(draftOf()).toEqual({ mode: 'precision', precision: 'approximate' });
+    await userEvent.click(screen.getByRole('button', { name: 'Quitar ubicación' }));
+    expect(draftOf()).toEqual({ mode: 'remove' });
+  });
+});

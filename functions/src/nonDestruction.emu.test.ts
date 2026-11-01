@@ -17,7 +17,7 @@ import { handleRetractImage } from './ops/retractImage';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from './testing';
 import { VALID } from './testing/apiceKit';
 import { sampleImage, withModel } from './testing/generationKit';
-import { clearBucket, listPaths, png, putFile } from './testing/mediaKit';
+import { clearBucket, listPaths, png, putUpload } from './testing/mediaKit';
 
 let ctx: TestCtx;
 let ana: string;
@@ -78,8 +78,8 @@ describe('no destrucción', () => {
     expect([...state.docs.keys()]).toContain(`apices/${id}/versions/1/private/exact`);
 
     // Dos referencias subidas; una se quita y otra se retira: los archivos y los documentos se conservan.
-    await putFile(ctx, `uploads/${ana}/u1`, await png(8, 8));
-    await putFile(ctx, `uploads/${ana}/u2`, await png(9, 9));
+    await putUpload(ctx, ana, 'u1', await png(8, 8));
+    await putUpload(ctx, ana, 'u2', await png(9, 9));
     const first = (await handleAddReference(ctx, { id, uploadId: 'u1', altText: 'Una' }, ana)) as { refId: string };
     const second = (await handleAddReference(ctx, { id, uploadId: 'u2', altText: 'Otra' }, ana)) as { refId: string };
     state = await snapshot();

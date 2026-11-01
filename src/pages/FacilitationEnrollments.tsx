@@ -1,4 +1,4 @@
-// RF-4 (001), RF-6 (002) · 6.1, 6.3; RF-4 (003) · 4.6, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1 · Solicitudes de inscripción: pendientes y resueltas, aceptar (secundaria, crea la invitación) y descartar con motivo.
+// RF-8 (016) · 8.3, RF-4 (001), RF-6 (002) · 6.1, 6.3; RF-4 (003) · 4.6, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1 · Solicitudes de inscripción: pendientes y resueltas, aceptar (secundaria, crea la invitación) y descartar con motivo.
 import { useMemo, useState } from 'react';
 import { splitEnrollmentLists, validateDiscardReason } from '../../shared/domain/enrollment';
 import { messageFor } from '../../shared/domain/messages';
@@ -23,7 +23,7 @@ function Enrollments({ source, client }: Required<Props>) {
   const [busy, setBusy] = useState(false);
   const [discarding, setDiscarding] = useState<string | null>(null);
   const [reason, setReason] = useState('');
-  const lists = useMemo(() => splitEnrollmentLists(rows ?? []), [rows]);
+  const lists = useMemo(() => splitEnrollmentLists(rows ?? [], new Date()), [rows]);
 
   const run = async (payload: ApiOps['resolveEnrollment']['in']) => {
     setBusy(true);

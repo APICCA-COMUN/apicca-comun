@@ -1,9 +1,9 @@
-// RF-10 (001), RF-11 (001), RF-9 (001), RNF-10 (001), RF-6 (002) · 6.1, RF-12 (003) · 12.1, 12.5, RF-3 (003) · 3.2 · Edición de un ápice: cualquier cuenta activa edita uno no archivado.
+// RF-10 (001), RF-11 (001), RF-9 (001), RF-1 (016), RNF-10 (001), RF-6 (002) · 6.1, RF-12 (003) · 12.1, 12.5, RF-3 (003) · 3.2 · Edición de un ápice: cualquier cuenta activa edita uno no archivado.
 // El formulario guarda con la versión que abrió; si alguien guardó antes, se muestra el conflicto y se elige
 // entre conservar lo propio (se reenvía sobre la versión vigente) o descartarlo.
 import { useEffect, useState } from 'react';
 import type { Point } from '../../shared/domain/location';
-import { canEdit, type ApiceViewer } from '../../shared/domain/access';
+import { canEdit, canSetLocation, type ApiceViewer } from '../../shared/domain/access';
 import { messageFor } from '../../shared/domain/messages';
 import type { EditableFields } from '../../shared/domain/versions';
 import { ConflictDiff } from '../components/ConflictDiff';
@@ -65,9 +65,9 @@ function Loader({ id, source, client, session }: Required<Props> & { session: Pe
   const viewer: ApiceViewer = { uid: session.uid, role: session.role, status: 'active' };
   if (latest.isArchived) return <Message>{messageFor('apice-archived')}</Message>;
   if (!canEdit(viewer, latest)) return <Message>No tienes permiso para editar este ápice.</Message>;
-  // Solo la autora y la facilitación pueden leer el punto exacto (RF-9 (001)).
-  const mayReadExact = session.uid === latest.authorUid || session.role === 'facilitator';
-  return <Editor id={id} client={client} opened={opened} source={source} mayReadExact={mayReadExact} />;
+  // Solo la autora y la facilitación leen el punto exacto (RF-9 (001)) y fijan o vuelven exacta la ubicación (RF-1 (016)).
+  const mayReadExact = canSetLocation(viewer, latest);
+  return <Editor id={id} client={client} opened={opened} latest={latest} source={source} mayReadExact={mayReadExact} />;
 }
 
 function Message({ children }: { children: string }) {
@@ -89,32 +89,35 @@ interface EditorProps {
   id: string;
   client: OpClient<ApiOps>;
   opened: ApiceDoc;
+  /** Lo último del almacén: al descartar lo propio en un conflicto, la ubicación vuelve a la vigente. */
+  latest: ApiceDoc;
   source: ApiceSource;
   mayReadExact: boolean;
 }
 
 const KEEP: LocationEdit = { mode: 'keep' };
 
-function Editor({ id, client, opened, source, mayReadExact }: EditorProps) {
+function Editor({ id, client, opened, latest, source, mayReadExact }: EditorProps) {
   const drafts = useDrafts();
   const draftKey = `apice:${id}`;
-  const [base, setBase] = useState({ version: opened.version, values: fieldsOf(opened), n: 0 });
+  const [base, setBase] = useState({ version: opened.version, values: fieldsOf(opened), location: opened.location ?? null, n: 0 });
   const [conflict, setConflict] = useState<Conflict | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [exact, setExact] = useState<Point | undefined>(undefined);
 
-  // El punto exacto de la versión que se abrió; el resto de las personas ni lo piden.
+  // El punto exacto de la versión base; el resto de las personas ni lo piden.
   useEffect(() => {
-    if (!mayReadExact || source.readExact === undefined) return;
+    setExact(undefined);
+    if (!mayReadExact || source.readExact === undefined || base.location === null) return;
     let current = true;
-    void source.readExact(id, opened.version).then((point) => {
+    void source.readExact(id, base.version).then((point) => {
       if (current && point !== null) setExact(point);
     });
     return () => {
       current = false;
     };
-  }, [source, id, opened.version, mayReadExact]);
+  }, [source, id, base.version, base.location, mayReadExact]);
 
   /** Guarda sobre `baseVersion`; deja el error al que llama y el conflicto en el estado. */
   const send = async (content: EditableFields, baseVersion: number, location: LocationEdit): Promise<void> => {
@@ -143,7 +146,9 @@ function Editor({ id, client, opened, source, mayReadExact }: EditorProps) {
     };
     const discard = (): void => {
       drafts.clear(draftKey);
-      setBase((previous) => ({ version: conflict.current.version, values: conflict.current.content, n: previous.n + 1 }));
+      // La ubicación también vuelve a la vigente: la que se abrió pudo cambiar o quitarse (RF-1 (016)).
+      const location = latest.version === conflict.current.version ? (latest.location ?? null) : base.location;
+      setBase((previous) => ({ version: conflict.current.version, values: conflict.current.content, location, n: previous.n + 1 }));
       setConflict(null);
       setFailure(null);
     };
@@ -165,7 +170,7 @@ function Editor({ id, client, opened, source, mayReadExact }: EditorProps) {
         draftKey={draftKey}
         submitLabel="Guardar cambios"
         showStatus
-        location={{ stored: opened.location ?? null, exact }}
+        location={{ stored: base.location, exact, mayRaise: mayReadExact }}
         onSubmit={(values, location) => send(values, base.version, location ?? KEEP)}
       />
     </section>

@@ -147,6 +147,8 @@ export interface ApiOps extends OpMap {
   saveSection: { in: { id?: string; title: string; text: string }; out: { id: string } };
   removeSection: { in: { id: string }; out: Record<string, never> };
   reorderSections: { in: { order: string[] }; out: Record<string, never> };
+  /** Reserva una subida a `uploads/{uid}/{uploadId}`: una hora y 30 por día (RF-7 (016) · 7.3). */
+  reserveUpload: { in: Record<string, never>; out: { uploadId: string } };
   openConstitution: { in: Record<string, never>; out: Record<string, never> };
   /** Sin `id` crea (versión 1); con `id` edita con `baseVersion` y el conflicto trae lo vigente. */
   saveDocument: {

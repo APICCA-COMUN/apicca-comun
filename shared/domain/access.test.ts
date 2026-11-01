@@ -10,6 +10,7 @@ import {
   canEdit,
   canReadReference,
   canSeeHistory,
+  canSetLocation,
   canSuspend,
   canView,
 } from './access';
@@ -99,4 +100,16 @@ describe('shared/domain/access · referencias (spec 007)', () => {
       expect(canReadReference(viewer, apiceFor(r.state, r.actor), true), `${r.actor} · ${r.state}`).toBe(expected);
     }
   });
+});
+
+describe('shared/domain/access · ubicación (spec 016)', () => {
+  const states = Object.keys(APICE_STATES) as (keyof typeof APICE_STATES)[];
+  const allowed = new Set(['author', 'facilitator']);
+  for (const actor of Object.keys(APICE_ACTORS) as (keyof typeof APICE_ACTORS)[]) {
+    it(`RF-1 (016) · 1.1: ${actor} ${allowed.has(actor) ? 'puede' : 'no puede'} fijar o volver exacta la ubicación`, () => {
+      for (const state of states) {
+        expect(canSetLocation(APICE_ACTORS[actor].viewer, apiceFor(state, actor))).toBe(allowed.has(actor));
+      }
+    });
+  }
 });

@@ -115,3 +115,31 @@ describe('foro · edición y archivo', () => {
     expect(await codeOf(handleArchiveMessage(ctx, { threadId: id, messageId: first }, ana))).toBe('forbidden');
   });
 });
+
+/** Siembra el contador diario de la persona en `count` (ventana abierta ahora) para no repetir decenas de llamadas. */
+const seedDaily = (kind: string, uid: string, count: number) =>
+  ctx.db.doc(`rateLimits/daily-${kind}-${uid}`).set({ count, windowStart: ctx.now(), expiresAt: new Date(ctx.now().getTime() + 24 * 3600 * 1000) });
+
+describe('foro · cuota diaria de respuestas', () => {
+  it('RF-7 (016) · 7.1: la respuesta 51 en 24 horas se rechaza con rate-limited y no escribe; otra persona no se ve afectada', async () => {
+    const { id } = await open(fabi);
+    await seedDaily('reply', ana, 49);
+    expect(await codeOf(handleReplyThread(ctx, { threadId: id, text: 'La 50.' }, ana))).toBeNull();
+    expect(await codeOf(handleReplyThread(ctx, { threadId: id, text: 'La 51.' }, ana))).toBe('rate-limited');
+    // Con el reloj fijo las respuestas comparten fecha: se compara sin orden.
+    expect((await messages(id)).map((m) => m['text']).sort()).toEqual(['La 50.', 'Quiero comparar opciones.']);
+    expect((await thread(id))['messageCount']).toBe(2);
+    expect(await codeOf(handleReplyThread(ctx, { threadId: id, text: 'Desde beto.' }, beto))).toBeNull();
+    expect((await messages(id)).map((m) => m['authorUsername']).sort()).toEqual(['ana', 'beto', 'fabi']);
+  });
+
+  it('RF-7 (016) · 7.1: una respuesta inválida no gasta cupo y editar un mensaje no cobra la cuota de respuestas', async () => {
+    const { id } = await open(fabi);
+    await seedDaily('reply', ana, 49);
+    expect(await codeOf(handleReplyThread(ctx, { threadId: id, text: '   ' }, ana))).toBe('text-empty');
+    expect((await ctx.db.doc(`rateLimits/daily-reply-${ana}`).get()).get('count')).toBe(49);
+    const { id: messageId } = await handleReplyThread(ctx, { threadId: id, text: 'Primera.' }, ana);
+    await handleEditMessage(ctx, { threadId: id, messageId, text: 'Primera, editada.' }, ana);
+    expect((await ctx.db.doc(`rateLimits/daily-reply-${ana}`).get()).get('count')).toBe(50);
+  });
+});

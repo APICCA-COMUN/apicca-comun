@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createDrafts, DraftsContext } from '../app/drafts';
@@ -30,8 +30,10 @@ const fabi: SessionState = { status: 'person', uid: 'fab', role: 'facilitator', 
 function setup(session: SessionState, handlers: Parameters<typeof fakeClient>[0] = { editApice: () => ({ ok: true, version: 3 }) }) {
   const { client, calls } = fakeClient(handlers);
   const asked: Array<{ id: string; version: number }> = [];
+  let emit: (doc: ApiceDoc) => void = () => {};
   const source: ApiceSource = {
     onApice(_id, callback) {
+      emit = callback;
       callback(apice());
       return () => {};
     },
@@ -47,7 +49,7 @@ function setup(session: SessionState, handlers: Parameters<typeof fakeClient>[0]
       </DraftsContext.Provider>
     </SessionProvider>,
   );
-  return { calls, asked };
+  return { calls, asked, push: (doc: ApiceDoc) => act(() => emit(doc)) };
 }
 
 const save = () => userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
@@ -102,7 +104,7 @@ describe('ApiceEdit · ubicación', () => {
 
   it('RF-9 (001): un conflicto conserva la ubicación elegida al reenviar lo propio', async () => {
     let n = 0;
-    const { calls } = setup(beto, {
+    const { calls } = setup(ana, {
       editApice: () => {
         n += 1;
         return n === 1
@@ -116,5 +118,29 @@ describe('ApiceEdit · ubicación', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Conservar los míos/ }));
     await waitFor(() => expect(calls).toHaveLength(2));
     expect(calls[1]?.payload).toMatchObject({ baseVersion: 3, location: { mode: 'set', lat: 5, lng: 6, precision: 'approximate' } });
+  });
+
+  it('RF-1 (016) · 1.1: otra persona no puede escribir coordenadas, abrir el mapa ni elegir «Exacta»', () => {
+    setup(beto);
+    expect((screen.getByLabelText('Latitud') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByRole('radio', { name: /Exacta/ }) as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getByText(/Solo la autoría y la facilitación pueden fijar la ubicación/)).toBeTruthy();
+  });
+
+  it('RF-1 (016) · 1.2: al descartar lo propio en un conflicto, la ubicación vuelve a la vigente', async () => {
+    const { push } = setup(beto, {
+      editApice: () => ({
+        ok: false,
+        conflict: true,
+        current: { version: 3, content: { name: 'Huerta', description: 'Otra', axes: ['alimento'], needs: '', offers: '', status: 'idea' } },
+      }),
+    });
+    expect(screen.getByText(/Zona de ≈ 1 km alrededor de 1.005, 2.005/)).toBeTruthy();
+    push(apice({ version: 3, description: 'Otra', location: null }));
+    fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'Mía' } });
+    await save();
+    await userEvent.click(await screen.findByRole('button', { name: /Descartar/ }));
+    expect(await screen.findByText('Sin ubicación')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Quitar ubicación' })).toBeNull();
   });
 });

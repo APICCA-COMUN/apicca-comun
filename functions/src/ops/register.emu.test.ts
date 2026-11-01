@@ -1,8 +1,9 @@
-// T-1.19 a T-1.22: registro por invitación (RF-2 (001), D-T15 (001)).
+// T-1.19 a T-1.22: registro por invitación (RF-2 (001), D-T15 (001)); T-6 (016): token con hash y registros simultáneos (RF-8 (016)).
 import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Ctx } from '../context';
 import { ApiError } from '../errors';
+import { hashToken } from '../invitationToken';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../testing';
 import { handleCancelInvitation } from './cancelInvitation';
 import { handleInvite } from './invite';
@@ -27,6 +28,18 @@ let facilitator: string;
 async function invite(email = 'ana@ejemplo.org'): Promise<string> {
   const { link } = (await handleInvite(ctx, { email }, facilitator)) as { link: string };
   return link.replace('/registro/', '');
+}
+
+/** Invitación como las guardaba la versión anterior a RF-8 (016) · 8.1: el token en claro y sin `tokenHash`. */
+async function seedLegacyInvitation(email: string, token: string): Promise<void> {
+  await ctx.db.doc(invitationPath(email)).set({
+    email,
+    token,
+    status: 'pending',
+    issuedAt: ctx.now(),
+    expiresAt: new Date(ctx.now().getTime() + 30 * DAY),
+    createdBy: facilitator,
+  });
 }
 
 const form = (token: string, extra: Record<string, unknown> = {}) => ({
@@ -86,6 +99,40 @@ describe('register · camino feliz', () => {
     const token = await invite();
     const result = (await handleRegister(ctx, form(token, { role: 'facilitator' }), null)) as { uid: string };
     expect((await ctx.db.doc(`accounts/${result.uid}`).get()).get('role')).toBe('member');
+  });
+});
+
+describe('register · token con hash (016)', () => {
+  it('RF-8 (016) · 8.1: una invitación nueva (solo tokenHash) permite registrarse y conserva el hash', async () => {
+    const token = await invite();
+    const doc = (await ctx.db.doc(invitationPath('ana@ejemplo.org')).get()).data() as Record<string, unknown>;
+    expect(doc['token']).toBeUndefined();
+    expect(doc['tokenHash']).toBe(hashToken(token));
+    const { uid } = (await handleRegister(ctx, form(token), null)) as { uid: string };
+    expect((await ctx.db.doc(`accounts/${uid}`).get()).get('email')).toBe('ana@ejemplo.org');
+    expect(await status()).toBe('accepted');
+  });
+
+  it('RF-8 (016) · 8.1: no se registra nadie con el hash en lugar del token', async () => {
+    const token = await invite();
+    expect(await codeOf(handleRegister(ctx, form(hashToken(token)), null))).toBe('invitation-not-found');
+    expect(await status()).toBe('pending');
+  });
+
+  it('RF-8 (016) · 8.1: una invitación heredada, con el token en claro, sigue sirviendo para registrarse', async () => {
+    await seedLegacyInvitation('ana@ejemplo.org', 'token-heredado-en-claro-0123456789');
+    const { uid } = (await handleRegister(ctx, form('token-heredado-en-claro-0123456789'), null)) as { uid: string };
+    expect((await ctx.db.doc(`accounts/${uid}`).get()).get('email')).toBe('ana@ejemplo.org');
+    expect((await ctx.auth.getUser(uid)).email).toBe('ana@ejemplo.org');
+    expect(await status()).toBe('accepted');
+  });
+
+  it('RF-8 (016) · 8.1: una renovación de una invitación heredada invalida el token en claro anterior', async () => {
+    await seedLegacyInvitation('ana@ejemplo.org', 'token-heredado-en-claro-0123456789');
+    const fresh = await invite();
+    expect(await codeOf(handleRegister(ctx, form('token-heredado-en-claro-0123456789'), null))).toBe('invitation-not-found');
+    await handleRegister(ctx, form(fresh), null);
+    expect(await status()).toBe('accepted');
   });
 });
 
@@ -194,7 +241,9 @@ describe('register · concurrencia y compensación', () => {
     expect(await status()).toBe('pending');
   });
 
-  it('RF-2 (001): un usuario de Auth huérfano se reemplaza y el registro termina bien', async () => {
+  it('RF-2 (001): un usuario de Auth huérfano de hace más de cinco minutos se reemplaza y el registro termina bien', async () => {
+    // El reloj de la prueba avanza; el huérfano se crea con la hora real, así que parece de hace 10 minutos.
+    ctx.setNow(new Date(Date.now() + 10 * 60 * 1000));
     const token = await invite();
     const orphan = await ctx.auth.createUser({ email: 'ana@ejemplo.org', password: 'clave-vieja-1234' });
     const result = (await handleRegister(ctx, form(token), null)) as { uid: string };
@@ -202,4 +251,36 @@ describe('register · concurrencia y compensación', () => {
     expect((await ctx.auth.getUserByEmail('ana@ejemplo.org')).uid).toBe(result.uid);
     expect(await status()).toBe('accepted');
   });
+
+  it('RF-8 (016) · 8.2: un usuario de Auth sin cuenta creado hace menos de cinco minutos no se borra: puede ser de otro registro en curso', async () => {
+    const token = await invite();
+    // Creado con la hora real; el reloj de la prueba (septiembre) lo ve como «ahora».
+    const inProgress = await ctx.auth.createUser({ email: 'ana@ejemplo.org', password: 'clave-de-otro-1234' });
+    expect(await codeOf(handleRegister(ctx, form(token), null))).toBe('invitation-used');
+    expect((await ctx.auth.getUserByEmail('ana@ejemplo.org')).uid).toBe(inProgress.uid);
+    expect(await status()).toBe('pending');
+  });
+
+  it('RF-8 (016) · 8.2: dos registros simultáneos con la misma invitación dejan una sola cuenta con su usuario de Auth', async () => {
+    for (const email of ['ana@ejemplo.org', 'beto@ejemplo.org', 'carla@ejemplo.org']) {
+      const token = await invite(email);
+      const results = await Promise.allSettled([
+        handleRegister(ctx, form(token, { username: `u_${email.slice(0, 2)}_1` }), null),
+        handleRegister(ctx, form(token, { username: `u_${email.slice(0, 2)}_2` }), null),
+      ]);
+      const winners = results.filter((r): r is PromiseFulfilledResult<{ uid: string }> => r.status === 'fulfilled');
+      expect(winners).toHaveLength(1);
+      const loser = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+      expect(['invitation-used', 'account-exists']).toContain((loser?.reason as ApiError).code);
+
+      const uid = winners[0]!.value.uid;
+      const accounts = await ctx.db.collection('accounts').where('email', '==', email).get();
+      expect(accounts.size).toBe(1);
+      expect(accounts.docs[0]?.id).toBe(uid);
+      expect((await ctx.auth.getUser(uid)).email).toBe(email);
+      expect((await ctx.auth.getUserByEmail(email)).uid).toBe(uid);
+      expect(await status(email)).toBe('accepted');
+    }
+    expect(await authUserCount()).toBe(4); // facilitadora + las tres registradas
+  }, 30_000);
 });

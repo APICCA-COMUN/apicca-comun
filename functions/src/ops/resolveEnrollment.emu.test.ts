@@ -1,6 +1,7 @@
 // T-1.25 y T-1.26: aceptar o descartar solicitudes de ingreso (RF-4 (001)).
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiError } from '../errors';
+import { hashToken } from '../invitationToken';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../testing';
 import { handleResolveEnrollment } from './resolveEnrollment';
 
@@ -17,13 +18,14 @@ async function codeOf(promise: Promise<unknown>): Promise<string | undefined> {
 let ctx: TestCtx;
 let facilitator: string;
 
-async function seedRequest(email: string): Promise<string> {
+async function seedRequest(email: string, expiresAt?: Date): Promise<string> {
   const ref = await ctx.db.collection('enrollmentRequests').add({
     email,
     name: 'Ana',
     message: 'Quiero sumarme',
     status: 'pending',
     createdAt: ctx.now(),
+    ...(expiresAt ? { expiresAt } : {}),
   });
   return ref.id;
 }
@@ -42,7 +44,7 @@ describe('resolveEnrollment · aceptar', () => {
     const result = (await handleResolveEnrollment(ctx, { id, decision: 'accept' }, facilitator)) as { link: string };
     const invitations = await ctx.db.collection('invitations').get();
     expect(invitations.size).toBe(1);
-    expect(result.link).toBe(`/registro/${invitations.docs[0]?.get('token')}`);
+    expect(invitations.docs[0]?.get('tokenHash')).toBe(hashToken(result.link.replace('/registro/', ''))); // RF-8 (016) · 8.1
     const doc = await read(id);
     expect(doc['status']).toBe('accepted');
     expect(doc['resolvedBy']).toBe(facilitator);
@@ -87,5 +89,47 @@ describe('resolveEnrollment · descartar', () => {
     const doc = await read(id);
     expect(doc).toMatchObject({ status: 'discarded', resolvedBy: facilitator, reason: 'No es del territorio' });
     expect((await ctx.db.collection('invitations').get()).size).toBe(0);
+  });
+});
+
+describe('resolveEnrollment · caducidad', () => {
+  const VIGENTE = new Date('2026-09-20T00:00:00Z');
+  const CADUCADA = new Date('2026-08-31T00:00:00Z');
+
+  it('RF-8 (016) · 8.3: una solicitud caducada no se acepta ni se descarta y no cambia', async () => {
+    const id = await seedRequest('ana@ejemplo.org', CADUCADA);
+    expect(await codeOf(handleResolveEnrollment(ctx, { id, decision: 'accept' }, facilitator))).toBe('enrollment-expired');
+    expect(await codeOf(handleResolveEnrollment(ctx, { id, decision: 'discard', reason: 'x' }, facilitator))).toBe('enrollment-expired');
+    expect((await read(id))['status']).toBe('pending');
+    expect((await ctx.db.collection('invitations').get()).size).toBe(0);
+  });
+
+  it('RF-8 (016) · 8.3: al aceptar una vigente se borra expiresAt para que el TTL no la elimine', async () => {
+    const id = await seedRequest('ana@ejemplo.org', VIGENTE);
+    await handleResolveEnrollment(ctx, { id, decision: 'accept' }, facilitator);
+    const doc = await read(id);
+    expect(doc['status']).toBe('accepted');
+    expect('expiresAt' in doc).toBe(false);
+  });
+
+  it('RF-8 (016) · 8.3: al descartar una vigente se borra expiresAt', async () => {
+    const id = await seedRequest('ana@ejemplo.org', VIGENTE);
+    await handleResolveEnrollment(ctx, { id, decision: 'discard', reason: 'No es del territorio' }, facilitator);
+    const doc = await read(id);
+    expect(doc['status']).toBe('discarded');
+    expect('expiresAt' in doc).toBe(false);
+  });
+
+  it('RF-8 (016) · 8.3: si el correo ya tiene cuenta, la solicitud vigente conserva expiresAt', async () => {
+    await seedAccount(ctx, { email: 'ana@ejemplo.org', username: 'ana' });
+    const id = await seedRequest('ana@ejemplo.org', VIGENTE);
+    expect(await handleResolveEnrollment(ctx, { id, decision: 'accept' }, facilitator)).toEqual({ accountExists: true });
+    expect('expiresAt' in (await read(id))).toBe(true);
+  });
+
+  it('RF-8 (016) · 8.3: una solicitud anterior a la 016, sin expiresAt, se sigue resolviendo', async () => {
+    const id = await seedRequest('ana@ejemplo.org');
+    await handleResolveEnrollment(ctx, { id, decision: 'discard', reason: 'x' }, facilitator);
+    expect((await read(id))['status']).toBe('discarded');
   });
 });

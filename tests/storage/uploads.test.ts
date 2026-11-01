@@ -1,5 +1,6 @@
-// T-5.2 · Reglas de Storage de `uploads/{uid}/…`: la subida temporal de una referencia (D-T9 (001)).
+// T-5.2 · Reglas de Storage de `uploads/{uid}/…`: la subida temporal de una referencia (D-T9 (001)), con reserva (RF-7 (016) · 7.3).
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
+import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { deleteObject, getBytes, ref, uploadBytes } from 'firebase/storage';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { clearStorage, createStorageTestEnvironment, storageOf } from './setup';
@@ -13,8 +14,24 @@ beforeAll(async () => {
   env = await createStorageTestEnvironment();
 });
 
+const HOUR = 60 * 60 * 1000;
+/** Reservas que concedería `reserveUpload` (RF-7 (016) · 7.3); las de ana, salvo que se diga otra cosa. */
+const RESERVED = ['nueva', 'justo', 'grande', 'jpg', 'webp', 'gif', 'txt', 'previo'];
+
+async function seedReservation(uploadId: string, uid: string, expiresInMs: number): Promise<void> {
+  await env.withSecurityRulesDisabled(async (admin) => {
+    await setDoc(doc(admin.firestore(), 'uploadReservations', uploadId), {
+      uid,
+      createdAt: Timestamp.now(),
+      expiresAt: Timestamp.fromMillis(Date.now() + expiresInMs),
+    });
+  });
+}
+
 beforeEach(async () => {
   await clearStorage(env);
+  await env.clearFirestore();
+  for (const uploadId of RESERVED) await seedReservation(uploadId, 'ana', HOUR);
   await env.withSecurityRulesDisabled(async (admin) => {
     await uploadBytes(ref(storageOf(admin), 'uploads/ana/previo'), new Uint8Array([1, 2, 3]), PNG);
   });
@@ -58,12 +75,28 @@ describe('storage.rules · uploads/{uid}', () => {
     await assertFails(uploadBytes(ref(storageAs('ana'), 'uploads/ana/txt'), new Uint8Array(10), { contentType: 'text/plain' }));
   });
 
-  it('RF-15 (001): solo crear y borrar; sobrescribir un temporal se rechaza', async () => {
+  it('RF-15 (001): solo crear; sobrescribir un temporal se rechaza', async () => {
     await assertFails(uploadBytes(ref(storageAs('ana'), 'uploads/ana/previo'), new Uint8Array(10), PNG));
   });
 
-  it('RF-15 (001): la dueña borra su temporal; otra persona no', async () => {
+  it('RF-7 (016) · 7.3: nadie borra un temporal desde el cliente, así una reserva sirve para una sola subida', async () => {
     await assertFails(deleteObject(ref(storageAs('beto'), 'uploads/ana/previo')));
-    await assertSucceeds(deleteObject(ref(storageAs('ana'), 'uploads/ana/previo')));
+    await assertFails(deleteObject(ref(storageAs('ana'), 'uploads/ana/previo')));
+    await assertFails(uploadBytes(ref(storageAs('ana'), 'uploads/ana/previo'), new Uint8Array(10), PNG));
+  });
+
+  it('RF-7 (016) · 7.3: sin reserva del servidor la subida se rechaza', async () => {
+    await assertFails(uploadBytes(ref(storageAs('ana'), 'uploads/ana/sin-reserva'), new Uint8Array(10), PNG));
+  });
+
+  it('RF-7 (016) · 7.3: con la reserva de otra persona la subida se rechaza', async () => {
+    await seedReservation('de-beto', 'beto', HOUR);
+    await assertFails(uploadBytes(ref(storageAs('ana'), 'uploads/ana/de-beto'), new Uint8Array(10), PNG));
+    await assertSucceeds(uploadBytes(ref(storageAs('beto'), 'uploads/beto/de-beto'), new Uint8Array(10), PNG));
+  });
+
+  it('RF-7 (016) · 7.3: con una reserva caducada la subida se rechaza', async () => {
+    await seedReservation('vieja', 'ana', -1000);
+    await assertFails(uploadBytes(ref(storageAs('ana'), 'uploads/ana/vieja'), new Uint8Array(10), PNG));
   });
 });

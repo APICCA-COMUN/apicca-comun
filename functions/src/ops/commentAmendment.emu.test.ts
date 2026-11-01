@@ -69,3 +69,26 @@ describe('commentAmendment', () => {
     expect(await codeOf(handleCommentAmendment(ctx, { amendmentId: 'a1', text: '   ' }, beto))).toBe('text-empty');
   });
 });
+
+/** Siembra el contador diario de la persona en `count` (ventana abierta ahora) para no repetir decenas de llamadas. */
+const seedDaily = (kind: string, uid: string, count: number) =>
+  ctx.db.doc(`rateLimits/daily-${kind}-${uid}`).set({ count, windowStart: ctx.now(), expiresAt: new Date(ctx.now().getTime() + 24 * 3600 * 1000) });
+
+describe('commentAmendment · cuota diaria', () => {
+  it('RF-7 (016) · 7.1: el comentario 51 en 24 horas se rechaza con rate-limited y no escribe; otra persona no se ve afectada', async () => {
+    await seedDaily('comment', beto, 49);
+    await handleCommentAmendment(ctx, { amendmentId: 'a1', text: 'El 50.' }, beto);
+    expect(await codeOf(handleCommentAmendment(ctx, { amendmentId: 'a1', text: 'El 51.' }, beto))).toBe('rate-limited');
+    expect((await ctx.db.collection('amendments/a1/comments').get()).size).toBe(1);
+    expect((await data('amendments/a1'))!['eventSeq']).toBe(2);
+    await handleCommentAmendment(ctx, { amendmentId: 'a1', text: 'Desde ana.' }, ana);
+    expect((await ctx.db.collection('amendments/a1/comments').get()).size).toBe(2);
+  });
+
+  it('RF-7 (016) · 7.1: un comentario inválido o sin sesión no gasta cupo', async () => {
+    await seedDaily('comment', beto, 49);
+    expect(await codeOf(handleCommentAmendment(ctx, { amendmentId: 'a1', text: '   ' }, beto))).toBe('text-empty');
+    expect(await codeOf(handleCommentAmendment(ctx, { amendmentId: 'a1', text: 'Hola' }, null))).toBe('unauthenticated');
+    expect((await ctx.db.doc(`rateLimits/daily-comment-${beto}`).get()).get('count')).toBe(49);
+  });
+});

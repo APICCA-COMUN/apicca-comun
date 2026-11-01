@@ -5,6 +5,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 export { amendmentCloser } from './amendmentCloser';
 export { firestoreBackup } from './firestoreBackup';
 import { handleApi } from './api';
+import { clientIpOf } from './clientIp';
 import { ApiError } from './errors';
 import { httpsCodeFor } from './httpsCode';
 import { handleMedia } from './media';
@@ -20,9 +21,10 @@ const IP_SALT = defineSecret('IP_HASH_SALT');
 /** Llave de OpenRouter para generación de imágenes (D-T22 (001), T-6.8). */
 const OPENROUTER_KEY = defineSecret('OPENROUTER_API_KEY');
 
-export const api = onCall({ region: REGION, secrets: [IP_SALT] }, async (request) => {
+/** `api`: 10 instancias como máximo (RF-3 (016) · 3.1, D-T6 (016)); la IP sale de `clientIpOf` (RF-4 (016)). */
+export const api = onCall({ region: REGION, maxInstances: 10, secrets: [IP_SALT] }, async (request) => {
   try {
-    const ctx = { ...productionCtx(), clientIp: request.rawRequest.ip, ipSalt: IP_SALT.value() };
+    const ctx = { ...productionCtx(), clientIp: clientIpOf(request.rawRequest), ipSalt: IP_SALT.value() };
     return await handleApi(ctx, request.data, request.auth?.uid ?? null);
   } catch (error) {
     if (error instanceof ApiError) throw new HttpsError(httpsCodeFor(error.code), error.message, { code: error.code });
@@ -30,15 +32,22 @@ export const api = onCall({ region: REGION, secrets: [IP_SALT] }, async (request
   }
 });
 
-/** Ops que procesan imágenes (D-T2 (001)): más memoria y tiempo que `api`, por `sharp`. */
-export const media = onCall({ region: REGION, memory: '1GiB', timeoutSeconds: 120, secrets: [OPENROUTER_KEY] }, async (request) => {
-  try {
-    return await handleMedia(productionCtx(OPENROUTER_KEY.value()), request.data, request.auth?.uid ?? null);
+/**
+ * Ops que procesan imágenes (D-T2 (001)): más memoria y tiempo que `api`, por `sharp`. Tres instancias de una CPU con
+ * cuatro llamadas cada una (RF-3 (016) · 3.2, D-9 (016)); la sal de IP es para el tope de lecturas anónimas (RF-5 (016)).
+ */
+export const media = onCall(
+  { region: REGION, memory: '1GiB', cpu: 1, concurrency: 4, maxInstances: 3, timeoutSeconds: 120, secrets: [OPENROUTER_KEY, IP_SALT] },
+  async (request) => {
+    try {
+      const ctx = { ...productionCtx(OPENROUTER_KEY.value()), clientIp: clientIpOf(request.rawRequest), ipSalt: IP_SALT.value() };
+      return await handleMedia(ctx, request.data, request.auth?.uid ?? null);
   } catch (error) {
-    if (error instanceof ApiError) throw new HttpsError(httpsCodeFor(error.code), error.message, { code: error.code });
-    throw error;
-  }
-});
+      if (error instanceof ApiError) throw new HttpsError(httpsCodeFor(error.code), error.message, { code: error.code });
+      throw error;
+    }
+  },
+);
 
 /** Borra los temporales de subida de más de 24 h (D-T9 (001), RNF-7 (001)). */
 export const storageSweep = onSchedule({ region: REGION, schedule: 'every 24 hours' }, async () => {

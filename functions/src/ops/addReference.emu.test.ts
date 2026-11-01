@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { REFERENCE_MAX_BYTES } from '../../../shared/domain/images';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../testing';
 import { codeOf, VALID, withBeforeTransaction } from '../testing/apiceKit';
-import { animatedGif, clearBucket, jpegWithGps, listPaths, png, putFile, readFile } from '../testing/mediaKit';
+import { animatedGif, clearBucket, jpegWithGps, listPaths, png, putFile, putUpload, readFile } from '../testing/mediaKit';
 import { handleAddReference } from './addReference';
 import { handleCreateApice } from './createApice';
 
@@ -16,7 +16,7 @@ let id: string;
 const apice = async () => (await ctx.db.doc(`apices/${id}`).get()).data() as Record<string, unknown>;
 const references = async () => (await ctx.db.collection(`apices/${id}/references`).get()).docs;
 const refFiles = () => listPaths(ctx, `apices/${id}/references/`);
-const upload = (uid: string, uploadId: string, bytes: Uint8Array) => putFile(ctx, `uploads/${uid}/${uploadId}`, bytes);
+const upload = (uid: string, uploadId: string, bytes: Uint8Array) => putUpload(ctx, uid, uploadId, bytes);
 
 beforeEach(async () => {
   await clearEmulators();
@@ -77,7 +77,7 @@ describe('addReference · camino feliz (T-5.7)', () => {
   });
 
   it('RF-15 (001): el formato sale del contenido, no del nombre ni del tipo declarado', async () => {
-    await putFile(ctx, `uploads/${ana}/u1.jpg`, await png(), 'image/jpeg');
+    await putUpload(ctx, ana, 'u1.jpg', await png(), { contentType: 'image/jpeg' });
     const { refId } = (await handleAddReference(ctx, { id, uploadId: 'u1.jpg', altText: 'Foto' }, ana)) as { refId: string };
     expect((await references())[0]?.data()?.['contentType']).toBe('image/png');
     const [file] = await ctx.storage.bucket().file(`apices/${id}/references/${refId}`).getMetadata();
@@ -196,5 +196,36 @@ describe('addReference · interrupción (T-5.9)', () => {
     expect(await codeOf(handleAddReference(ctx, { id, uploadId: 'u1', altText: '' }, ana))).toBe('alt-text-required');
     await handleAddReference(ctx, { id, uploadId: 'u1', altText: 'Mapa' }, ana);
     expect((await apice())['activeReferenceCount']).toBe(1);
+  });
+});
+
+describe('addReference · reserva de subida (spec 016)', () => {
+  it('RF-7 (016) · 7.3: al usar el temporal se gasta su reserva', async () => {
+    await upload(ana, 'u1', await png(20, 10));
+    await handleAddReference(ctx, { id, uploadId: 'u1', altText: 'Tanque' }, ana);
+    expect((await ctx.db.doc('uploadReservations/u1').get()).exists).toBe(false);
+  });
+
+  it('RF-7 (016) · 7.3: sin reserva, con la de otra persona o con una caducada no se crea la referencia', async () => {
+    await putFile(ctx, `uploads/${ana}/sin`, await png(8, 8));
+    expect(await codeOf(handleAddReference(ctx, { id, uploadId: 'sin', altText: 'A' }, ana))).toBe('invalid-request');
+    await putUpload(ctx, beto, 'ajena', await png(8, 8));
+    await putFile(ctx, `uploads/${ana}/ajena`, await png(8, 8));
+    expect(await codeOf(handleAddReference(ctx, { id, uploadId: 'ajena', altText: 'A' }, ana))).toBe('invalid-request');
+    await putUpload(ctx, ana, 'vieja', await png(8, 8), { expiresInMs: -1000 });
+    expect(await codeOf(handleAddReference(ctx, { id, uploadId: 'vieja', altText: 'A' }, ana))).toBe('invalid-request');
+    expect(await references()).toHaveLength(0);
+    expect(await refFiles()).toEqual([]);
+  });
+
+  it('RF-7 (016) · 7.3: tres llamadas simultáneas con el mismo temporal crean una sola referencia', async () => {
+    await upload(ana, 'u1', await png(20, 10));
+    const results = await Promise.allSettled(
+      [1, 2, 3].map(() => handleAddReference(ctx, { id, uploadId: 'u1', altText: 'Tanque' }, ana)),
+    );
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(await references()).toHaveLength(1);
+    expect((await apice())['activeReferenceCount']).toBe(1);
+    expect(await refFiles()).toHaveLength(1);
   });
 });

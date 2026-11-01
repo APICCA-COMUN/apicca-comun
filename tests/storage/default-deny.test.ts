@@ -69,9 +69,12 @@ describe('storage.rules · denegación por defecto', () => {
 });
 
 describe('RF-7 (007): reglas desplegadas', () => {
-  it('RF-7 (007): no consultan Firestore', () => {
+  it('RF-7 (007): solo consultan Firestore para la reserva de una subida (RF-7 (016) · 7.3)', () => {
     const rules = readStorageRules();
-    expect(rules).not.toMatch(/firestore\./);
-    expect(rules).not.toContain('/databases/');
+    const databasePaths = rules.match(/\/databases\/[^;\n]*/g) ?? [];
+    expect(databasePaths).toEqual(['/databases/(default)/documents/uploadReservations/$(uploadId)']);
+    const calls = rules.match(/firestore\.[^\s]*/g) ?? [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) expect(call).toMatch(/^firestore\.(exists|get)\(reservationPath\(uploadId\)\)/);
   });
 });

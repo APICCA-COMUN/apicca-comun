@@ -73,10 +73,16 @@ describe('índices del descubrimiento', () => {
   });
 
   it('RF-19 (001): el archivo declara la política TTL sobre expiresAt de propuestas, límites y días de generación', () => {
-    expect([...TTL_COLLECTIONS].sort()).toEqual(['generationDays', 'proposals', 'rateLimits']);
+    expect([...TTL_COLLECTIONS].sort()).toEqual(['enrollmentRequests', 'generationDays', 'proposals', 'rateLimits', 'uploadReservations']);
     expect(committed.fieldOverrides).toEqual(
       TTL_COLLECTIONS.map((collectionGroup) => ({ collectionGroup, fieldPath: 'expiresAt', ttl: true, indexes: [] })),
     );
+  });
+
+  it('RF-8 (016) · 8.3: el archivo declara el TTL de las solicitudes de inscripción y de las reservas de subida (D-T12 (016), D-T9 (016))', () => {
+    const ttl = committed.fieldOverrides.map((o: { collectionGroup: string }) => o.collectionGroup);
+    expect(ttl).toContain('enrollmentRequests');
+    expect(ttl).toContain('uploadReservations');
   });
 
   it('RF-11 (003) · 11.2: la forma de «mis ápices» está cubierta por un índice declarado (D-T12 (003))', () => {

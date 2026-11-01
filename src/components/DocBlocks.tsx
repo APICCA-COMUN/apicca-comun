@@ -1,7 +1,8 @@
-// RF-14 (003) · 14.1, RNF-3 (003), D-T15 (003) · Pinta el árbol de `parseMarkdown` con elementos de React.
+// RF-14 (003) · 14.1, RNF-3 (003), D-T15 (003), RF-9 (016) · 9.1 · Pinta el árbol de `parseMarkdown` con elementos de React.
 // Nunca interpreta el texto como HTML: no hay `innerHTML` y un enlace de esquema no admitido queda como texto.
 import { Fragment } from 'react';
 import type { Block, Inline } from '../../shared/domain/docs/markdown';
+import { isInternalPath } from '../app/returnTo';
 import { Link } from '../app/router';
 import './DocBlocks.css';
 
@@ -36,7 +37,7 @@ function renderInline(inline: Inline) {
       return <code>{inline.text}</code>;
     case 'link': {
       const children = <Inlines inlines={inline.children} />;
-      if (inline.href.startsWith('/') && !inline.href.startsWith('//')) return <Link href={inline.href}>{children}</Link>;
+      if (isInternalPath(inline.href)) return <Link href={inline.href}>{children}</Link>;
       if (/^https?:\/\//i.test(inline.href)) {
         return (
           <a href={inline.href} target="_blank" rel="noopener noreferrer">
