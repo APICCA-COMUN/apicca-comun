@@ -1,0 +1,31 @@
+/* RF-1 (002) · 1.1, RF-7 (003) · 7.1, 7.8, RF-4 (008) · 4.1, 4.4: la cabecera va sobre el fondo, sin sombra ni recuadro,
+   en una columna de `content-max`; se parte en líneas antes que desbordar (D-T16 (002), D-T4 (008)). */
+.site-header__inner {
+  box-sizing: content-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 32px;
+  max-inline-size: var(--content-max);
+  margin-inline: auto;
+  padding: 20px clamp(16px, 4vw, 48px);
+}
+
+.site-header__inner > .site-nav {
+  flex: 1 1 auto;
+}
+
+.site-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-inline-start: auto;
+}
+
+/* D-1 (008): «Entrar» mide 44 px, como en el lienzo. */
+.site-header__actions a.block {
+  min-height: var(--size-icon-control);
+  padding-inline: 22px;
+  font-weight: 800;
+}

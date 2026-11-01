@@ -1,0 +1,221 @@
+/* RF-10 (003) · 10.1 a 10.4, D-T11 (003), RF-4 (005) · Disposición del inicio. Solo colores de tokens. */
+.home__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 3rem clamp(32px, 6vw, 80px);
+  padding-block-start: clamp(32px, 5vw, 64px);
+}
+
+.home__hero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.home__hero-text h1,
+.home__hero-text p {
+  margin: 0;
+}
+
+/* El mapa deja sitio a la sombra larga de los edificios. */
+.home__hero-map {
+  display: flex;
+  justify-content: center;
+  min-inline-size: 0;
+  padding-inline-end: 18px;
+  padding-block-end: 18px;
+}
+
+/* RF-4 (005) · 4.1: dos columnas desde 900 px. */
+@media (min-width: 900px) {
+  .home__hero {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.home__section {
+  margin-block: 2rem;
+}
+
+.home__axes,
+.home__steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home__axes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.home__axis {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.home__step {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  gap: 1rem;
+}
+
+.home__step-mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.home__step-road {
+  display: flex;
+  flex: 1 1 auto;
+}
+
+.home__step-road .road-segment {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.home__step-road--row {
+  display: none;
+}
+
+.home__step-road--column {
+  inline-size: 18px;
+  min-block-size: 1.5rem;
+}
+
+.home__step-text {
+  margin-block-end: 1.5rem;
+}
+
+/* RF-4 (005) · 4.4: desde 900 px, los pasos van en una fila unidos por un camino, con el nodo de cada paso encima. */
+@media (min-width: 900px) {
+  .home__steps {
+    display: flex;
+    gap: 0;
+  }
+
+  .home__step {
+    flex: 1 1 0;
+    min-inline-size: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+
+  .home__step-mark {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .home__step-road--row {
+    display: flex;
+    block-size: 18px;
+  }
+
+  .home__step-road--column {
+    display: none;
+  }
+
+  .home__step-text {
+    margin: 0;
+    padding-inline-end: 1.5rem;
+  }
+}
+
+/* RF-4 (005) · 4.5: cierre centrado. */
+.home__closing {
+  margin-block: 2rem;
+  text-align: center;
+}
+
+/* RF-6 (008) · 6.1–6.5, D-T2 (008): escala de los lienzos. El aire entre secciones es `--section-gap` (lots.css). */
+.home__hero {
+  margin-block-end: var(--section-gap);
+}
+
+.home__hero-text h1 {
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.05;
+  font-weight: 800;
+}
+
+.home__hero-text h1 + p {
+  max-inline-size: 28em;
+  color: var(--text-muted);
+  font-size: var(--type-lead-size);
+  line-height: var(--type-lead-line);
+  font-weight: var(--type-lead-weight);
+}
+
+.home__section h2 {
+  margin-block: 0 1rem;
+  font-size: clamp(28px, 3.6vw, 44px);
+  line-height: 1.12;
+  font-weight: 800;
+}
+
+.home__axis h3 {
+  margin: 8px 0 0;
+  font-size: var(--type-subheading-size);
+  line-height: var(--type-subheading-line);
+  font-weight: 800;
+}
+
+.home__axis p,
+.home__step-text p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.home__step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.home__step-text h3 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.home__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
+  margin-block-start: 12px;
+}
+
+.home__closing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.home__closing h2 {
+  margin: 0;
+  max-inline-size: 14em;
+  font-size: clamp(32px, 5vw, 64px);
+  line-height: 1.08;
+  font-weight: 800;
+}
+
+.home__actions > a:not(.block),
+.home__closing a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: underline;
+}

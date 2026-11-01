@@ -1,0 +1,15 @@
+/* RF-5 (004) · 5.2, 5.5: el documento vive en un lote; el formulario y los avisos son bloques. Sin colores. */
+.constitution-document__form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.constitution-document__form textarea {
+  min-height: 12rem;
+}
+
+.constitution-document__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}

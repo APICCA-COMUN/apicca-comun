@@ -1,0 +1,230 @@
+/* Bloques del sitio (RF-3 (003) · 3.1, 3.4, RF-4 (003) · 4.1 a 4.5, 4.7, RF-5 (003) · 5.1, 5.3, D-T4 (003),
+   D-T6 (003), D-T20 (003); vigentes de la 002: RF-6 (002) · 6.3, 6.5, 6.7, RF-9 (002), D-T18 (002)). Todo bloque
+   tiene el mismo radio, sin borde, y la misma sombra, hacia abajo y a la derecha. Los lotes (borde `line`, sin
+   sombra) están en lots.css. Solo colores de tokens (D-T20 (002)). */
+
+.block {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  border: 0 solid transparent;
+  border-radius: var(--radius-block);
+  box-shadow: var(--shadow-block);
+  background-color: var(--surface);
+  color: var(--text);
+  overflow-wrap: anywhere;
+  transition: box-shadow var(--duration-raise);
+}
+
+/* Tarjetas, avisos y diálogos llevan aire por dentro; los campos y botones, el suyo. */
+:is(article, section, div, li, p, aside, [role='dialog']).block {
+  padding: 1rem;
+}
+
+/* Campos (RF-5 (003) · 5.1): sobre `background`, sin borde salvo uno inferior de 2 px; 16 px (RF-5 (002) · 5.5). */
+:is(input, select, textarea).block {
+  min-height: var(--size-control);
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  border-bottom: 2px solid var(--field-border);
+  border-radius: var(--radius-building) var(--radius-building) 0 0;
+  background-color: var(--background);
+  box-shadow: none;
+}
+
+textarea.block {
+  width: 100%;
+}
+
+/* Etiqueta encima (RF-5 (003) · 5.2): la etiqueta que envuelve a su campo pone su texto arriba y el campo debajo,
+   a todo el ancho. Las casillas y las opciones siguen en línea con su texto. */
+label:has(> :is(input:not([type='checkbox'], [type='radio']), select, textarea).block) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+:where(form) > label:has(> :is(input:not([type='checkbox'], [type='radio']), select, textarea).block) {
+  margin-block-end: 1rem;
+}
+
+/* Acciones (RF-4 (003) · 4.1, RF-2 (008) · 2.1, RF-6.3 (002), D-T18 (002)): píldora de al menos 48 px; la forma y el peso las
+   distinguen, además del color. */
+button.block,
+a.block {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--size-control);
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  font-size: 1rem;
+  line-height: 1.25;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Principal: relleno `action-blue` (RF-4 (003) · 4.2). */
+.action-primary {
+  background-color: var(--action-blue);
+  color: var(--on-accent);
+  font-weight: 800;
+}
+
+/* Secundario: fondo `surface`, sin borde y con `shadow-block` (RF-4 (003) · 4.3). */
+.action-secondary {
+  font-weight: 600;
+}
+
+/* Destructivo: fondo `surface`, texto y borde de 2 px `brand-red` (RF-4 (003) · 4.4). */
+.action-destructive {
+  border: 2px solid var(--brand-red);
+  background-color: var(--surface);
+  color: var(--brand-red);
+  font-weight: 700;
+}
+
+/* Botón de ícono (RF-4 (003) · 4.5, RF-2 (008) · 2.2): redondo, de 44 por 44 px, con o sin `.block`. */
+.icon-button,
+button.icon-button,
+a.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  inline-size: var(--size-icon-control);
+  block-size: var(--size-icon-control);
+  min-height: var(--size-icon-control);
+  padding: 0;
+  border: 0 solid transparent;
+  border-radius: 50%;
+  background-color: var(--surface);
+  box-shadow: var(--shadow-block);
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Diálogo abierto (RF-4 (003) · 4.7, D-T6 (003)): mientras el `body` contiene un diálogo, todo principal de fuera
+   toma la forma secundaria; los de dentro conservan el azul. Sin tocar el formulario de fondo. */
+body:has([role='dialog']) .action-primary:not([role='dialog'] .action-primary) {
+  background-color: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Controles del mapa (RF-3 (003) · 3.1): Leaflet les pone su propio borde; como bloques, sin él. */
+.leaflet-touch .leaflet-bar.block,
+.leaflet-bar.block {
+  border: 0;
+}
+
+/* Avisos (RF-2 (002) · 2.3): bloques como los demás; el texto los nombra y el color no va solo. */
+
+/* Radios y casillas: no son bloques; su marca usa el color del texto. El `color` también, para no
+   heredar el blanco del navegador en oscuro, que coincide con `logo-gray` (RF-2 (002) · 2.3, T-2.27 (003)). */
+.choice {
+  color: var(--text);
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin: 0 0.5rem 0 0;
+  vertical-align: middle;
+  accent-color: var(--text);
+}
+
+/* Estados (RF-6 (002) · 6.5): cada uno con su forma; el texto que los nombra lo pone el componente. */
+.block:disabled,
+.block[aria-disabled='true'] {
+  border: 1px dashed var(--field-border);
+  background-color: var(--background);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.block[aria-busy='true'] {
+  border: 1px dotted var(--field-border);
+  cursor: progress;
+}
+
+/* El error de un campo (RF-5 (003) · 5.3): borde inferior `brand-red`; el texto del error lo pone el componente. */
+.block[aria-invalid='true'] {
+  border-bottom-color: var(--brand-red);
+}
+
+.block-empty {
+  color: var(--text-muted);
+}
+
+/* Movimiento (RF-9 (002)): elevar al pasar el cursor, solo con cursor, y al pulsar. */
+@media (hover: hover) {
+  :is(button, a).block:not(:disabled, [aria-disabled='true']):hover {
+    box-shadow: var(--shadow-raised);
+  }
+}
+
+:is(button, a).block:not(:disabled, [aria-disabled='true']):active {
+  box-shadow: var(--shadow-raised);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block {
+    transition: none;
+  }
+}
+
+/* Colores forzados (RNF-1 (003), D-T20 (003)): sin sombra visible, el bloque lleva un borde de 1 px del sistema;
+   el lote conserva el suyo (lots.css). */
+@media (forced-colors: active) {
+  .block:not(:is(input, select, textarea, .action-destructive, .icon-button)),
+  .leaflet-touch .leaflet-bar.block {
+    border: 1px solid CanvasText;
+  }
+
+  .icon-button {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Contraste aumentado (RNF-1 (003), D-T20 (003), D-T21 (002)): bordes de 2 px con el color del texto; el rojo
+   de las acciones destructivas y del campo con error se conserva. */
+@media (prefers-contrast: more) {
+  .block,
+  .leaflet-touch .leaflet-bar.block,
+  .icon-button {
+    border: 2px solid var(--text);
+  }
+
+  .action-destructive {
+    border-color: var(--brand-red);
+  }
+
+  .block[aria-invalid='true'] {
+    border-bottom-color: var(--brand-red);
+  }
+}
+
+/* RF-4 (008) · 4.5, D-T5 (008): la inicial de la cuenta en la cabecera, un círculo de 44 px del color del eje alimento. */
+a.account-initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--size-icon-control);
+  block-size: var(--size-icon-control);
+  border-radius: 50%;
+  background-color: var(--axis-alimento-fill);
+  color: var(--charcoal);
+  box-shadow: var(--shadow-block);
+  font-size: 18px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+@media (forced-colors: active) {
+  a.account-initial {
+    border: 2px solid CanvasText;
+  }
+}

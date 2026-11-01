@@ -1,0 +1,49 @@
+{
+  "name": "apicca-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:emu": "firebase emulators:exec --only auth,firestore,storage --ui \"VITE_USE_EMULATORS=true vite\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit -p . && npm --prefix functions run check",
+    "test": "vitest run --project unit-node --project unit-dom",
+    "test:emu": "firebase emulators:exec --project demo-apicca --only auth,firestore,storage \"vitest run --project emu --mode development\"",
+    "test:emu:par": "node scripts/parallel-emulators.mjs && TMPDIR=/tmp/apicca-emu-par FUNCTIONS_EMULATOR_HOST=127.0.0.1:5501 firebase emulators:exec --config firebase.paralelo.json --only auth,firestore,storage \"vitest run --project emu --mode development\"",
+    "test:browser": "node scripts/check-chromium.mjs && VITE_USE_EMULATORS=true VITE_TILE_URL=/test-tiles/tile.png vite build --mode browser --outDir dist-browser --emptyOutDir && firebase emulators:exec --project demo-apicca --only auth,firestore,storage \"vitest run --project browser\"",
+    "test:browser:par": "node scripts/parallel-emulators.mjs && node scripts/check-chromium.mjs && VITE_EMULATOR_LANE=par VITE_USE_EMULATORS=true VITE_TILE_URL=/test-tiles/tile.png vite build --mode browser --outDir dist-browser-par --emptyOutDir && VITE_EMULATOR_LANE=par TMPDIR=/tmp/apicca-emu-par firebase emulators:exec --project demo-apicca --config firebase.paralelo.json --only auth,firestore,storage \"vitest run --project browser\"",
+    "gen-indexes": "node scripts/gen-indexes.mjs",
+    "gen-tokens": "node scripts/gen-tokens.mjs",
+    "gen-brand-images": "node scripts/gen-brand-images.mjs",
+    "rf-coverage": "node scripts/rf-coverage.mjs",
+    "audit-deps": "node scripts/audit-deps.mjs",
+    "verify": "npm run check && npm test && npm run test:emu && npm run test:browser && npm run rf-coverage",
+    "verify:par": "npm run check && npm test && npm run test:emu:par && npm run test:browser:par && npm run rf-coverage"
+  },
+  "dependencies": {
+    "firebase": "^13.0.0",
+    "leaflet": "^1.9.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/leaflet": "^1.9.22",
+    "@types/node": "^26.4.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/browser-playwright": "4.1.12",
+    "firebase-tools": "^15.28.2",
+    "jsdom": "^30.0.1",
+    "playwright": "1.64.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.12"
+  }
+}

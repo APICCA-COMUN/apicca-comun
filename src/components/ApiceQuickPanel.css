@@ -1,0 +1,116 @@
+/* RF-7 (005) · 7.1, 7.3: panel lateral del lote. La imagen grande va sobre `charcoal`; los ejes son píldoras con
+   `aria-pressed` y el estado un grupo de opciones en píldora. Va en `surface` con radio 14 y 24 px de margen
+   interno, como en el canvas (RF-7 (005) · 7.12). Solo colores de tokens. */
+.apice-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.apice-panel.block {
+  padding: 1.5rem;
+  border-radius: 14px;
+  background-color: var(--surface);
+}
+
+.apice-panel__image {
+  align-self: flex-start;
+  padding: 8px;
+  border-radius: 10px;
+  background-color: var(--charcoal);
+  box-shadow: var(--shadow-raised);
+  line-height: 0;
+}
+
+.apice-panel__image .pixel-image {
+  max-inline-size: 100%;
+}
+
+.apice-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.apice-panel__actions a {
+  text-decoration: underline;
+}
+
+.apice-panel h2,
+.apice-panel p {
+  margin: 0;
+}
+
+.apice-panel__description,
+.apice-panel__status {
+  color: var(--text-muted);
+}
+
+.apice-panel__axes,
+.apice-panel__links,
+.apice-panel__pills,
+.apice-panel__segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.apice-panel__edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.apice-panel__edit label {
+  display: block;
+}
+
+.apice-panel__edit input[type='text'],
+.apice-panel__edit textarea {
+  box-sizing: border-box;
+  inline-size: 100%;
+}
+
+.apice-panel__pills,
+.apice-panel__segments {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.apice-panel__pills legend,
+.apice-panel__segments legend {
+  inline-size: 100%;
+  margin-block-end: 0.25rem;
+}
+
+.apice-panel__pills button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 999px;
+}
+
+.apice-panel__pills button[aria-pressed='true'] {
+  background-color: var(--charcoal);
+  border-color: var(--charcoal);
+  color: var(--on-charcoal);
+}
+
+.apice-panel__segments {
+  padding: 0.25rem;
+  border-radius: 999px;
+  background-color: var(--background);
+}
+
+.apice-panel__segments label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.apice-panel__edit button[type='submit'] {
+  min-block-size: 48px;
+}

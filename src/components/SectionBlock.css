@@ -1,0 +1,45 @@
+/* RF-11 (005) · 11.2, 11.3, D-T10 (005): número grande de la sección junto a su título, con el color de trazo del eje
+   que le toca; el número queda en texto. Solo colores de tokens. */
+/* RF-11 (008) · 11.3, 11.4, D-13 (008): tarjeta de 14 px de radio con `clamp(20px, 4vw, 28px)` de relleno, título de
+   20/800/1,25 y texto de 16 px con línea 1,55. */
+.block.section-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: clamp(20px, 4vw, 28px);
+  border-radius: 14px;
+}
+
+.section-block h2 {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.section-block .section-content p {
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.section-block__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.section-block__title h2 {
+  margin-block: 0;
+}
+
+.section-block__number {
+  flex: none;
+  font-size: var(--type-numeral-size);
+  font-weight: var(--type-numeral-weight);
+  line-height: var(--type-numeral-line);
+}
+
+.section-block__number[data-axis='agua'] { color: var(--axis-agua-stroke); }
+.section-block__number[data-axis='alimento'] { color: var(--axis-alimento-stroke); }
+.section-block__number[data-axis='cobijo'] { color: var(--axis-cobijo-stroke); }
+.section-block__number[data-axis='energía'] { color: var(--axis-energia-stroke); }
+.section-block__number[data-axis='comunicación'] { color: var(--axis-comunicacion-stroke); }

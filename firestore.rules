@@ -1,0 +1,201 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore de APICCA COMÚN.
+//
+// Todo está denegado por defecto (RF-SEG-1). Cada colección se abre únicamente
+// mediante una spec aprobada en `docs/specs/`, con su bloque `match` propio, que cita
+// su RF en la línea anterior, y sus tests en `tests/rules/`. Toda escritura la hace el
+// servidor con el Admin SDK (D-T1 (001)): ninguna regla de escritura del cliente concede nada.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function accountPath(uid) {
+      return /databases/$(database)/documents/accounts/$(uid);
+    }
+
+    // La cuenta se consulta en cada evaluación, no un token: la suspensión surte efecto
+    // de inmediato (D-T3 (001), RF-5 (001)). `exists` primero: un `get` sobre un documento
+    // ausente tumba la condición entera.
+    function isActive() {
+      return request.auth != null
+        && exists(accountPath(request.auth.uid))
+        && get(accountPath(request.auth.uid)).data.status == 'active';
+    }
+
+    function isActiveFacilitator() {
+      return isActive() && get(accountPath(request.auth.uid)).data.role == 'facilitator';
+    }
+
+    function apicePath(id) {
+      return /databases/$(database)/documents/apices/$(id);
+    }
+
+    // Misma tabla que `canView` de `shared/domain/access.ts` (D-T18 (001)): público y no archivado,
+    // cualquiera; si no, solo cuentas activas, y archivado solo para su autora y los facilitadores.
+    function canViewApice(apice) {
+      return (apice.visibility == 'public' && apice.isArchived == false)
+        || (isActive()
+          && (apice.isArchived == false
+            || apice.authorUid == request.auth.uid
+            || isActiveFacilitator()));
+    }
+
+    // Versiones y eventos: como `canSeeHistory`, nunca para visitantes ni cuentas suspendidas.
+    function canSeeApiceHistory(id) {
+      return isActive() && exists(apicePath(id)) && canViewApice(get(apicePath(id)).data);
+    }
+
+    // RNF-4 (001): la propia persona (aun suspendida, RF-5 (001)) y los facilitadores activos.
+    match /accounts/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isActiveFacilitator());
+      allow write: if false;
+    }
+
+    // RF-1 (001): solo los facilitadores activos ven las invitaciones, con su token.
+    match /invitations/{key} {
+      allow read: if isActiveFacilitator();
+      allow write: if false;
+    }
+
+    // RF-4 (001): solo los facilitadores activos ven las solicitudes de inscripción.
+    match /enrollmentRequests/{id} {
+      allow read: if isActiveFacilitator();
+      allow write: if false;
+    }
+
+    // RF-13 (001): visibilidad y archivo del ápice; RF-14 (001); RF-22 (001): ficha. Escribe solo el servidor.
+    match /apices/{id} {
+      allow read: if canViewApice(resource.data);
+      allow write: if false;
+    }
+
+    // RF-12 (001): el historial lo ven solo cuentas activas que pueden ver el ápice; RNF-7 (001): sin escrituras.
+    match /apices/{id}/versions/{n} {
+      allow read: if canSeeApiceHistory(id);
+      allow write: if false;
+    }
+
+    // RF-9 (001): el punto exacto de cada versión, solo para su autora y los facilitadores; escribe el servidor.
+    match /apices/{id}/versions/{n}/private/{doc} {
+      allow read: if canSeeApiceHistory(id)
+        && (get(apicePath(id)).data.authorUid == request.auth.uid || isActiveFacilitator());
+      allow write: if false;
+    }
+
+    // RF-13 (001): las referencias las ven quienes ven el ápice; RF-16 (001): las quitadas, solo los facilitadores.
+    match /apices/{id}/references/{refId} {
+      allow read: if exists(apicePath(id))
+        && canViewApice(get(apicePath(id)).data)
+        && (resource.data.isRemoved == false || isActiveFacilitator());
+      allow write: if false;
+    }
+
+    // RF-16 (001): las imágenes aceptadas las ven las cuentas activas que ven el ápice; las retiradas, solo los facilitadores.
+    match /apices/{id}/images/{imageId} {
+      allow read: if canSeeApiceHistory(id)
+        && (resource.data.isRemoved == false || isActiveFacilitator());
+      allow write: if false;
+    }
+
+    // RF-17 (001): la propuesta de imagen es solo de quien la pidió, mientras su cuenta esté activa.
+    match /proposals/{key} {
+      allow read: if isActive() && resource.data.requestedByUid == request.auth.uid;
+      allow write: if false;
+    }
+
+    // RF-13 (001): los eventos de auditoría, con el mismo alcance que el historial (RNF-6 (001)).
+    match /apices/{id}/events/{eventId} {
+      allow read: if canSeeApiceHistory(id);
+      allow write: if false;
+    }
+
+    // RF-6 (012): los avisos de cambios en mis ápices, solo para su dueña con cuenta activa; escribe el servidor.
+    match /notices/{uid}/items/{id} {
+      allow read: if isActive() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // RF-9 (009): el visitante lee los hilos no archivados; los archivados, solo su autora y un facilitador activo.
+    match /threads/{id} {
+      allow read: if resource.data.isArchived == false
+        || (isActive() && (resource.data.authorUid == request.auth.uid || isActiveFacilitator()));
+      allow write: if false;
+    }
+
+    // RF-9 (009), RF-5 (009) · 5.1: los mensajes de un hilo archivado dejan de verse con él, salvo para su autora y un facilitador.
+    match /threads/{id}/messages/{messageId} {
+      allow read: if (resource.data.isArchived == false && get(/databases/$(database)/documents/threads/$(id)).data.isArchived == false)
+        || (isActive() && (resource.data.authorUid == request.auth.uid || isActiveFacilitator()));
+      allow write: if false;
+    }
+
+    // RF-2 (001): las reservas de nombre de usuario las lee y escribe solo el servidor.
+    match /usernames/{name} {
+      allow read, write: if false;
+    }
+
+    // RF-4 (001): los contadores del límite de envíos son solo del servidor.
+    match /rateLimits/{key} {
+      allow read, write: if false;
+    }
+
+    // Constitución común (004, plan §5.9): toda escritura la hace la callable `api` (RNF-3 (004), D-T15 (004)).
+
+    // RF-1 (004) · 1.2, RF-4 (004): el estado es público; no lleva autoría.
+    match /constitution/state {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // RF-2 (004) · 2.3: el visitante ve las secciones vigentes; la cuenta activa, también las retiradas.
+    match /constitutionSections/{id} {
+      allow read: if resource.data.isRetired == false || isActive();
+      allow write: if false;
+    }
+
+    // RF-2 (004) · 2.4, RF-3 (004) · 3.2: autoría y versiones, solo cuentas activas; inmutables (RNF-1 (004)).
+    match /constitutionSections/{id}/{sub}/{doc} {
+      allow read: if isActive() && (sub == 'private' || sub == 'versions');
+      allow write: if false;
+    }
+
+    // RF-3 (004) · 3.1: el registro de cambios, solo cuentas activas; inmutable (RNF-1 (004)).
+    match /constitutionLog/{seq} {
+      allow read: if isActive();
+      allow write: if false;
+    }
+
+    // RF-5 (004) · 5.2: el visitante ve los documentos no archivados; los archivados, un facilitador activo.
+    match /constitutionDocuments/{id} {
+      allow read: if resource.data.isArchived == false || isActiveFacilitator();
+      allow write: if false;
+    }
+
+    // RF-5 (004) · 5.4: el historial de un documento, solo cuentas activas.
+    match /constitutionDocuments/{id}/versions/{n} {
+      allow read: if isActive();
+      allow write: if false;
+    }
+
+    // La deliberación de una propuesta: revisiones, comentarios y sus versiones, posturas, objeciones y eventos.
+    // RF-9 (004) · 9.4: solo cuentas activas.
+    match /amendments/{id}/{rest=**} {
+      allow read: if isActive();
+      allow write: if false;
+    }
+
+    // RF-9 (004) · 9.4, RF-7 (004): la propuesta, solo cuentas activas.
+    match /amendments/{id} {
+      allow read: if isActive();
+      allow write: if false;
+    }
+
+    // RF-6 (004) · 6.5: las cerraduras de cada sección o lugar son solo del servidor.
+    match /amendmentSlots/{key} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,229 @@
+/* RF-1 (009), RF-2 (009), RF-7 (009), RNF-4 (009): foro en una columna de 860 px como máximo, centrada, sobre el fondo,
+   con los espacios del artboard del Foro. Solo tokens. */
+.forum,
+.forum-thread {
+  box-sizing: border-box;
+  max-inline-size: 860px;
+  margin-inline: auto;
+  padding-block-start: clamp(40px, 6vw, 80px);
+  margin-block-end: var(--section-gap);
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  overflow-wrap: anywhere;
+}
+
+.forum__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.forum h1,
+.forum-thread h1 {
+  margin: 0;
+  font-size: clamp(32px, 5vw, 44px);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.forum__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.forum__filter {
+  border-radius: 50%;
+}
+
+.forum__filter[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 3px var(--text);
+  background-color: var(--background);
+}
+
+.forum__list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.forum__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.forum__row + .forum__row {
+  border-block-start: 1px solid var(--line);
+}
+
+.forum__axis {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: 10px;
+  color: var(--charcoal);
+}
+
+.forum__summary {
+  display: flex;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.forum__summary h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.forum__summary a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.forum__summary span,
+.forum__replies {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.forum__replies {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.forum__more {
+  align-self: flex-start;
+}
+
+.thread-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 1.5rem;
+}
+
+.thread-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* Hilo abierto (RF-7 (009)). */
+.forum-thread__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.forum-thread__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.forum-thread__head-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.forum-thread__messages {
+  display: flex;
+  flex-direction: column;
+}
+
+.forum-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-block: 18px;
+  border-block-start: 1px solid var(--line);
+}
+
+.forum-message__initial {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: 50%;
+  color: var(--charcoal);
+  font-weight: 800;
+}
+
+.forum-message__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.forum-message__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.forum-message__meta strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.forum-message__text p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.forum-message__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-block-start: 8px;
+}
+
+.forum-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-block-start: 8px;
+}
+
+.forum-reply button {
+  align-self: flex-start;
+}
+
+/* El relleno del eje va por atributo, no por `style` (los colores viven solo en las hojas). */
+:is(.forum__axis, .forum-message__initial)[data-axis='agua'] { background-color: var(--axis-agua-fill); }
+:is(.forum__axis, .forum-message__initial)[data-axis='alimento'] { background-color: var(--axis-alimento-fill); }
+:is(.forum__axis, .forum-message__initial)[data-axis='cobijo'] { background-color: var(--axis-cobijo-fill); }
+:is(.forum__axis, .forum-message__initial)[data-axis='energia'] { background-color: var(--axis-energia-fill); }
+:is(.forum__axis, .forum-message__initial)[data-axis='comunicacion'] { background-color: var(--axis-comunicacion-fill); }

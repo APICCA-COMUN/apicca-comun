@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022"
+    ],
+    "module": "commonjs",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "types": [
+      "node"
+    ],
+    "rootDir": "..",
+    "outDir": "lib"
+  },
+  "include": [
+    "src",
+    "../shared/domain"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "scripts",
+    "../shared/domain/**/*.test.ts",
+    "../shared/domain/testing",
+    "src/testing"
+  ]
+}

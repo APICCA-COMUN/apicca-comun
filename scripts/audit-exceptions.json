@@ -1,0 +1,8 @@
+[
+  {
+    "ghsa": "GHSA-m9gg-hp2v-232j",
+    "package": "@grpc/grpc-js",
+    "reason": "D-1 (014): afecta a servidores gRPC que validan certificados de cliente. Lo trae firebase → @firebase/firestore, que en el navegador no usa grpc-js; solo lo carga en Node, en las pruebas con emuladores. firebase 13 no lo corrige (@firebase/firestore 4.18.0 fija ~1.9.0).",
+    "reviewBy": "2027-01-13"
+  }
+]

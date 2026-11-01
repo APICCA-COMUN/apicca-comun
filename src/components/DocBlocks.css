@@ -1,0 +1,36 @@
+/* RF-14 (003) · 14.1, D-T19 (003): texto de los artículos, con aire y sin desbordar a 360 px. */
+.doc-blocks {
+  overflow-wrap: anywhere;
+}
+
+/* El espacio entre bloques lo pone el contenedor (el artículo de la documentación separa 36 px, RF-10 (008) · 10.4). */
+.doc-blocks > * + * {
+  margin-block-start: 1rem;
+}
+
+.doc-blocks :is(ul, ol) {
+  padding-inline-start: 1.5rem;
+}
+
+.doc-blocks li + li {
+  margin-block-start: 0.375rem;
+}
+
+.doc-blocks blockquote {
+  margin-inline: 0;
+  padding-inline-start: 1rem;
+  border-inline-start: 4px solid var(--line);
+  color: var(--text-muted);
+}
+
+.doc-blocks code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.doc-blocks pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border-radius: var(--radius-block);
+  background-color: var(--surface);
+}

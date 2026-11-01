@@ -1,0 +1,5 @@
+/* RF-2 (002) · 2.1: alto mínimo de la región del mapa. */
+
+.map-view {
+  min-height: 320px;
+}

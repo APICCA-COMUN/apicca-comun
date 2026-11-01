@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>APICCA COMÚN</title>
+    <meta name="description" content="API para Crear y Conectar Acciones Comunes" />
+    <!-- Metadatos de vista previa (RF-11 (002) · 11.1, D-21 (002)). -->
+    <meta property="og:title" content="APICCA COMÚN" />
+    <meta property="og:description" content="API para Crear y Conectar Acciones Comunes" />
+    <meta property="og:image" content="https://apicca.com/brand/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- Íconos de pestaña e inicio en rutas relativas (RF-1 (002) · 1.7, RF-11 (002) · 11.2). -->
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
+    <!-- Sin `content`: lo pone el guion de arranque desde `THEME_COLORS` (D-T7 (002)). -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" />
+    <!-- Nunito pedida desde el principio para que llegue antes del primer texto (RF-5 (002) · 5.3). -->
+    <link rel="preload" href="/src/assets/fonts/nunito-latin-var.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Fondo, texto y esquema de cada tema antes de que llegue la hoja (RNF-6 (002)). Lo escribe
+         `npm run gen-tokens` desde los tokens; no editar entre las marcas. -->
+    <style>
+      /* gen-tokens:critical:start */
+      :root { color-scheme: light; background: #E8E7EC; color: #26282C; }
+      :root[data-theme='dark'] { color-scheme: dark; background: #14213D; color: #F3EFE6; }
+      @media (prefers-color-scheme: dark) { :root:not([data-theme]) { color-scheme: dark; background: #14213D; color: #F3EFE6; } }
+      /* gen-tokens:critical:end */
+    </style>
+  </head>
+  <body>
+    <!-- El tema elegido, puesto antes del primer pintado: si esperara a React, la página
+         aparecería un instante con el tema contrario. Sin atributo manda
+         `prefers-color-scheme`; la clave es la de `src/app/theme.ts` y una prueba cruza las
+         dos. `localStorage` lanza en una ventana privada: de ahí el `try`. Después pone a cada
+         `theme-color` el fondo de su esquema o, si hay elección, el del tema elegido. -->
+    <script>
+      /* gen-tokens:theme-color:start */
+      var THEME_COLORS = {"light":"#E8E7EC","dark":"#14213D"};
+      /* gen-tokens:theme-color:end */
+      var theme = null;
+      try {
+        theme = localStorage.getItem('apicca-theme');
+        if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+        else theme = null;
+      } catch (error) {
+        /* Sin memoria del tema: manda la preferencia del sistema. */
+      }
+      document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
+        var scheme = (meta.getAttribute('media') || '').indexOf('dark') >= 0 ? 'dark' : 'light';
+        meta.content = THEME_COLORS[theme || scheme];
+      });
+    </script>
+    <noscript>
+      <p>APICCA COMÚN necesita JavaScript para funcionar. Actívalo en tu navegador y vuelve a cargar la página.</p>
+    </noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

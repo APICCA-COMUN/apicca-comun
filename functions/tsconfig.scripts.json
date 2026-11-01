@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "outDir": "lib-scripts" },
+  "include": ["scripts", "src", "../shared/domain"],
+  "exclude": ["**/*.test.ts", "src/testing", "../shared/domain/**/*.test.ts", "../shared/domain/testing"]
+}

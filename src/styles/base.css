@@ -1,0 +1,72 @@
+/* Base del sitio sobre los tokens de tokens.css: fondo pleno (RF-1 (003) · 1.1–1.3), (RF-3 (002) · 3.1, 3.5, RF-5 (002) · 5.5,
+   5.6, RF-6 (002) · 6.4, D-T11 (002)). `color-scheme` lo declara cada bloque de tema. */
+
+html {
+  background-color: var(--background);
+  color: var(--text);
+  font-family: Nunito, 'Nunito Fallback', system-ui, sans-serif;
+  font-size: 100%;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+/* Los controles no heredan la fuente por defecto: aquí sí, y a 16 px como los párrafos
+   (RF-5 (002) · 5.5). */
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  font-size: 1rem;
+}
+
+p {
+  font-size: 1rem;
+}
+
+/* Nada de texto por debajo de 14 px (RF-5 (002) · 5.6). */
+small {
+  font-size: 0.875rem;
+}
+
+a {
+  color: var(--action-blue);
+}
+
+/* Foco de teclado con el token `focus`, a 3 px del elemento (RF-6 (002) · 6.4, RF-3 (008) · 3.1). */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+/* Los diálogos modales flotan por encima de la cabecera y del contenido, dentro de la ventana
+   (D-T16 (002), RF-6 (002) · 6.6). La forma de bloque llega con blocks.css. */
+[role='dialog'][aria-modal='true'] {
+  position: fixed;
+  inset: 1rem;
+  z-index: 10;
+  box-sizing: border-box;
+  max-width: 32rem;
+  height: fit-content;
+  max-height: calc(100% - 2rem);
+  margin: auto;
+  padding: 1rem;
+  overflow: auto;
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--field-border);
+}
+
+/* Con colores forzados, el sistema elige los colores; el foco sigue visible. */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline-color: Highlight;
+  }
+}

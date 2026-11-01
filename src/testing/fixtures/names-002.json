@@ -1,0 +1,534 @@
+{
+  "/": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Huerta del barrio: agua, alimento"
+      },
+      {
+        "role": "checkbox",
+        "name": "Agua"
+      },
+      {
+        "role": "checkbox",
+        "name": "Alimento"
+      },
+      {
+        "role": "checkbox",
+        "name": "Cobijo"
+      },
+      {
+        "role": "checkbox",
+        "name": "Comunicación"
+      },
+      {
+        "role": "checkbox",
+        "name": "Energía"
+      },
+      {
+        "role": "combobox",
+        "name": "Estado"
+      },
+      {
+        "role": "link",
+        "name": "Archivados"
+      },
+      {
+        "role": "link",
+        "name": "Huerta del barrio"
+      }
+    ],
+    "visitante": [
+      {
+        "role": "button",
+        "name": "Huerta del barrio: agua, alimento"
+      },
+      {
+        "role": "checkbox",
+        "name": "Agua"
+      },
+      {
+        "role": "checkbox",
+        "name": "Alimento"
+      },
+      {
+        "role": "checkbox",
+        "name": "Cobijo"
+      },
+      {
+        "role": "checkbox",
+        "name": "Comunicación"
+      },
+      {
+        "role": "checkbox",
+        "name": "Energía"
+      },
+      {
+        "role": "combobox",
+        "name": "Estado"
+      },
+      {
+        "role": "link",
+        "name": "Huerta del barrio"
+      }
+    ]
+  },
+  "/entrar": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Huerta del barrio: agua, alimento"
+      },
+      {
+        "role": "checkbox",
+        "name": "Agua"
+      },
+      {
+        "role": "checkbox",
+        "name": "Alimento"
+      },
+      {
+        "role": "checkbox",
+        "name": "Cobijo"
+      },
+      {
+        "role": "checkbox",
+        "name": "Comunicación"
+      },
+      {
+        "role": "checkbox",
+        "name": "Energía"
+      },
+      {
+        "role": "combobox",
+        "name": "Estado"
+      },
+      {
+        "role": "link",
+        "name": "Archivados"
+      },
+      {
+        "role": "link",
+        "name": "Huerta del barrio"
+      }
+    ],
+    "visitante": [
+      {
+        "role": "button",
+        "name": "Entrar"
+      },
+      {
+        "role": "link",
+        "name": "¿Olvidaste tu contraseña?"
+      },
+      {
+        "role": "textbox",
+        "name": "Contraseña"
+      },
+      {
+        "role": "textbox",
+        "name": "Correo electrónico"
+      }
+    ]
+  },
+  "/archivados": {
+    "facilitador": [
+      {
+        "role": "link",
+        "name": "Huerta del barrio"
+      },
+      {
+        "role": "link",
+        "name": "Volver al inicio"
+      }
+    ],
+    "visitante": [
+      {
+        "role": "link",
+        "name": "Entrar"
+      }
+    ]
+  },
+  "/olvide": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Enviar enlace"
+      },
+      {
+        "role": "link",
+        "name": "Volver a entrar"
+      },
+      {
+        "role": "textbox",
+        "name": "Correo electrónico"
+      }
+    ],
+    "visitante": [
+      {
+        "role": "button",
+        "name": "Enviar enlace"
+      },
+      {
+        "role": "link",
+        "name": "Volver a entrar"
+      },
+      {
+        "role": "textbox",
+        "name": "Correo electrónico"
+      }
+    ]
+  },
+  "/accion": {
+    "facilitador": [
+      {
+        "role": "link",
+        "name": "Pedir otro enlace"
+      }
+    ],
+    "visitante": [
+      {
+        "role": "link",
+        "name": "Pedir otro enlace"
+      }
+    ]
+  },
+  "/registro/ejemplo": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Cerrar sesión"
+      }
+    ],
+    "visitante": []
+  },
+  "/registro": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Cerrar sesión"
+      }
+    ],
+    "visitante": [
+      {
+        "role": "link",
+        "name": "solicita tu inscripción"
+      }
+    ]
+  },
+  "/solicitar": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Enviar solicitud"
+      },
+      {
+        "role": "checkbox",
+        "name": "Acepto que APICCA trate mis datos (correo, nombre y mensaje) para responder esta solicitud. Versión del texto: 2026-10-07."
+      },
+      {
+        "role": "textbox",
+        "name": "Correo"
+      },
+      {
+        "role": "textbox",
+        "name": "Mensaje"
+      },
+      {
+        "role": "textbox",
+        "name": "Nombre"
+      }
+    ],
+    "visitante": [
+      {
+        "role": "button",
+        "name": "Enviar solicitud"
+      },
+      {
+        "role": "checkbox",
+        "name": "Acepto que APICCA trate mis datos (correo, nombre y mensaje) para responder esta solicitud. Versión del texto: 2026-10-07."
+      },
+      {
+        "role": "textbox",
+        "name": "Correo"
+      },
+      {
+        "role": "textbox",
+        "name": "Mensaje"
+      },
+      {
+        "role": "textbox",
+        "name": "Nombre"
+      }
+    ]
+  },
+  "/facilitacion/invitaciones": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Anular"
+      },
+      {
+        "role": "button",
+        "name": "Copiar enlace"
+      },
+      {
+        "role": "button",
+        "name": "Invitar"
+      },
+      {
+        "role": "button",
+        "name": "Renovar"
+      },
+      {
+        "role": "link",
+        "name": "Cuentas"
+      },
+      {
+        "role": "link",
+        "name": "Invitaciones"
+      },
+      {
+        "role": "link",
+        "name": "Solicitudes"
+      },
+      {
+        "role": "textbox",
+        "name": "Correo"
+      }
+    ],
+    "visitante": []
+  },
+  "/facilitacion/solicitudes": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Aceptar"
+      },
+      {
+        "role": "button",
+        "name": "Descartar"
+      },
+      {
+        "role": "link",
+        "name": "Cuentas"
+      },
+      {
+        "role": "link",
+        "name": "Invitaciones"
+      },
+      {
+        "role": "link",
+        "name": "Solicitudes"
+      }
+    ],
+    "visitante": []
+  },
+  "/facilitacion/cuentas": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Suspender"
+      },
+      {
+        "role": "link",
+        "name": "Cuentas"
+      },
+      {
+        "role": "link",
+        "name": "Invitaciones"
+      },
+      {
+        "role": "link",
+        "name": "Solicitudes"
+      }
+    ],
+    "visitante": []
+  },
+  "/apices/ejemplo/historial": {
+    "facilitador": [],
+    "visitante": [
+      {
+        "role": "link",
+        "name": "Entrar"
+      }
+    ]
+  },
+  "/apices/nuevo": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Crear ápice"
+      },
+      {
+        "role": "button",
+        "name": "Marcar en el mapa"
+      },
+      {
+        "role": "checkbox",
+        "name": "Agua"
+      },
+      {
+        "role": "checkbox",
+        "name": "Alimento"
+      },
+      {
+        "role": "checkbox",
+        "name": "Cobijo"
+      },
+      {
+        "role": "checkbox",
+        "name": "Comunicación"
+      },
+      {
+        "role": "checkbox",
+        "name": "Energía"
+      },
+      {
+        "role": "textbox",
+        "name": "Aportes"
+      },
+      {
+        "role": "textbox",
+        "name": "Descripción"
+      },
+      {
+        "role": "textbox",
+        "name": "Latitud"
+      },
+      {
+        "role": "textbox",
+        "name": "Longitud"
+      },
+      {
+        "role": "textbox",
+        "name": "Necesidades"
+      },
+      {
+        "role": "textbox",
+        "name": "Nombre"
+      }
+    ],
+    "visitante": [
+      {
+        "role": "link",
+        "name": "Entrar"
+      }
+    ]
+  },
+  "/apices/ejemplo/editar": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Guardar cambios"
+      },
+      {
+        "role": "button",
+        "name": "Marcar en el mapa"
+      },
+      {
+        "role": "button",
+        "name": "Quitar ubicación"
+      },
+      {
+        "role": "checkbox",
+        "name": "Agua"
+      },
+      {
+        "role": "checkbox",
+        "name": "Alimento"
+      },
+      {
+        "role": "checkbox",
+        "name": "Cobijo"
+      },
+      {
+        "role": "checkbox",
+        "name": "Comunicación"
+      },
+      {
+        "role": "checkbox",
+        "name": "Energía"
+      },
+      {
+        "role": "combobox",
+        "name": "Estado"
+      },
+      {
+        "role": "radio",
+        "name": "Aproximada (zona de ≈ 1 km)"
+      },
+      {
+        "role": "radio",
+        "name": "Exacta (el punto marcado)"
+      },
+      {
+        "role": "textbox",
+        "name": "Aportes"
+      },
+      {
+        "role": "textbox",
+        "name": "Descripción"
+      },
+      {
+        "role": "textbox",
+        "name": "Latitud"
+      },
+      {
+        "role": "textbox",
+        "name": "Longitud"
+      },
+      {
+        "role": "textbox",
+        "name": "Necesidades"
+      },
+      {
+        "role": "textbox",
+        "name": "Nombre"
+      }
+    ],
+    "visitante": [
+      {
+        "role": "link",
+        "name": "Entrar"
+      }
+    ]
+  },
+  "/apices/ejemplo": {
+    "facilitador": [
+      {
+        "role": "button",
+        "name": "Archivar"
+      },
+      {
+        "role": "button",
+        "name": "Generar imagen"
+      },
+      {
+        "role": "button",
+        "name": "Hacer privado"
+      },
+      {
+        "role": "button",
+        "name": "Subir referencia"
+      },
+      {
+        "role": "link",
+        "name": "Historial"
+      },
+      {
+        "role": "textbox",
+        "name": "Imagen de referencia"
+      },
+      {
+        "role": "textbox",
+        "name": "Texto alternativo"
+      }
+    ],
+    "visitante": []
+  },
+  "/ruta-que-no-existe": {
+    "facilitador": [],
+    "visitante": []
+  }
+}

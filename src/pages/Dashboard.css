@@ -1,0 +1,73 @@
+/* RF-8 (008) · 8.1–8.8, D-10 (008): sin lote envolvente. Las secciones van sobre el fondo, separadas por
+   `clamp(48px, 8vw, 96px)`; arriba `clamp(32px, 5vw, 64px)`; abajo deja `--section-gap` (lots.css). */
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(48px, 8vw, 96px);
+  padding-block-start: clamp(32px, 5vw, 64px);
+  margin-block-end: var(--section-gap);
+}
+
+/* Fila del saludo y «Nuevo ápice»; envuelve cuando no cabe. Es la referencia del panel de avisos (D-T11 (012)). */
+.dashboard__head {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.dashboard__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.dashboard__greeting h1 {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1.15;
+  font-weight: 800;
+}
+
+.dashboard__apices {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dashboard h2 {
+  margin: 0;
+  font-size: clamp(24px, 3.5vw, 30px);
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+/* RF-11 (003) · Mi tablero: el rol bajo el saludo y las acciones en fila que baja de línea a 360 px. */
+.dashboard-role {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* RF-9 (005) · 9.2: el «+» de «Nuevo ápice» toma el color del texto del botón. */
+.dashboard-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dashboard-plus path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}

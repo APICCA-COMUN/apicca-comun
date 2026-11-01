@@ -1,0 +1,126 @@
+/* RF-14 (003) · 14.2, 14.3, RF-16 (003) · 16.1, D-T19 (003), RF-10 (008) · 10.1 a 10.6, D-13 (008): documentación en una
+   columna de 1040 px como máximo, centrada, con el índice de 200 px junto al artículo de 680 px. Bajo 720 px el índice
+   va primero por el orden del DOM (sin `order`). Va directo sobre el fondo, sin lote (RF-10 (005)), con
+   `clamp(48px, 6vw, 96px)` arriba y abajo. Solo tokens de color. */
+.documentation {
+  box-sizing: border-box;
+  max-inline-size: 1040px;
+  margin-inline: auto;
+  padding-block-start: clamp(48px, 6vw, 96px);
+  margin-block-end: clamp(48px, 6vw, 96px);
+  display: flex;
+  flex-direction: column;
+  gap: 48px 64px;
+  overflow-wrap: anywhere;
+}
+
+/* Los bloques del artículo se separan 36 px; `.doc-blocks` no genera caja para que sus hijos sean bloques del artículo. */
+.documentation__article {
+  min-inline-size: 0;
+  max-inline-size: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.documentation__article .doc-blocks {
+  display: contents;
+}
+
+.documentation__article h1 {
+  margin: 0;
+  font-size: clamp(34px, 5vw, 48px);
+  line-height: 1.15;
+  font-weight: 800;
+}
+
+/* El primer párrafo tras el título es la entrada (`lead`). */
+.documentation__article h1 + p {
+  font-size: var(--type-lead-size);
+  line-height: var(--type-lead-line);
+  font-weight: var(--type-lead-weight);
+  color: var(--text-muted);
+}
+
+.documentation__article :is(h2, h3) {
+  margin: 0;
+  font-size: var(--type-doc-heading-size);
+  line-height: var(--type-doc-heading-line);
+  font-weight: var(--type-doc-heading-weight);
+}
+
+.documentation__article p {
+  margin: 0;
+}
+
+.documentation__index ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.documentation__index a {
+  display: inline-block;
+  padding-block: 10px;
+  font-size: 15px;
+}
+
+.documentation__section + .documentation__section {
+  margin-block-start: 1.5rem;
+}
+
+.documentation__section-title {
+  margin-block: 0 0.25rem;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.documentation__index [aria-current='page'] {
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.documentation__crumb {
+  /* Un `span` en bloque y no un `p`: es metadato (RF-5 (002) · 5.6), no un párrafo (RF-5 (002) · 5.5). */
+  display: block;
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-muted);
+}
+
+.documentation__pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  padding-block-start: 24px;
+  border-block-start: 1px solid var(--line);
+}
+
+.documentation__pager a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+@media (min-width: 720px) {
+  .documentation {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .documentation__index {
+    flex: none;
+    inline-size: 200px;
+  }
+
+  .documentation__article {
+    flex: 1;
+  }
+}

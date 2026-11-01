@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Reglas de seguridad de Cloud Storage de APICCA COMÚN.
+//
+// Todo está denegado por defecto (RF-SEG-2). Cada ruta se abre únicamente mediante una
+// spec aprobada en `docs/specs/`, con su regla propia y sus tests en `tests/storage/`.
+// Mientras no exista esa spec, ninguna persona (con o sin sesión) lee, sube ni borra
+// objetos desde el cliente.
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Ninguna regla consulta Firestore (RF-7 (007)): las imágenes de los ápices las entrega el servidor (D-T4 (007)).
+
+    // Subida temporal de una referencia (D-T9 (001)): solo a su propia carpeta, solo crear y borrar,
+    // hasta 5 MiB y solo JPG, PNG o WebP. Nadie la lee: la lee la op del servidor.
+    // RF-15 (001): la persona sube su imagen de referencia.
+    match /uploads/{uid}/{uploadId} {
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && resource == null
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // RF-6 (007): `apices/**` queda cerrado a todo cliente; las referencias las entrega la op `readReference`.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,22 @@
+/* Nunito variable, subconjunto latino de Google Fonts, servida desde el propio sitio
+   (RF-5 (002) · 5.1, D-20 (002), D-T11 (002)). Licencia en src/assets/fonts/OFL.txt. */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 200 1000;
+  font-display: swap;
+  src: url('../assets/fonts/nunito-latin-var.woff2') format('woff2');
+}
+
+/* Arial ajustada a las medidas de Nunito: mientras llega la fuente, el texto ocupa el mismo
+   espacio y no salta al cambiar (RF-5 (002) · 5.3). Medido en Chromium sobre una frase en
+   español: ancho 97,67 %, ascendente 1011/1000 y descendente 353/1000 de Nunito (`hhea`); los
+   `*-override` se escalan con `size-adjust`, por eso van divididos entre 0,9767. */
+@font-face {
+  font-family: 'Nunito Fallback';
+  src: local('Arial');
+  size-adjust: 97.67%;
+  ascent-override: 103.51%;
+  descent-override: 36.14%;
+  line-gap-override: 0%;
+}

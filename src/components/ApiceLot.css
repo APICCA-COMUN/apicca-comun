@@ -1,0 +1,100 @@
+/* RF-6 (005) · 6.3 a 6.6, 6.10, 6.11, D-T4 (005), D-T11 (005): lote ilustrado. Los edificios son bloques `charcoal` en una retícula; los caminos
+   van detrás, en `line`, y no escalan su trazo. El elegido lleva el anillo de foco. Solo colores de tokens. */
+.apice-lot {
+  position: relative;
+  display: grid;
+  gap: 0;
+}
+
+.apice-lot__roads {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  pointer-events: none;
+}
+
+.apice-lot__roads line {
+  stroke: var(--line);
+  stroke-width: 14px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.apice-lot__node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.apice-lot__building {
+  position: relative;
+  justify-self: center;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.5rem;
+  padding: 0.75rem;
+  border-color: var(--charcoal);
+  background-color: var(--charcoal);
+  color: var(--on-charcoal);
+  cursor: pointer;
+}
+
+.apice-lot__building[aria-pressed='true'] {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.apice-lot__axes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.apice-lot__building .pixel-image--empty {
+  border-color: var(--field-border);
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: 0.75rem;
+}
+
+/* Zigzag (RF-6 (005) · 6.10, 6.11): posiciones en porcentaje; caminos de 14 px en `surface`; nodo con borde `charcoal`. */
+.apice-lot--trail .apice-lot__roads line {
+  stroke: var(--surface);
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+}
+
+button.block.apice-lot__building--trail {
+  position: absolute;
+  margin: 0;
+  padding: 0.5rem;
+  border-radius: 10px;
+  transform: translate(-50%, -50%);
+  box-shadow: var(--shadow-raised);
+}
+
+button.block.apice-lot__building--trail[aria-pressed='true']:not(:focus-visible) {
+  outline: none;
+}
+
+button.block.apice-lot__building--trail[aria-pressed='true'] {
+  box-shadow: 0 0 0 4px var(--background), 0 0 0 7px var(--focus), var(--shadow-raised);
+}
+
+@media (forced-colors: active) {
+  button.block.apice-lot__building--trail[aria-pressed='true'] {
+    outline-color: Highlight;
+    outline-offset: 4px;
+  }
+}
+
+@media (forced-colors: active) {
+  .apice-lot__roads line {
+    stroke: transparent;
+  }
+}

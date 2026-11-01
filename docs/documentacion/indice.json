@@ -1,0 +1,72 @@
+{
+  "secciones": [
+    {
+      "titulo": "Empezar",
+      "articulos": [
+        {
+          "slug": "que-es-apicca",
+          "archivo": "01-que-es-apicca.md"
+        },
+        {
+          "slug": "como-entrar",
+          "archivo": "02-como-entrar.md"
+        },
+        {
+          "slug": "solicitar-inscripcion",
+          "archivo": "03-solicitar-inscripcion.md"
+        },
+        {
+          "slug": "tu-primer-apice",
+          "archivo": "04-tu-primer-apice.md"
+        }
+      ]
+    },
+    {
+      "titulo": "Conceptos",
+      "articulos": [
+        {
+          "slug": "apice",
+          "archivo": "05-apice.md"
+        },
+        {
+          "slug": "ejes",
+          "archivo": "06-ejes.md"
+        }
+      ]
+    },
+    {
+      "titulo": "Prototipar",
+      "articulos": [
+        {
+          "slug": "ficha-del-apice",
+          "archivo": "07-ficha-del-apice.md"
+        },
+        {
+          "slug": "imagen-pixelada",
+          "archivo": "08-imagen-pixelada.md"
+        },
+        {
+          "slug": "historial",
+          "archivo": "09-historial.md"
+        },
+        {
+          "slug": "mi-tablero",
+          "archivo": "10-mi-tablero.md"
+        }
+      ]
+    },
+    {
+      "titulo": "Comunidad",
+      "articulos": [
+        {
+          "slug": "facilitacion",
+          "archivo": "11-facilitacion.md"
+        },
+        {
+          "slug": "constitucion-y-propuestas",
+          "archivo": "12-constitucion-y-propuestas.md"
+        }
+      ]
+    }
+  ]
+}

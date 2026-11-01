@@ -1,0 +1,61 @@
+/* RF-7 (008) · 7.2–7.4: campos separados 18 px, etiquetas de 14/700 y el ojo de 44 px dentro del campo de 48 px.
+   RF-5 (005) · Entrar: el ojo va dentro del campo de contraseña, a la derecha; «Entrar» ocupa todo el ancho y el error
+   lleva su ícono antes del texto. Solo colores de tokens. */
+.sign-in-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sign-in-form label {
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sign-in-form.sign-in-form.sign-in-form > label {
+  margin-block-end: 0;
+}
+
+.sign-in-form__password {
+  position: relative;
+}
+
+.sign-in-form__password input {
+  padding-inline-end: 3.25rem;
+}
+
+/* El campo mide 48 px con 2 px de borde inferior: el ojo de 44 px queda centrado en el área útil. */
+.sign-in-form__reveal.icon-button {
+  position: absolute;
+  inset-block-end: 2px;
+  inset-inline-end: 2px;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+.sign-in-form__glyph {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sign-in-form > button[type='submit'] {
+  inline-size: 100%;
+}
+
+.sign-in-form__error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--brand-red);
+  font-size: 14px;
+  font-weight: 700;
+}

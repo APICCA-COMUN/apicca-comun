@@ -1,0 +1,46 @@
+/* RF-4 (012), RNF-3 (012): campana de 44 px (`icon-button`) con el contador a su lado, como el lienzo de Mi tablero. */
+.notice-bell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notice-bell__count {
+  font-size: var(--type-lead-size);
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* El panel cae bajo la fila del saludo sin empujarla. RNF-5 (012), D-T11 (012): la campana no es su referencia,
+   porque la fila la pone a la derecha en pantallas anchas y al inicio en las angostas. El panel se ancla a la fila
+   (`.dashboard__head`, posicionada) y se alinea a su borde final, el del contenido; así queda dentro de la ventana en
+   todo ancho. No hereda el `max-width: 100%` de `.block`, que lo dejaba del ancho del botón. */
+.notice-panel {
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-end: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  inline-size: min(360px, calc(100vw - 32px));
+  max-inline-size: none;
+  padding: 1.5rem;
+}
+
+.notice-panel p {
+  margin: 0;
+}
+
+.notice-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notice-panel__item--unread {
+  font-weight: 800;
+}

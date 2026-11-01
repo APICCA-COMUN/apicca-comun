@@ -1,0 +1,41 @@
+/* RF-9 (003) · 9.1, 9.2, 9.5, D-T1 (003), D-T9 (003) · Caminos y nodos: trazos de 15 px con extremos y uniones redondeados,
+   `surface` sobre `background` o `line` sobre `surface`; nodos de 18 px en `surface` con aro de 4 px `charcoal`.
+   Sin animación. Con colores forzados el trazo pasa a CanvasText y el nodo conserva su aro. Solo tokens. */
+.road-segment {
+  display: block;
+  overflow: visible;
+  stroke: var(--surface);
+  stroke-width: 15px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.road-segment path {
+  vector-effect: non-scaling-stroke;
+}
+
+.road-segment--on-surface {
+  stroke: var(--line);
+}
+
+.node {
+  display: inline-block;
+  box-sizing: border-box;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 4px solid var(--charcoal);
+  border-radius: 50%;
+  background-color: var(--surface);
+}
+
+@media (forced-colors: active) {
+  .road-segment {
+    stroke: CanvasText;
+  }
+
+  .node {
+    border-color: CanvasText;
+    background-color: Canvas;
+  }
+}

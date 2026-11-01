@@ -1,0 +1,27 @@
+/* RF-7 (008) · 7.6, D-10 (008): ayudas de Entrar bajo una línea, centradas. Solo colores de tokens. */
+.login__help {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-block-start: 8px;
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.login__help p {
+  margin: 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.login__help a {
+  color: var(--action-blue);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.login__help p a {
+  color: var(--text);
+}

@@ -1,0 +1,118 @@
+/* RF-7 (005) · 7.1, RF-8 (005) · 8.2, D-T8 (005): el panel va a la derecha del lote desde 900 px y debajo en pantallas
+   angostas; la barra de filtros flota sobre el borde inferior del lote. */
+.apice-lot-section {
+  display: grid;
+  gap: 1.5rem;
+  margin-block-end: var(--section-gap);
+}
+
+/* RF-7 (005) · 7.12, RF-8 (005) · 8.5, D-T12 (005): en Prototipado el lote y el panel van lado a lado con 32 px de
+   separación; el lote cede el ancho (`999`) y el panel no baja de 320 px, así que debajo de 900 px el panel baja. */
+.apice-lot-section--always {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 2rem;
+}
+
+.apice-lot-section--always > .apice-lot-section__stage {
+  flex: 999 1 560px;
+  min-inline-size: 0;
+}
+
+.apice-lot-section--always > .apice-lot-section__side {
+  flex: 1 1 320px;
+  align-content: start;
+}
+
+@media (min-width: 900px) {
+  .apice-lot-section:not(.apice-lot-section--always):has(.apice-lot-section__side) {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+}
+
+.apice-lot-section__stage {
+  position: relative;
+  padding-block-end: 1.75rem;
+}
+
+.apice-lot-section__lot {
+  padding-block-end: 2.5rem;
+}
+
+.apice-lot-section__toolbar--floating {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.apice-lot-section__toolbar--floating > * {
+  pointer-events: auto;
+}
+
+.apice-lot-section__side {
+  display: grid;
+  gap: 1rem;
+}
+
+.apice-lot-section__discard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.apice-lot-section__discard p {
+  inline-size: 100%;
+  margin: 0;
+}
+
+/* RF-8 (005) · 8.2: los filtros de eje, centrados sobre el borde inferior del lote, y debajo el estado y «Quitar filtros». */
+.apice-lot-section--always .apice-lot-section__stage {
+  padding-block-end: 0;
+}
+
+/* Deja bajo el lote el sitio de las dos filas de filtros, para que no tapen edificios. */
+.apice-lot-section--always .apice-lot-section__lot {
+  padding-block-end: 6.5rem;
+}
+
+.apice-lot-section--always .apice-lot-section__toolbar--floating {
+  inset-block-end: 20px;
+}
+
+.apice-lot-section__toolbar--floating form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.apice-lot-section__toolbar--floating form > fieldset {
+  display: flex;
+  flex-basis: 100%;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.apice-lot-section__toolbar--floating .filter-axis {
+  background-color: var(--surface);
+  box-shadow: var(--shadow-block);
+}
+
+.apice-lot-section__toolbar--floating .filter-axis[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 3px var(--text), var(--shadow-block);
+}
+
+/* RF-6 (005) · 6.12: el lote vacío conserva su alto, para que los filtros queden sobre su borde inferior. */
+.apice-lot-section__lot--empty {
+  min-block-size: 560px;
+  box-sizing: content-box;
+}

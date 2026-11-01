@@ -1,0 +1,107 @@
+/* RF-10 (003) · 10.1, RF-4 (005) · 4.2, 4.3, D-T9 (005) · Mapa ilustrado del inicio: lienzo cuadrado de 100 × 100 con
+   los edificios centrados en sus puntos, caminos `surface` de 14 px, nodos y dos hebras al 55 %. Solo colores de tokens. */
+.map-illustration {
+  position: relative;
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 560px;
+  aspect-ratio: 1 / 1;
+}
+
+.map-illustration__lines {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: visible;
+  fill: none;
+}
+
+.map-illustration__lines path {
+  stroke-width: 14px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.map-illustration__strand {
+  stroke-opacity: 0.55;
+}
+
+.map-illustration__strand--agua { stroke: var(--axis-agua-stroke); }
+.map-illustration__strand--alimento { stroke: var(--axis-alimento-stroke); }
+.map-illustration__strand--cobijo { stroke: var(--axis-cobijo-stroke); }
+.map-illustration__strand--energia { stroke: var(--axis-energia-stroke); }
+.map-illustration__strand--comunicacion { stroke: var(--axis-comunicacion-stroke); }
+
+.map-illustration__node {
+  position: absolute;
+  display: flex;
+  transform: translate(-50%, -50%);
+}
+
+.map-illustration__building {
+  --pixel-fill: var(--axis-agua-fill);
+  --pixel-stroke: var(--axis-agua-stroke);
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 22%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius-block);
+  box-shadow: var(--shadow-raised);
+}
+
+.map-illustration__building .axis-icon {
+  inline-size: 50%;
+  block-size: 50%;
+  color: var(--charcoal);
+}
+
+.map-illustration__building .axis-icon path {
+  fill: var(--charcoal);
+}
+
+.map-illustration__building--agua { background-color: var(--axis-agua-fill); }
+.map-illustration__building--alimento { background-color: var(--axis-alimento-fill); }
+.map-illustration__building--cobijo { background-color: var(--axis-cobijo-fill); }
+.map-illustration__building--energia { background-color: var(--axis-energia-fill); }
+.map-illustration__building--comunicacion {
+  --pixel-fill: var(--axis-comunicacion-fill);
+  --pixel-stroke: var(--axis-comunicacion-stroke);
+  background-color: var(--axis-comunicacion-fill);
+}
+
+.map-illustration__building--pixel {
+  padding: 8%;
+  background-color: var(--charcoal);
+}
+
+.map-illustration__pixels {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.map-illustration__pixel[data-cell='sky'] { background-color: var(--line); }
+.map-illustration__pixel[data-cell='s'] { background-color: var(--axis-cobijo-stroke); }
+.map-illustration__pixel[data-cell='w'] { background-color: var(--surface); }
+.map-illustration__pixel[data-cell='a'] { background-color: var(--pixel-fill); }
+.map-illustration__pixel[data-cell='b'] { background-color: var(--pixel-stroke); }
+
+/* Colores forzados (RNF-1 (005)): las hebras pueden desaparecer sin perder información; el edificio conserva su borde. */
+@media (forced-colors: active) {
+  .map-illustration__strand {
+    stroke: transparent;
+  }
+
+  .map-illustration__building {
+    border: 1px solid CanvasText;
+  }
+}

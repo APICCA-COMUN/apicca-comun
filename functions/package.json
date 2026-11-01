@@ -1,0 +1,28 @@
+{
+  "name": "apicca-functions",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Cloud Functions de APICCA COMÚN (plan 001, §4.2)",
+  "main": "lib/functions/src/index.js",
+  "engines": {
+    "node": "24"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "gcp-build": "",
+    "check": "tsc --noEmit -p tsconfig.test.json",
+    "smoke:openrouter": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/openrouter-smoke.js",
+    "bootstrap": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/bootstrap-facilitator.js",
+    "migrate-database": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/migrate-database.js",
+    "apply-auth-templates": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/apply-auth-templates.js"
+  },
+  "dependencies": {
+    "firebase-admin": "14.5.0",
+    "firebase-functions": "7.4.0",
+    "sharp": "0.35.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "typescript": "7.0.2"
+  }
+}

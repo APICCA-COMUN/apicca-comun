@@ -1,0 +1,22 @@
+/* RF-12 (003) · 12.3, RF-4 (003) · 4.5, D-T18 (003): filtros de eje como botones de ícono redondos de 44 × 44 px.
+   El estado presionado no depende solo del color: lleva un anillo del color del texto y el ícono relleno. */
+.filter-axis {
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: 50%;
+}
+
+.filter-axis[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 3px var(--text);
+  background-color: var(--background);
+  font-weight: 800;
+}
+
+.filter-axis[aria-pressed='true'] .axis-icon {
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+fieldset > .filter-axis + .filter-axis {
+  margin-inline-start: 0.5rem;
+}

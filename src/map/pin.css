@@ -1,0 +1,115 @@
+/* RF-8 (002) · 8.1 a 8.6, RF-6 (002) · 6.1, RNF-1 (002), D-T8 (002), D-T9 (002), D-T20 (002) · Mapa con la
+   identidad: el panel de teselas se tinta con `--map-tint` (lo genera `gen-tokens` desde el dominio); detrás queda
+   el fondo del tema. La atribución, los controles y los emergentes quedan fuera del tintado y toman los tokens en
+   lugar de los colores de `leaflet.css`. El pin es un bloque `charcoal` con los íconos de los ejes; su foco usa el
+   token `focus` y sube por encima de los demás. Solo colores de tokens. */
+
+.apicca-map {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+}
+
+.apicca-map--picker {
+  height: 320px;
+}
+
+.leaflet-container {
+  background: var(--background);
+  font-family: inherit;
+}
+
+.leaflet-container a {
+  color: var(--action-blue);
+}
+
+.leaflet-tile-pane {
+  filter: var(--map-tint);
+}
+
+/* Atribución (RF-8 (002) · 8.6): fuera del panel tintado, sobre `surface`. */
+.leaflet-container .leaflet-control-attribution {
+  background: var(--surface);
+  color: var(--text);
+  border-top-left-radius: var(--radius-block);
+  padding: 2px 8px;
+}
+
+/* Controles de zoom (RF-6 (002) · 6.1): el contenedor lleva la clase `block`. */
+.leaflet-bar.block {
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-block);
+  box-shadow: var(--shadow-block);
+  overflow: hidden;
+}
+
+.leaflet-bar a,
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+  background: var(--surface);
+  color: var(--text);
+  border-bottom-color: var(--field-border);
+}
+
+.leaflet-bar a.leaflet-disabled {
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+/* Emergentes. */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-block);
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  color: var(--text);
+}
+
+/* Pin (RF-8 (002) · 8.3, D-T9 (002)): `6 + 14·n` por 20 px, con íconos de 12 px. Leaflet pone el tamaño. */
+.apicca-pin {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 3px 2px;
+  border: 1px solid var(--charcoal);
+  border-radius: 6px;
+  background: var(--charcoal);
+  box-shadow: var(--shadow-block);
+}
+
+.apicca-pin .axis-icon {
+  display: block;
+  flex: none;
+  margin: 0 1px;
+}
+
+/* Foco (RF-8 (002) · 8.5): por encima del `z-index` que Leaflet escribe en línea. */
+.apicca-pin:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  z-index: 10000 !important;
+}
+
+/* Colores forzados (RNF-1 (002)): sin tintado; el pin y sus íconos con los colores del sistema. */
+@media (forced-colors: active) {
+  .leaflet-tile-pane {
+    filter: none;
+  }
+
+  .apicca-pin {
+    background: Canvas;
+    border-color: CanvasText;
+  }
+
+  .apicca-pin .axis-icon {
+    color: CanvasText;
+    --axis-fill: Canvas;
+  }
+
+  .apicca-pin:focus-visible {
+    outline-color: Highlight;
+  }
+}

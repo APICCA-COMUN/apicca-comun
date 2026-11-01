@@ -1,0 +1,47 @@
+# Firebase (caché y secrets locales)
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+._*
+
+# IDE
+.vscode/
+.idea/
+.cursor/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# APICCA
+dist/
+# Build de las pruebas de navegador (spec 002, D-T13)
+dist-browser/
+dist-browser-par/
+.env*
+lib/
+firebase.paralelo.json
+firebase.despliegue.json
+.emulator-data/
+*-debug.log
+lib-scripts/
+
+# Documentos internos: viven solo en la máquina local, fuera del repo público (RF-8 (013) v0.5).
+/docs/specs/
+/docs/constitution.md
+/docs/operacion.md
+/docs/despliegues.md
+
+# Diferenciales de las capturas de Vitest (T-8.2).
+.vitest-attachments/

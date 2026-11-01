@@ -1,0 +1,56 @@
+/* RF-4 (002) · 4.1, 4.2, 4.5, D-T5 (002): relleno y trazo de cada eje con sus tokens; el trazo es
+   `currentColor`. Con colores forzados, el relleno pasa a `Canvas` y el trazo a `CanvasText`: la forma
+   sigue identificando al eje. Solo colores de tokens (D-T20 (002)). */
+
+.axis-icon {
+  flex: none;
+  vertical-align: middle;
+}
+
+.axis-icon path {
+  fill: var(--axis-fill);
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.axis-icon--agua {
+  --axis-fill: var(--axis-agua-fill);
+  color: var(--axis-agua-stroke);
+}
+
+.axis-icon--alimento {
+  --axis-fill: var(--axis-alimento-fill);
+  color: var(--axis-alimento-stroke);
+}
+
+.axis-icon--cobijo {
+  --axis-fill: var(--axis-cobijo-fill);
+  color: var(--axis-cobijo-stroke);
+}
+
+.axis-icon--energia {
+  --axis-fill: var(--axis-energia-fill);
+  color: var(--axis-energia-stroke);
+}
+
+.axis-icon--comunicacion {
+  --axis-fill: var(--axis-comunicacion-fill);
+  color: var(--axis-comunicacion-stroke);
+}
+
+.axis-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+@media (forced-colors: active) {
+  .axis-icon {
+    color: CanvasText;
+  }
+
+  .axis-icon path {
+    fill: Canvas;
+  }
+}

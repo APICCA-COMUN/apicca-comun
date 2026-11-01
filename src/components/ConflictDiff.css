@@ -1,0 +1,6 @@
+/* RF-2 (002) · 2.1: el texto de cada versión conserva sus saltos de línea. La diferencia se dice con
+   palabras («Vigente», «Tuyo»), no con color. */
+
+.conflict-text {
+  white-space: pre-wrap;
+}

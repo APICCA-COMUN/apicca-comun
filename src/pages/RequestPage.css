@@ -1,0 +1,6 @@
+/* RF-2 (002) · 2.1: el campo trampa de /solicitar queda fuera de la vista (D-T16 (001)). */
+
+.honeypot {
+  position: absolute;
+  left: -10000px;
+}

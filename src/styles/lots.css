@@ -1,0 +1,121 @@
+/* Lotes (RF-3 (003) · 3.2, D-T1 (003), D-T4 (003), D-T20 (003)): superficie de apoyo del mapa, las listas agrupadas y los
+   formularios principales. Fondo `surface`, radio de `radius-lot`, borde `line` y ninguna sombra (RF-2 (005), D-T1 (005)).
+   Solo colores de tokens. */
+
+.lot {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lot);
+  box-shadow: none;
+  background-color: var(--surface);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+:is(article, section, div, aside).lot {
+  padding: 1rem;
+}
+
+/* Lote de acceso (RF-13 (003) · 13.1, D-T19 (003)): el formulario de entrar y registro mide 440 px como máximo y queda
+   centrado. En 360 px ocupa el ancho disponible. */
+.lot--access {
+  width: 100%;
+  max-width: 440px;
+  margin-inline: auto;
+}
+
+/* RF-7 (008) · 7.1, 7.2: margen de `clamp(48px, 8vw, 96px)` arriba y abajo y título fluido. */
+main > .lot.lot--access {
+  margin-block: clamp(48px, 8vw, 96px);
+}
+
+.lot--access h1 {
+  font-size: clamp(28px, 4vw, 34px);
+  font-weight: 800;
+}
+
+/* Aire entre secciones (RF-16 (003) · 16.1, D-T19 (003)): de 64 a 140 px según el ancho de la ventana
+   (64 px hasta unos 640 px y 140 px desde 1400 px; RF-6 (008) · 6.1). Lo usan las secciones del inicio y el lote de una página. */
+:root {
+  --section-gap: clamp(64px, 10vw, 140px);
+}
+
+/* Columna de la página (RF-1 (005), D-T2 (005)): 1200 px como máximo, centrada, con 16 a 48 px a cada lado. */
+main {
+  box-sizing: content-box;
+  max-inline-size: 1200px;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 4vw, 48px);
+}
+
+main > .home__section,
+main > .home__closing {
+  margin-block: var(--section-gap);
+}
+
+main > .lot {
+  margin-block-end: var(--section-gap);
+}
+
+/* Colores forzados (RNF-1 (003), D-T20 (003)): el lote conserva su borde de 1 px, con el color del sistema. */
+@media (forced-colors: active) {
+  .lot {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Contraste aumentado (RNF-1 (003), D-T20 (003)): borde de 2 px del color del texto. */
+@media (prefers-contrast: more) {
+  .lot {
+    border: 2px solid var(--text);
+  }
+}
+
+/* RF-9 (008) · 9.1 a 9.3, D-13 (008): Prototipado va sin lote, con 24 px entre bloques y `clamp(32px, 6vw, 64px)` arriba.
+   La fila del título lleva el contador y las acciones a la derecha y envuelve cuando no caben. */
+.prototyping {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-block-start: clamp(32px, 6vw, 64px);
+  margin-block-end: var(--section-gap);
+}
+
+.prototyping .apice-lot-section {
+  margin-block-end: 0;
+}
+
+.prototyping__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+}
+
+.prototyping__head h1 {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.prototyping__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
+.prototyping .filters-count.block {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0.25rem 0.75rem;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+}

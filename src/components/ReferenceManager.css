@@ -1,0 +1,6 @@
+/* RF-2 (002) · 2.1: tope de tamaño de la miniatura de una referencia. */
+
+.reference-image {
+  max-width: 160px;
+  max-height: 160px;
+}

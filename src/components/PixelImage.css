@@ -1,0 +1,15 @@
+/* RF-2 (002) · 2.1, RF-7 (002) · 7.3: la imagen pixelada no se suaviza y el marcador sin imagen
+   mantiene el mismo cuadro. Solo colores de tokens o currentColor (D-T20 (002)). */
+
+.pixel-image {
+  box-sizing: border-box;
+  width: 128px;
+  height: 128px;
+  image-rendering: pixelated;
+}
+
+.pixel-image--empty {
+  display: grid;
+  place-items: center;
+  border: 2px dashed currentColor;
+}

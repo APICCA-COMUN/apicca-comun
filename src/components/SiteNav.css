@@ -1,0 +1,32 @@
+/* RF-7 (003) · 7.4, RF-4 (008) · 4.2, 4.3: enlaces de 16/700 y 44 px; la sección vigente se marca con peso 800 y
+   subrayado de 3 px a 8 px, no solo con el color. */
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.menu-link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--size-icon-control);
+  padding-inline: 10px;
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.menu-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.menu-link[aria-current='page'] {
+  color: var(--text);
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 8px;
+}

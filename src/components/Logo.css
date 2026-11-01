@@ -1,0 +1,30 @@
+/* RF-1 (002) · 1.6 y RF-2 (003) · 2.1–2.4: capas del logo sin placa; la variante monocroma es la 1.6. */
+.logo {
+  display: inline-block;
+  line-height: 0;
+}
+
+.logo__svg {
+  display: block;
+  height: 32px;
+  width: auto;
+}
+
+.logo__layer--logo-gray {
+  fill: var(--logo-gray);
+}
+
+.logo__layer--logo-red {
+  fill: var(--logo-red);
+}
+
+.logo__layer--logo-blue {
+  fill: var(--logo-blue);
+}
+
+@media (forced-colors: active) {
+  .logo .logo__layer {
+    forced-color-adjust: none;
+    fill: CanvasText;
+  }
+}

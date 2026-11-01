@@ -1,0 +1,132 @@
+/* RF-15 (003) · 15.1, RF-16 (003) · 16.1, D-T17 (003), D-T19 (003), RF-11 (005): principios en tarjetas unidas por un
+   camino vertical, directo sobre el fondo y sin lote.
+   Solo tokens de color. */
+.constitution {
+  box-sizing: border-box;
+  max-inline-size: 800px;
+  margin-inline: auto;
+  padding-block-start: clamp(48px, 6vw, 96px);
+  margin-block-end: clamp(48px, 6vw, 96px);
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  overflow-wrap: anywhere;
+}
+
+.constitution > * {
+  margin-block: 0;
+}
+
+.constitution__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.constitution__head h1 {
+  margin: 0;
+  font-size: clamp(32px, 5vw, 44px);
+  line-height: 1.15;
+  font-weight: 800;
+}
+
+.constitution__lead {
+  margin: 0;
+  font-size: var(--type-lead-size);
+  line-height: var(--type-lead-line);
+  font-weight: var(--type-lead-weight);
+  color: var(--text-muted);
+}
+
+/* RF-11 (008) · 11.5: un camino vertical continuo de 14 px a 14 px del borde, con un nodo de 18 px por tarjeta. */
+.constitution__list {
+  position: relative;
+  padding-inline-start: 50px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.constitution__list::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 14px;
+  inset-block: 32px;
+  inline-size: 14px;
+  border-radius: 999px;
+  background-color: var(--surface);
+  box-shadow: var(--shadow-block);
+}
+
+.constitution__item {
+  position: relative;
+}
+
+.constitution__node {
+  position: absolute;
+  inset-inline-start: -38px;
+  inset-block-start: 24px;
+  z-index: 2;
+  display: flex;
+}
+
+.constitution__item > .section-block {
+  position: relative;
+  z-index: 1;
+}
+
+/* RF-4 (004), RF-5 (004): avisos, formulario del facilitador, acciones por sección y lista de documentos. */
+.constitution__notice {
+  color: var(--text-muted);
+}
+
+/* RF-11 (008) · 11.6: el pie va alineado con las tarjetas. */
+.constitution__updated {
+  margin: 0;
+  padding-inline-start: 50px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.constitution__actions,
+.constitution__form,
+.constitution__open {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+
+.constitution__form {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.constitution__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  inline-size: 100%;
+}
+
+.constitution__error {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.constitution__documents ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.constitution__document p {
+  margin-block: 0.5rem 0;
+  color: var(--text-muted);
+}
+
+.constitution__document time {
+  margin-inline-start: 0.75rem;
+  color: var(--text-muted);
+}

@@ -1,0 +1,28 @@
+# RF-8 (013), RNF-1 (013), D-T10 (013): camino reducido en cada push. RF-1 (014), RF-3 (014), D-T5 (014): auditoría. Sin secretos ni proyecto de producción;
+# las pruebas de emulador y de navegador quedan aplazadas (D-5 (013)).
+name: CI
+
+on:
+  push:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+      - run: npm ci
+      - run: npm --prefix functions ci
+      # Antes de check, para que el aviso llegue aunque falle otra cosa; necesita red (R1 (014)).
+      - run: npm run audit-deps
+      - run: npm run check
+      # `check-chromium.test.ts` (RNF-5 (002)) da por hecho que Chromium está instalado; sin dependencias del sistema.
+      - run: npx playwright install chromium
+      - run: npm test
+      # rf-coverage corre solo en local (`npm run verify`): las specs no viajan en el repo público (RF-8 (013) v0.5).

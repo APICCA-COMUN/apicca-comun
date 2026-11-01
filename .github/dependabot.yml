@@ -1,0 +1,38 @@
+# RF-6 (014), D-2 (014), D-T6 (014): revisión semanal. Las menores y los parches llegan agrupados en un PR por
+# directorio; las mayores se ignoran porque se suben a mano, una por commit (RF-4 (014)). Las actualizaciones de
+# seguridad y las alertas se activan en la configuración del repositorio.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      menores-sitio:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
+  - package-ecosystem: npm
+    directory: /functions
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      menores-functions:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

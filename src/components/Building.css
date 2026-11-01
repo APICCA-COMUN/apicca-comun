@@ -1,0 +1,30 @@
+/* RF-7 (002) · 7.1 a 7.4, D-T10 (002): el edificio es un bloque `charcoal`; los íconos van arriba y la
+   imagen debajo, sin suavizado (PixelImage.css). El marcador sin imagen va sobre `surface` para que su
+   texto tenga el contraste de `text`. Solo colores de tokens (D-T20 (002)). */
+
+.building {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  border-color: var(--charcoal);
+  background-color: var(--charcoal);
+}
+
+.building__axes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.building .pixel-image {
+  flex: none;
+}
+
+.building .pixel-image--empty {
+  border-color: var(--field-border);
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
+}
