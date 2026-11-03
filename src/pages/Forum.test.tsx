@@ -21,6 +21,7 @@ const sourceOf = (all = THREADS): ForumSource & { axes: Array<Axis | null> } => 
       return { threads: all.filter((t) => axis === null || t.axis === axis), next: null };
     },
     fetchThread: async () => null,
+    fetchOlder: async () => ({ messages: [], before: null }),
   };
 };
 
@@ -77,6 +78,7 @@ describe('Forum', () => {
         return options.after ? { threads: [thread('c', 'Tercero', 'agua')], next: null } : { threads: THREADS, next: { id: 'cursor' } as never };
       },
       fetchThread: async () => null,
+      fetchOlder: async () => ({ messages: [], before: null }),
     };
     setup(VISITOR, source);
     await userEvent.click(await screen.findByRole('button', { name: 'Ver más hilos' }));

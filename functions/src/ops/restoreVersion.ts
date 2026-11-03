@@ -1,3 +1,4 @@
+// RF-2 (018), D-T6 (018), D-T7 (018): cobra una unidad del cupo diario de ediciones.
 // RF-12 (001), RF-9 (001), RF-2 (016) · Restaurar una versión anterior copiándola como versión nueva, con las reglas de edición y conflicto.
 import { canSetLocation } from '../../../shared/domain/access';
 import { requireActor } from '../access';
@@ -6,6 +7,7 @@ import type { Location, Point } from '../../../shared/domain/location';
 import type { DocumentSnapshot } from 'firebase-admin/firestore';
 import type { Ctx } from '../context';
 import { ApiError } from '../errors';
+import { takeDailySlot } from '../rateLimit';
 import { readId, readInteger } from './apiceInput';
 import { checkEditable, toEditResult, type EditResult } from './editApice';
 
@@ -46,6 +48,7 @@ export async function handleRestoreVersion(ctx: Ctx, payload: Record<string, unk
     restoredFromN: n,
     requireActiveUid: actor.uid,
     check: checkEditable(actor, location),
+    charge: (tx) => takeDailySlot(ctx, tx, 'edit', actor.uid),
   });
   return toEditResult(result);
 }

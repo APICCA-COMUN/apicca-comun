@@ -2,6 +2,7 @@
 // origen y 200 al día en total. El origen se guarda como HMAC de la IP, nunca en claro, y cada
 // documento lleva `expiresAt` para que la política TTL de Firestore lo retire sola.
 // RF-5 (016), RF-7 (016): también cobra las cuotas diarias por persona y las lecturas anónimas por hora.
+// RF-2 (018), D-2 (018), D-T6 (018): cuota diaria de ediciones (`edit`), compartida entre cinco acciones.
 // RF-3 (017), D-T3 (017): las cuotas de escritura se cobran dentro de la transacción que escribe.
 import { createHmac } from 'node:crypto';
 import type { DocumentSnapshot, Transaction } from 'firebase-admin/firestore';
@@ -84,7 +85,7 @@ export function takeThreadSlot(ctx: Ctx, tx: Transaction, uid: string): Promise<
 }
 
 /** RF-7 (016) · 7.1, D-5 (016), D-7 (016): topes por persona y por día de cada tipo de escritura. */
-export const DAILY_QUOTAS = { reply: 50, comment: 50, apice: 10, upload: 30 } as const;
+export const DAILY_QUOTAS = { reply: 50, comment: 50, apice: 10, upload: 30, edit: 100 } as const;
 
 const dailyRule = (kind: keyof typeof DAILY_QUOTAS, uid: string): Rule => ({ key: `daily-${kind}-${uid}`, limit: DAILY_QUOTAS[kind], windowMs: DAY_MS });
 

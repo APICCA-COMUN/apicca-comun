@@ -1,4 +1,5 @@
 // T-2.15: restaurar una versión anterior como versión nueva (RF-12 (001), RF-14 (001)).
+// RF-2 (018), D-T7 (018): cupo de ediciones.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../testing';
 import { codeOf, VALID } from '../testing/apiceKit';
@@ -49,5 +50,30 @@ describe('restoreVersion', () => {
     expect(await codeOf(handleRestoreVersion(ctx, { id, n: 9, baseVersion: 3 }, beto))).toBe('invalid-request');
     expect(await codeOf(handleRestoreVersion(ctx, { id, n: 1, baseVersion: 3 }, null))).toBe('unauthenticated');
     expect(await codeOf(handleRestoreVersion(ctx, { id, n: 1, baseVersion: 3 }, susi))).toBe('account-suspended');
+  });
+});
+
+const seedEditQuota = (uid: string, count: number) =>
+  ctx.db.doc(`rateLimits/daily-edit-${uid}`).set({ count, windowStart: ctx.now(), expiresAt: new Date(ctx.now().getTime() + 24 * 3600 * 1000) });
+const editCount = async (uid: string) => (await ctx.db.doc(`rateLimits/daily-edit-${uid}`).get()).get('count') as number | undefined;
+
+describe('restoreVersion · cupo de ediciones (RF-2 (018))', () => {
+  it('RF-2 (018) · 2.1: restaurar cobra una unidad del cupo diario de ediciones', async () => {
+    const before = await editCount(beto); // ya editó una vez en beforeEach
+    await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 3 }, beto);
+    expect(await editCount(beto)).toBe((before ?? 0) + 1);
+  });
+
+  it('RF-2 (018) · 2.2: con el cupo agotado responde rate-limited y no escribe', async () => {
+    await seedEditQuota(beto, 100);
+    expect(await codeOf(handleRestoreVersion(ctx, { id, n: 1, baseVersion: 3 }, beto))).toBe('rate-limited');
+    expect((await ctx.db.doc(`apices/${id}`).get()).get('version')).toBe(3);
+    expect(await editCount(beto)).toBe(100);
+  });
+
+  it('RF-2 (018) · 2.3: un conflicto de versión no cobra', async () => {
+    await seedEditQuota(beto, 9);
+    expect(await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 2 }, beto)).toMatchObject({ ok: false, conflict: true });
+    expect(await editCount(beto)).toBe(9);
   });
 });

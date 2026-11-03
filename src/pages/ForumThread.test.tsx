@@ -1,8 +1,9 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { QueryDocumentSnapshot } from 'firebase/firestore';
 import { SessionProvider, VISITOR, type SessionState } from '../app/session';
-import type { ForumMessage, ForumSource, ForumThread as Thread } from '../data/forum';
+import type { ForumMessage, ForumSource, MessagePage, ForumThread as Thread } from '../data/forum';
 import { expectBlocks } from '../testing/expectBlocks';
 import { fakeClient } from '../testing/facilitationDoubles';
 import { ForumThread } from './ForumThread';
@@ -18,17 +19,27 @@ const MESSAGES: ForumMessage[] = [
   { id: 'm2', authorUid: 'u-be', authorUsername: 'beto', text: 'Prefiero **tanques**.', createdAt: Date.UTC(2026, 9, 10, 16), editedAt: Date.UTC(2026, 9, 10, 17), isArchived: false, isOpening: false },
 ];
 
-function sourceOf(head: Thread | null = HEAD, messages = MESSAGES) {
+// Los mensajes con `isOpening` salen como apertura y el resto como página reciente (RF-1 (018) · 1.1).
+function sourceOf(head: Thread | null = HEAD, messages = MESSAGES, older: MessagePage[] = []) {
   const asked: boolean[] = [];
+  const olderAsked: unknown[] = [];
+  const pages = [...older];
   const source: ForumSource = {
     fetchThreads: async () => ({ threads: [], next: null }),
     fetchThread: async (_id, { includeArchived }) => {
       asked.push(includeArchived);
-      return head === null ? null : { thread: head, messages };
+      const opening = messages.find((m) => m.isOpening) ?? null;
+      return head === null ? null : { thread: head, opening, messages: messages.filter((m) => !m.isOpening), before: pages.length > 0 ? CURSOR : null };
+    },
+    fetchOlder: async (_id, options) => {
+      olderAsked.push(options.before);
+      return pages.shift() ?? { messages: [], before: null };
     },
   };
-  return { source, asked };
+  return { source, asked, olderAsked };
 }
+const CURSOR = { id: 'cursor' } as unknown as QueryDocumentSnapshot;
+const older = (id: string, text: string): ForumMessage => ({ id, authorUid: 'u-be', authorUsername: 'beto', text, createdAt: Date.UTC(2026, 9, 10, 15, 30), editedAt: null, isArchived: false, isOpening: false });
 
 const client = () =>
   fakeClient({ replyThread: () => ({ id: 'n' }), editMessage: () => ({}), archiveThread: () => ({}), archiveMessage: () => ({}) });
@@ -138,8 +149,8 @@ describe('ForumThread', () => {
     const [opening, reply] = MESSAGES as [ForumMessage, ForumMessage];
     setup(facilitator, sourceOf(HEAD, [reply, opening]).source);
     const articles = await screen.findAllByRole('article');
-    expect(within(articles[0]!).getByRole('button', { name: 'Archivar mensaje' })).toBeTruthy();
-    expect(within(articles[1]!).queryByRole('button', { name: 'Archivar mensaje' })).toBeNull();
+    expect(within(articles[0]!).queryByRole('button', { name: 'Archivar mensaje' })).toBeNull();
+    expect(within(articles[1]!).getByRole('button', { name: 'Archivar mensaje' })).toBeTruthy();
   });
 
   it('RNF-4 (009): todo control y aviso es un bloque', async () => {
@@ -154,9 +165,85 @@ describe('ForumThread', () => {
       fetchThread: async () => {
         throw new Error('The query requires an index.');
       },
+      fetchOlder: async () => ({ messages: [], before: null }),
     };
     setup(member, failing);
     expect((await screen.findByRole('alert')).textContent).toBe('No se pudo cargar este hilo. Inténtalo de nuevo en un momento.');
     expect(screen.queryByText('No encontramos ese hilo')).toBeNull();
+  });
+
+  it('RF-1 (018) · 1.1: sin mensajes anteriores no hay botón «Ver mensajes anteriores»', async () => {
+    setup(VISITOR, sourceOf().source);
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.queryByRole('button', { name: 'Ver mensajes anteriores' })).toBeNull();
+  });
+
+  it('RF-1 (018) · 1.2: «Ver mensajes anteriores» añade los anteriores en orden cronológico, tras la apertura y sin quitar los mostrados', async () => {
+    const { source, olderAsked } = sourceOf(HEAD, MESSAGES, [{ messages: [older('m0', 'Antes de todo')], before: null }]);
+    setup(VISITOR, source);
+    const button = await screen.findByRole('button', { name: 'Ver mensajes anteriores' });
+    expect(button.className).toContain('block');
+    expect(button.className).toContain('forum__more');
+    await userEvent.click(button);
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Ver mensajes anteriores' })).toBeNull());
+    expect(olderAsked).toEqual([CURSOR]);
+    const articles = screen.getAllByRole('article');
+    expect(articles.map((a) => within(a).getByText(/^@/).textContent)).toEqual(['@lucia', '@beto', '@beto']);
+    expect(within(articles[1]!).getByText('Antes de todo')).toBeTruthy();
+    expect(within(articles[2]!).getByText('tanques')).toBeTruthy();
+  });
+
+  it('RF-1 (018) · 1.4: al responder se relee la página reciente y se conservan los anteriores ya cargados', async () => {
+    const { client: c } = client();
+    let reads = 0;
+    const base = sourceOf(HEAD, MESSAGES, [{ messages: [older('m0', 'Antes de todo')], before: null }]);
+    const source: ForumSource = {
+      ...base.source,
+      fetchThread: async (id, options) => {
+        const found = await base.source.fetchThread(id, options);
+        reads += 1;
+        if (found === null) return null;
+        return reads > 1 ? { ...found, messages: [...found.messages, { ...older('m9', 'Mi aporte nuevo'), createdAt: Date.UTC(2026, 9, 11) }] } : found;
+      },
+    };
+    setup(member, source, c);
+    await userEvent.click(await screen.findByRole('button', { name: 'Ver mensajes anteriores' }));
+    await screen.findByText('Antes de todo');
+    await userEvent.type(screen.getByLabelText('Tu respuesta'), 'Mi aporte nuevo');
+    await userEvent.click(screen.getByRole('button', { name: 'Responder' }));
+    await screen.findByText('Mi aporte nuevo', { selector: 'p' });
+    const texts = screen.getAllByRole('article').map((a) => within(a).getByText(/^@/).textContent);
+    expect(texts).toEqual(['@lucia', '@beto', '@beto', '@beto']);
+    expect(screen.getByText('Antes de todo')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ver mensajes anteriores' })).toBeNull();
+  });
+
+  it('RF-1 (018) · 1.5: editar un mensaje cargado con «Ver mensajes anteriores» muestra el texto nuevo sin releer', async () => {
+    const { client: c, calls } = client();
+    const mine: ForumMessage = { ...older('m0', 'Texto viejo'), authorUid: 'u-be' };
+    const base = sourceOf(HEAD, MESSAGES, [{ messages: [mine], before: null }]);
+    let reads = 0;
+    const source: ForumSource = { ...base.source, fetchThread: async (id, options) => { reads += 1; return base.source.fetchThread(id, options); } };
+    setup(member, source, c);
+    await userEvent.click(await screen.findByRole('button', { name: 'Ver mensajes anteriores' }));
+    const old = (await screen.findByText('Texto viejo')).closest('article')!;
+    await userEvent.click(within(old).getByRole('button', { name: 'Editar' }));
+    const box = screen.getByLabelText('Tu mensaje');
+    await userEvent.clear(box);
+    await userEvent.type(box, 'Texto nuevo');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(calls).toEqual([{ op: 'editMessage', payload: { threadId: 'h1', messageId: 'm0', text: 'Texto nuevo' } }]));
+    const edited = (await screen.findByText('Texto nuevo')).closest('article')!;
+    expect(within(edited).getByText('editado')).toBeTruthy();
+    expect(screen.queryByText('Texto viejo')).toBeNull();
+    expect(reads).toBe(1);
+  });
+
+  it('RF-1 (018) · 1.1: un hilo sin mensaje de apertura se muestra sin cabecera y sin fallar', async () => {
+    const [, reply] = MESSAGES as [ForumMessage, ForumMessage];
+    setup(VISITOR, sourceOf(HEAD, [reply]).source);
+    const articles = await screen.findAllByRole('article');
+    expect(articles).toHaveLength(1);
+    expect(within(articles[0]!).getByText('@beto')).toBeTruthy();
   });
 });

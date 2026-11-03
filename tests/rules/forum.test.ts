@@ -1,13 +1,13 @@
-// T-2 (009) · Reglas de threads y threads/{id}/messages: lectura pública de lo no archivado; nadie escribe (RF-9 (009), RNF-2 (009)).
+// RF-1 (018) · 1.1 a 1.3 · T-2 (009) · Reglas de threads y threads/{id}/messages: lectura pública de lo no archivado; nadie escribe (RF-9 (009), RNF-2 (009)).
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter, where } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { createTestEnvironment } from './setup';
 
 let env: RulesTestEnvironment;
 const account = (username: string, role = 'member', status = 'active') => ({ email: `${username}@x.org`, name: username, username, role, status });
 const thread = (authorUid: string, isArchived: boolean) => ({ title: 'Hilo', axis: 'agua', authorUid, authorUsername: authorUid, isArchived });
-const message = (authorUid: string, isArchived: boolean) => ({ text: 'Hola', authorUid, authorUsername: authorUid, isArchived });
+const message = (authorUid: string, isArchived: boolean, createdAt = 1) => ({ text: 'Hola', authorUid, authorUsername: authorUid, isArchived, createdAt });
 
 beforeAll(async () => {
   env = await createTestEnvironment();
@@ -22,7 +22,9 @@ beforeEach(async () => {
     await setDoc(doc(db, 'accounts/susi'), account('susi', 'member', 'suspended'));
     await setDoc(doc(db, 'threads/abierto'), thread('ana', false));
     await setDoc(doc(db, 'threads/archivado'), thread('ana', true));
-    await setDoc(doc(db, 'threads/abierto/messages/m1'), message('ana', false));
+    await setDoc(doc(db, 'threads/abierto/messages/m1'), message('ana', false, 1));
+    await setDoc(doc(db, 'threads/abierto/messages/m3'), message('beto', false, 2));
+    await setDoc(doc(db, 'threads/abierto/messages/m4'), message('beto', false, 3));
     await setDoc(doc(db, 'threads/abierto/messages/m2'), message('beto', true));
     await setDoc(doc(db, 'threads/archivado/messages/m1'), message('ana', false));
   });
@@ -63,5 +65,17 @@ describe('firestore.rules · threads', () => {
     await assertFails(setDoc(doc(as('ana'), 'threads/nuevo'), thread('ana', false)));
     await assertFails(setDoc(doc(as('ana'), 'threads/abierto'), thread('ana', true)));
     await assertFails(setDoc(doc(as('ana'), 'threads/abierto/messages/m3'), message('ana', false)));
+  });
+
+  it('RF-1 (018) · 1.1 a 1.3: un visitante puede hacer las consultas de apertura, de la página reciente y de las anteriores', async () => {
+    const messages = () => collection(visitor(), 'threads/abierto/messages');
+    await assertSucceeds(getDocs(query(messages(), where('isArchived', '==', false), orderBy('createdAt', 'asc'), limit(1))));
+    await assertSucceeds(getDocs(query(messages(), where('isArchived', '==', false), orderBy('createdAt', 'desc'), limit(50))));
+    const cursor = await getDocs(query(messages(), where('isArchived', '==', false), orderBy('createdAt', 'desc'), limit(1)));
+    await assertSucceeds(getDocs(query(messages(), where('isArchived', '==', false), orderBy('createdAt', 'desc'), startAfter(cursor.docs[0]), limit(50))));
+  });
+
+  it('RF-1 (018) · 1.1: un visitante no lee las páginas de un hilo archivado', async () => {
+    await assertFails(getDocs(query(collection(visitor(), 'threads/archivado/messages'), where('isArchived', '==', false), orderBy('createdAt', 'desc'), limit(50))));
   });
 });

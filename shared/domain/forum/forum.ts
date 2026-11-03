@@ -10,6 +10,8 @@ export const FORUM_LIMITS = {
   message: 2000,
   threadsPerDay: 10,
   pageSize: 20,
+  /** RF-1 (018), D-1 (018), D-T1 (018): mensajes por página de un hilo. */
+  messagePageSize: 50,
 } as const;
 
 export interface ForumValidation {

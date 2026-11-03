@@ -1,3 +1,4 @@
+// RF-2 (018), D-T6 (018), D-T8 (018): cupo de ediciones de mensajes y edición sin cambios.
 // T-3 (009) · RF-3 (009), RF-4 (009), RF-5 (009), RF-6 (009), RNF-2 (009), RNF-5 (009): ops de escritura del foro.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../testing';
@@ -163,5 +164,45 @@ describe('foro · cuota diaria de respuestas', () => {
     await open(ana);
     expect((await ctx.db.doc(`rateLimits/forum-thread-${ana}`).get()).get('count')).toBe(1);
     expect((await ctx.db.collection('threads').get()).size).toBe(1);
+  });
+});
+
+const seedEditQuota = (uid: string, count: number) => seedDaily('edit', uid, count);
+const editCount = async (uid: string) => (await ctx.db.doc(`rateLimits/daily-edit-${uid}`).get()).get('count') as number | undefined;
+
+describe('foro · cupo de ediciones (RF-2 (018))', () => {
+  const reply = async (threadId: string, text = 'Primera') => (await handleReplyThread(ctx, { threadId, text }, beto)).id;
+
+  it('RF-2 (018) · 2.1: editar un mensaje cobra una unidad del cupo diario de ediciones', async () => {
+    const { id } = await open(ana);
+    const messageId = await reply(id);
+    await handleEditMessage(ctx, { threadId: id, messageId, text: 'Corregida' }, beto);
+    expect(await editCount(beto)).toBe(1);
+  });
+
+  it('RF-2 (018) · 2.2: con el cupo agotado responde rate-limited y no escribe', async () => {
+    const { id } = await open(ana);
+    const messageId = await reply(id);
+    await seedEditQuota(beto, 100);
+    expect(await codeOf(handleEditMessage(ctx, { threadId: id, messageId, text: 'Corregida' }, beto))).toBe('rate-limited');
+    expect((await messages(id)).find((m) => m['id'] === messageId)).toEqual(expect.objectContaining({ text: 'Primera' }));
+    expect(await editCount(beto)).toBe(100);
+  });
+
+  it('RF-2 (018) · 2.3: una edición rechazada (mensaje ajeno) no cobra', async () => {
+    const { id } = await open(ana);
+    const messageId = await reply(id);
+    expect(await codeOf(handleEditMessage(ctx, { threadId: id, messageId, text: 'Ajena' }, ana))).toBe('forbidden');
+    expect(await editCount(ana)).toBeUndefined();
+  });
+
+  it('RF-2 (018) · 2.3: con el texto igual al vigente responde con éxito sin escribir ni cobrar (D-T8 (018))', async () => {
+    const { id } = await open(ana);
+    const messageId = await reply(id);
+    await seedEditQuota(beto, 100);
+    expect(await codeOf(handleEditMessage(ctx, { threadId: id, messageId, text: 'Primera' }, beto))).toBeNull();
+    const stored = (await messages(id)).find((m) => m['id'] === messageId);
+    expect(stored?.['editedAt'] ?? null).toBeNull();
+    expect(await editCount(beto)).toBe(100);
   });
 });

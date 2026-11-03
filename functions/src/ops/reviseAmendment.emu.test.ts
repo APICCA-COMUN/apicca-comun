@@ -1,4 +1,5 @@
 // T-6.5, T-6.6 (004): revisar una propuesta propia (RF-8 (004) · 8.1, 8.2, 8.4, RF-14 (004) · 14.4, 14.5, RF-17 (004) · 17.2).
+// RF-2 (018), D-T8 (018): cupo de ediciones.
 import { Timestamp } from 'firebase-admin/firestore';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../testing';
@@ -89,5 +90,35 @@ describe('reviseAmendment · cuenta suspendida', () => {
     expect((await amendment())['revisionNo']).toBe(1);
     await ctx.db.doc(`accounts/${ana}`).update({ status: 'active' });
     expect((await handleReviseAmendment(ctx, body, ana)).ok).toBe(true);
+  });
+});
+
+const seedEditQuota = (uid: string, count: number) =>
+  ctx.db.doc(`rateLimits/daily-edit-${uid}`).set({ count, windowStart: ctx.now(), expiresAt: new Date(ctx.now().getTime() + 24 * 3600 * 1000) });
+const editCount = async (uid: string) => (await ctx.db.doc(`rateLimits/daily-edit-${uid}`).get()).get('count') as number | undefined;
+
+describe('reviseAmendment · cupo de ediciones (RF-2 (018))', () => {
+  it('RF-2 (018) · 2.1: revisar con éxito cobra una unidad del cupo diario de ediciones', async () => {
+    expect(await handleReviseAmendment(ctx, body, ana)).toEqual({ ok: true, revisionNo: 2 });
+    expect(await editCount(ana)).toBe(1);
+  });
+
+  it('RF-2 (018) · 2.2: con el cupo agotado responde rate-limited y no escribe', async () => {
+    await seedEditQuota(ana, 100);
+    expect(await codeOf(handleReviseAmendment(ctx, body, ana))).toBe('rate-limited');
+    expect(await amendment()).toMatchObject({ revisionNo: 1, title: 'Título' });
+    expect((await ctx.db.collection('amendments/a1/revisions').get()).size).toBe(0);
+    expect(await editCount(ana)).toBe(100);
+  });
+
+  it('RF-2 (018) · 2.3: un conflicto de versión no cobra', async () => {
+    await seedEditQuota(ana, 4);
+    expect(await handleReviseAmendment(ctx, { ...body, baseRevision: 7 }, ana)).toMatchObject({ ok: false, conflict: true });
+    expect(await editCount(ana)).toBe(4);
+  });
+
+  it('RF-2 (018) · 2.3: una revisión rechazada (propuesta ajena) no cobra', async () => {
+    expect(await codeOf(handleReviseAmendment(ctx, body, beto))).toBe('not-amendment-author');
+    expect(await editCount(beto)).toBeUndefined();
   });
 });

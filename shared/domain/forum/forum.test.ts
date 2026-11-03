@@ -38,6 +38,10 @@ describe('forum · foro', () => {
     expect(FORUM_LIMITS.pageSize).toBe(20);
   });
 
+  it('RF-1 (018) · 1.1: la página de un hilo es de 50 mensajes (D-1 (018), D-T1 (018))', () => {
+    expect(FORUM_LIMITS.messagePageSize).toBe(50);
+  });
+
   it('RF-1 (009): la lista va del hilo con actividad más reciente al más antiguo', () => {
     const sorted = sortByActivity([thread('a', 'agua', 10), thread('b', 'agua', 30), thread('c', 'agua', 20)]);
     expect(sorted.map((t) => t.id)).toEqual(['b', 'c', 'a']);

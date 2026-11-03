@@ -83,11 +83,11 @@ describe('rateLimit', () => {
 });
 
 describe('rateLimit · cuotas diarias por persona', () => {
-  it('RF-7 (016) · 7.1: los topes son 50 respuestas, 50 comentarios, 10 ápices y 30 subidas (D-5 (016), D-7 (016))', () => {
-    expect(DAILY_QUOTAS).toEqual({ reply: 50, comment: 50, apice: 10, upload: 30 });
+  it('RF-7 (016) · 7.1: los topes son 50 respuestas, 50 comentarios, 10 ápices, 30 subidas (D-5 (016), D-7 (016)) y 100 ediciones (D-2 (018))', () => {
+    expect(DAILY_QUOTAS).toEqual({ reply: 50, comment: 50, apice: 10, upload: 30, edit: 100 });
   });
 
-  for (const kind of ['reply', 'comment', 'apice', 'upload'] as const) {
+  for (const kind of ['reply', 'comment', 'apice', 'upload', 'edit'] as const) {
     it(`RF-7 (016) · 7.1: la llamada ${DAILY_QUOTAS[kind] + 1} de «${kind}» en el día se rechaza y al día siguiente vuelve a permitirse`, async () => {
       // Se siembra el contador justo bajo el tope para no hacer decenas de transacciones.
       await ctx.db.doc(`rateLimits/daily-${kind}-ana`).set({

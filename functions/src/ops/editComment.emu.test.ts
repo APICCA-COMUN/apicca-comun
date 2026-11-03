@@ -1,4 +1,5 @@
 // T-6.16 (004) · Editar un comentario propio (RF-9 (004) · 9.1, 9.3, RF-16 (004) · 16.1, D-T10 (004)).
+// RF-2 (018), D-T8 (018): cupo de ediciones y edición sin cambios.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../testing';
 import { codeOf } from '../testing/apiceKit';
@@ -85,5 +86,37 @@ describe('editComment', () => {
   it('RF-9 (004) · 9.1: un comentario archivado no se edita', async () => {
     await ctx.db.doc(`amendments/a1/comments/${commentId}`).update({ archived: true, archivedBy: ana });
     expect(await codeOf(handleEditComment(ctx, { amendmentId: 'a1', commentId, text: 'x' }, beto))).toBe('forbidden');
+  });
+});
+
+const seedEditQuota = (uid: string, count: number) =>
+  ctx.db.doc(`rateLimits/daily-edit-${uid}`).set({ count, windowStart: ctx.now(), expiresAt: new Date(ctx.now().getTime() + 24 * 3600 * 1000) });
+const editCount = async (uid: string) => (await ctx.db.doc(`rateLimits/daily-edit-${uid}`).get()).get('count') as number | undefined;
+
+describe('editComment · cupo de ediciones (RF-2 (018))', () => {
+  it('RF-2 (018) · 2.1: editar cobra una unidad del cupo diario de ediciones', async () => {
+    await handleEditComment(ctx, { amendmentId: 'a1', commentId, text: 'Segundo.' }, beto);
+    expect(await editCount(beto)).toBe(1);
+  });
+
+  it('RF-2 (018) · 2.2: con el cupo agotado responde rate-limited y no escribe', async () => {
+    await seedEditQuota(beto, 100);
+    expect(await codeOf(handleEditComment(ctx, { amendmentId: 'a1', commentId, text: 'Segundo.' }, beto))).toBe('rate-limited');
+    expect(await data(`amendments/a1/comments/${commentId}`)).toMatchObject({ text: 'Primero.', version: 1 });
+    expect(await data(`amendments/a1/comments/${commentId}/versions/1`)).toBeUndefined();
+  });
+
+  it('RF-2 (018) · 2.3: un conflicto de versión no cobra', async () => {
+    await seedEditQuota(beto, 3);
+    expect(await handleEditComment(ctx, { amendmentId: 'a1', commentId, text: 'Segundo.', baseVersion: 5 }, beto)).toMatchObject({ ok: false, conflict: true });
+    expect(await editCount(beto)).toBe(3);
+  });
+
+  it('RF-2 (018) · 2.3: con el texto igual al vigente responde la versión vigente sin escribir ni cobrar (D-T8 (018))', async () => {
+    await seedEditQuota(beto, 3);
+    expect(await handleEditComment(ctx, { amendmentId: 'a1', commentId, text: 'Primero.' }, beto)).toEqual({ ok: true, version: 1 });
+    expect(await data(`amendments/a1/comments/${commentId}`)).toMatchObject({ text: 'Primero.', version: 1 });
+    expect(await data(`amendments/a1/comments/${commentId}/versions/1`)).toBeUndefined();
+    expect(await editCount(beto)).toBe(3);
   });
 });

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { APICE_STATUSES, AXES } from './apice';
 import { listQueryShape, NO_FILTERS, type ListAudience, type ListFilters } from './discovery';
 import { constitutionQueryShapes } from './constitution/queries';
-import { messagesQuery } from './forum/queries';
+import { latestMessagesQuery, openingMessageQuery } from './forum/queries';
 import type { QueryShape } from './discovery';
 import {
   indexForShape,
@@ -177,7 +177,7 @@ describe('índices del descubrimiento', () => {
   });
 
   it('RF-1 (017) · 1.2: el archivo declara el índice de los mensajes visibles de un hilo (D-T1 (017))', () => {
-    const index = indexForShape(messagesQuery({ includeArchived: false }));
+    const index = indexForShape(openingMessageQuery({ includeArchived: false }));
     expect(index).toEqual({
       collectionGroup: 'messages',
       queryScope: 'COLLECTION',
@@ -187,5 +187,15 @@ describe('índices del descubrimiento', () => {
       ],
     });
     expect(missingIndexes(committed, [index])).toEqual([]);
+  });
+
+  it('RF-1 (018) · 1.1: requiredIndexes produce el índice ascendente y el descendente de los mensajes (D-T2 (018))', () => {
+    const required = requiredIndexes();
+    const messages = required.filter((i) => i.collectionGroup === 'messages');
+    expect(messages).toEqual([
+      { collectionGroup: 'messages', queryScope: 'COLLECTION', fields: [{ fieldPath: 'isArchived', order: 'ASCENDING' }, { fieldPath: 'createdAt', order: 'ASCENDING' }] },
+      { collectionGroup: 'messages', queryScope: 'COLLECTION', fields: [{ fieldPath: 'isArchived', order: 'ASCENDING' }, { fieldPath: 'createdAt', order: 'DESCENDING' }] },
+    ]);
+    expect(missingIndexes(committed, [indexForShape(latestMessagesQuery({ includeArchived: false }))])).toEqual([]);
   });
 });

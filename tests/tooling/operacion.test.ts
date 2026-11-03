@@ -1,4 +1,4 @@
-// RF-6 (013), RF-7 (013), RF-8 (013), RNF-1 (013), RNF-2 (013), RF-8 (017) · D-T13 (013): los documentos de operación,
+// RF-6 (013), RF-7 (013), RF-8 (013), RNF-1 (013), RNF-2 (013), RF-8 (017), RF-4 (018) · D-T13 (013): los documentos de operación,
 // la CI y la lista de dependencias se vigilan como texto, sin red ni nube.
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -39,6 +39,15 @@ describe.skipIf(!internalDocs)('operación · documentos', () => {
     expect(section).toMatch(/gcloud projects add-iam-policy-binding apicca-com\b/);
     expect(section).toMatch(/gcloud projects get-iam-policy apicca-com\b/);
     expect(section).toContain('npx firebase deploy --only storage --project apicca-com');
+  });
+
+  it('RF-4 (018) · 4.2: el runbook documenta cómo comprobar el respaldo, qué hacer si falló y la política de alerta', () => {
+    const runbook = read('docs/operacion.md');
+    expect(headings(runbook)).toContain('Comprobar el respaldo');
+    const section = runbook.split('## Comprobar el respaldo')[1]?.split('\n## ')[0] ?? '';
+    expect(section).toContain('gcloud firestore operations list --project apicca-com');
+    expect(section).toContain('gs://apicca-com-respaldos/firestore/');
+    expect(section).toContain('16840251875267592409');
   });
 
   it('RF-7 (013) · 7.2: todo `firebase deploy` del runbook lleva `--only` y `--project apicca-com`', () => {

@@ -1,3 +1,4 @@
+// RF-2 (018), D-T6 (018), D-T7 (018): cobra una unidad del cupo diario de ediciones.
 // RF-10 (001), RF-9 (001), RF-1 (016) · Editar el contenido y el estado de un ápice con `baseVersion` (D-T5 (001)): versión nueva, conflicto o sin cambios.
 import { canEdit, canSetLocation } from '../../../shared/domain/access';
 import { raisesLocation } from '../../../shared/domain/location';
@@ -6,6 +7,7 @@ import { requireActor, type Actor } from '../access';
 import { saveVersion, type CurrentApice, type LocationChange, type SaveVersionResult, type StoredContent } from '../apiceStore';
 import type { Ctx } from '../context';
 import { ApiError } from '../errors';
+import { takeDailySlot } from '../rateLimit';
 import { readContent, readId, readInteger, readLocationChange } from './apiceInput';
 
 export type EditResult =
@@ -54,6 +56,7 @@ export async function handleEditApice(ctx: Ctx, payload: Record<string, unknown>
     kind: 'edit',
     requireActiveUid: actor.uid,
     check: checkEdit,
+    charge: (tx) => takeDailySlot(ctx, tx, 'edit', actor.uid),
     isNoop: (current) => isNoopEdit(current.content, content) && isLocationNoop(current, location),
   });
   return toEditResult(result);

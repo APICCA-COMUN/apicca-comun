@@ -1,4 +1,4 @@
-// T-1.25 y T-1.26: aceptar o descartar solicitudes de ingreso (RF-4 (001)).
+// T-1.25 y T-1.26: aceptar o descartar solicitudes de ingreso (RF-4 (001)); una sola resolución (RF-3 (018)).
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiError } from '../errors';
 import { hashToken } from '../invitationToken';
@@ -66,10 +66,10 @@ describe('resolveEnrollment · aceptar', () => {
     expect((await read(id))['status']).toBe('pending');
   });
 
-  it('RF-4 (001): una solicitud inexistente o ya resuelta se rechaza', async () => {
+  it('RF-4 (001), RF-3 (018) · 3.2: una solicitud inexistente se rechaza y una ya resuelta responde enrollment-resolved', async () => {
     const id = await seedRequest('ana@ejemplo.org');
     await handleResolveEnrollment(ctx, { id, decision: 'accept' }, facilitator);
-    expect(await codeOf(handleResolveEnrollment(ctx, { id, decision: 'discard', reason: 'x' }, facilitator))).toBe('invalid-request');
+    expect(await codeOf(handleResolveEnrollment(ctx, { id, decision: 'discard', reason: 'x' }, facilitator))).toBe('enrollment-resolved');
     expect(await codeOf(handleResolveEnrollment(ctx, { id: 'nada', decision: 'accept' }, facilitator))).toBe('invalid-request');
     expect(await codeOf(handleResolveEnrollment(ctx, { id, decision: 'otra' }, facilitator))).toBe('invalid-request');
   });
@@ -130,6 +130,68 @@ describe('resolveEnrollment · caducidad', () => {
   it('RF-8 (016) · 8.3: una solicitud anterior a la 016, sin expiresAt, se sigue resolviendo', async () => {
     const id = await seedRequest('ana@ejemplo.org');
     await handleResolveEnrollment(ctx, { id, decision: 'discard', reason: 'x' }, facilitator);
+    expect((await read(id))['status']).toBe('discarded');
+  });
+});
+
+describe('resolveEnrollment · una sola resolución (RF-3 (018))', () => {
+  const invitations = async () => (await ctx.db.collection('invitations').get()).docs;
+
+  it('RF-3 (018) · 3.1: dos aceptaciones simultáneas dan una invitación, un enlace válido y un enrollment-resolved', async () => {
+    const other = (await seedAccount(ctx, { username: 'gabi', role: 'facilitator' })).uid;
+    const id = await seedRequest('ana@ejemplo.org');
+    const results = await Promise.allSettled([
+      handleResolveEnrollment(ctx, { id, decision: 'accept' }, facilitator),
+      handleResolveEnrollment(ctx, { id, decision: 'accept' }, other),
+    ]);
+    const links = results.flatMap((r) => (r.status === 'fulfilled' && 'link' in r.value ? [r.value.link] : []));
+    const codes = results.flatMap((r) => (r.status === 'rejected' && r.reason instanceof ApiError ? [r.reason.code] : []));
+    expect(links).toHaveLength(1);
+    expect(codes).toEqual(['enrollment-resolved']);
+    const docs = await invitations();
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?.get('tokenHash')).toBe(hashToken(links[0]!.replace('/registro/', '')));
+    expect((await read(id))['status']).toBe('accepted');
+  });
+
+  it('RF-3 (018) · 3.1: una aceptación y un descarte simultáneos aplican solo uno', async () => {
+    const id = await seedRequest('ana@ejemplo.org');
+    const results = await Promise.allSettled([
+      handleResolveEnrollment(ctx, { id, decision: 'accept' }, facilitator),
+      handleResolveEnrollment(ctx, { id, decision: 'discard', reason: 'Duplicada' }, facilitator),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    const status = (await read(id))['status'];
+    expect((await invitations()).length).toBe(status === 'accepted' ? 1 : 0);
+  });
+
+  it('RF-3 (018) · 3.3: resolver otra vez una solicitud aceptada no renueva la invitación', async () => {
+    const id = await seedRequest('ana@ejemplo.org');
+    const { link } = (await handleResolveEnrollment(ctx, { id, decision: 'accept' }, facilitator)) as { link: string };
+    expect(await codeOf(handleResolveEnrollment(ctx, { id, decision: 'accept' }, facilitator))).toBe('enrollment-resolved');
+    const docs = await invitations();
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?.get('tokenHash')).toBe(hashToken(link.replace('/registro/', '')));
+  });
+
+  it('RF-3 (018) · 3.3: una solicitud descartada no se acepta ni crea invitación', async () => {
+    const id = await seedRequest('ana@ejemplo.org');
+    await handleResolveEnrollment(ctx, { id, decision: 'discard', reason: 'No es del territorio' }, facilitator);
+    expect(await codeOf(handleResolveEnrollment(ctx, { id, decision: 'accept' }, facilitator))).toBe('enrollment-resolved');
+    expect(await invitations()).toHaveLength(0);
+    expect((await read(id))['status']).toBe('discarded');
+  });
+
+  it('RF-3 (018) · 3.4: si el correo ya tiene cuenta, la solicitud queda pendiente, sin resolver y sin invitación', async () => {
+    await seedAccount(ctx, { email: 'ana@ejemplo.org', username: 'ana' });
+    const id = await seedRequest('ana@ejemplo.org');
+    expect(await handleResolveEnrollment(ctx, { id, decision: 'accept' }, facilitator)).toEqual({ accountExists: true });
+    const doc = await read(id);
+    expect(doc['status']).toBe('pending');
+    expect('resolvedBy' in doc).toBe(false);
+    expect(await invitations()).toHaveLength(0);
+    // Sigue pendiente de verdad: después se puede descartar.
+    await handleResolveEnrollment(ctx, { id, decision: 'discard', reason: 'Ya tiene cuenta' }, facilitator);
     expect((await read(id))['status']).toBe('discarded');
   });
 });

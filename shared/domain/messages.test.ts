@@ -62,4 +62,9 @@ describe('shared/domain/messages', () => {
     expect(MESSAGES['amendment-limit']).toMatch(/se alcanzó el máximo/i);
     expect(MESSAGES['amendment-limit']).toMatch(/100/);
   });
+
+  it('RF-3 (018) · 3.2: una solicitud ya resuelta tiene el texto de D-3 (018)', () => {
+    expect(isErrorCode('enrollment-resolved')).toBe(true);
+    expect(MESSAGES['enrollment-resolved' as keyof typeof MESSAGES]).toBe('Otra persona de Facilitación ya resolvió esta solicitud.');
+  });
 });

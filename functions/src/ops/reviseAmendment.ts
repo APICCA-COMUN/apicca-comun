@@ -1,3 +1,4 @@
+// RF-2 (018), D-T6 (018), D-T8 (018): cobra el cupo de ediciones; una revisión exitosa siempre cambia algo.
 // RF-8 (004) · 8.1, 8.2, 8.4, RF-14 (004) · 14.4, RF-17 (004) · 17.2, RNF-1 (004) · Revisar una propuesta propia y abierta
 // (D-T10 (004)). Guarda el contenido anterior en `revisions/{n}`, sube `revisionNo` y no toca las posturas: los acuerdos
 // previos quedan «anteriores a la revisión n» porque su `agreedAtRevision` es menor. Con otra base responde el conflicto.
@@ -7,6 +8,7 @@ import { requireActor } from '../access';
 import { readOpenAmendment, recordEvent } from '../amendmentStore';
 import type { Ctx } from '../context';
 import { ApiError } from '../errors';
+import { takeDailySlot } from '../rateLimit';
 import { readId, readInteger } from './apiceInput';
 import { readReason, readText, readTitle } from './constitutionInput';
 
@@ -41,7 +43,9 @@ export async function handleReviseAmendment(ctx: Ctx, payload: Record<string, un
       const current = section.exists ? { title: section.get('title') as string, text: section.get('text') as string } : null;
       if (!checkProposedContent('change', current, next).ok) throw new ApiError('amendment-unchanged');
     }
+    const applyCharge = await takeDailySlot(ctx, tx, 'edit', actor.uid);
     const revisionNo = previous.revisionNo + 1;
+    applyCharge();
     tx.create(open.ref.collection('revisions').doc(String(previous.revisionNo)), { ...previous, at: Timestamp.fromDate(ctx.now()) });
     tx.update(open.ref, { title: next.title, text: next.text, motive, revisionNo });
     recordEvent(ctx, tx, open, { kind: 'revised', actor: { uid: actor.uid, username: actor.username }, detail: { revisionNo } });

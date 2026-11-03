@@ -1,10 +1,12 @@
 // RF-12 (001) · Escritura transaccional del ápice y su versión (D-T5 (001)): cada guardado crea `versions/{n}` con el
 // contenido completo y sube `version` del ápice en la misma transacción. Las ops reutilizan estas dos funciones.
+// RF-2 (018), D-T7 (018): `saveVersion` cobra el cupo de ediciones como última lectura y lo escribe con el resto.
 import type { Transaction } from 'firebase-admin/firestore';
 import { writeApiceNotice } from './noticeStore';
 import type { ApiceContent, ApiceStatus, Visibility } from '../../shared/domain/apice';
 import { displayLocation, type Location, type Point, type Precision } from '../../shared/domain/location';
 import type { Ctx } from './context';
+import type { SlotCharge } from './rateLimit';
 import { ApiError } from './errors';
 
 /** Lo que guarda cada versión: el contenido de la ficha y su estado. */
@@ -59,6 +61,8 @@ export interface SaveVersionInput {
   requireActiveUid?: string;
   /** Si devuelve `true` con la base vigente, no se crea versión y se responde con la vigente (RF-12 (001)). */
   isNoop?: (current: CurrentApice) => boolean;
+  /** Lee el cupo dentro de la transacción (última lectura) y devuelve su cobro; no se llama si hay conflicto o no hay cambios (RF-2 (018), D-T7 (018)). */
+  charge?: (tx: Transaction) => Promise<SlotCharge>;
 }
 
 /** Ids de documento autogenerados, sin leer el azar fuera del contexto. */
@@ -165,8 +169,10 @@ export async function saveVersion(ctx: Ctx, id: string, input: SaveVersionInput)
       location = displayLocation(exact, change.precision);
     } else if (exact === null) location = null;
     else location = displayLocation(exact, change.mode === 'precision' ? change.precision : current.location?.precision);
+    const applyCharge = input.charge === undefined ? null : await input.charge(tx); // última lectura (D-T7 (018))
     const n = current.version + 1;
     const now = ctx.now();
+    applyCharge?.();
     tx.update(ref, { ...input.content, location, hasLocation: location !== null, version: n, updatedAt: now, lastEditedByUsername: input.saver.username });
     if (exact !== null && location !== null) tx.create(ctx.db.doc(EXACT_PATH(id, n)), exact);
     for (const doc of located) {

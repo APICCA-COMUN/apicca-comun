@@ -16,19 +16,35 @@ export function threadsQuery(axis: Axis | null): QueryShape {
   };
 }
 
+const visibleOnly = (includeArchived: boolean): QueryShape['conditions'] => (includeArchived ? [] : [{ field: 'isArchived', op: '==', value: false }]);
+
 /**
- * Los mensajes de un hilo, del primero al último (RF-7 (009)). Sin moderar se piden solo los visibles, y esa forma
- * necesita el índice compuesto `isArchived` + `createdAt` (RF-1 (017) · 1.2, D-T1 (017)).
+ * El mensaje de apertura de un hilo: el primero por fecha (RF-1 (018) · 1.1, D-T2 (018)). Sin moderar se piden solo los visibles,
+ * y esa forma necesita el índice compuesto `isArchived` + `createdAt` ascendente (RF-1 (017) · 1.2).
  */
-export function messagesQuery({ includeArchived }: { includeArchived: boolean }): QueryShape {
+export function openingMessageQuery({ includeArchived }: { includeArchived: boolean }): QueryShape {
   return {
     collection: 'messages',
-    conditions: includeArchived ? [] : [{ field: 'isArchived', op: '==', value: false }],
+    conditions: visibleOnly(includeArchived),
     orderBy: { field: 'createdAt', direction: 'asc' },
+    limit: 1,
   };
 }
 
-/** Las formas que piden índice compuesto: la lista (todos los temas y un eje) y los mensajes visibles de un hilo. */
+/**
+ * Los mensajes más recientes de un hilo, del último hacia atrás, una página (RF-1 (018) · 1.1, 1.3, D-T2 (018)). Sin moderar
+ * necesita el índice `isArchived` + `createdAt` descendente.
+ */
+export function latestMessagesQuery({ includeArchived }: { includeArchived: boolean }): QueryShape {
+  return {
+    collection: 'messages',
+    conditions: visibleOnly(includeArchived),
+    orderBy: { field: 'createdAt', direction: 'desc' },
+    limit: FORUM_LIMITS.messagePageSize,
+  };
+}
+
+/** Las formas que piden índice compuesto: la lista (todos los temas y un eje) y la apertura y la página reciente de un hilo (D-T2 (018)). */
 export function forumQueryShapes(): QueryShape[] {
-  return [threadsQuery(null), threadsQuery('agua'), messagesQuery({ includeArchived: false })];
+  return [threadsQuery(null), threadsQuery('agua'), openingMessageQuery({ includeArchived: false }), latestMessagesQuery({ includeArchived: false })];
 }

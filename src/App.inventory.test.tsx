@@ -124,11 +124,11 @@ vi.mock('./data/forum', async (importActual) => {
       }),
       fetchThread: async () => ({
         thread: { id: 'ejemplo', title: 'Cisterna o tanques', axis: 'agua', authorUsername: 'lucia', authorUid: 'u-lu', lastMessageAt: stamp, createdAt: stamp, messageCount: 2, isArchived: false },
-        messages: [
-          { id: 'm1', authorUid: 'u-lu', authorUsername: 'lucia', text: 'Primera', createdAt: stamp, editedAt: null, isArchived: false },
-          { id: 'm2', authorUid: 'u-be', authorUsername: 'beto', text: 'Segunda', createdAt: stamp, editedAt: stamp, isArchived: false },
-        ],
+        opening: { id: 'm1', authorUid: 'u-lu', authorUsername: 'lucia', text: 'Primera', createdAt: stamp, editedAt: null, isArchived: false, isOpening: true },
+        messages: [{ id: 'm2', authorUid: 'u-be', authorUsername: 'beto', text: 'Segunda', createdAt: stamp, editedAt: stamp, isArchived: false, isOpening: false }],
+        before: null,
       }),
+      fetchOlder: async () => ({ messages: [], before: null }),
     },
   };
 });

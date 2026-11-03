@@ -1,4 +1,5 @@
 // T-4.3 a T-4.4: la ubicación de un ápice al crear, editar y restaurar (RF-9 (001)); permiso y purga (RF-1 (016), RF-2 (016)).
+// RF-2 (018), D-T7 (018): el cobro del cupo es la última lectura de `saveVersion`, con ubicación conservada o purgada.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../testing';
 import { codeOf, VALID } from '../testing/apiceKit';
@@ -253,5 +254,34 @@ describe('restoreVersion con ubicación', () => {
     expect(await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 2 }, ana)).toEqual({ ok: true, version: 3 });
     expect((await apice())['location']).toBeNull();
     expect(await exactOf(3)).toBeUndefined();
+  });
+});
+
+const seedEditQuota = (uid: string, count: number) =>
+  ctx.db.doc(`rateLimits/daily-edit-${uid}`).set({ count, windowStart: ctx.now(), expiresAt: new Date(ctx.now().getTime() + 24 * 3600 * 1000) });
+const editCount = async (uid: string) => (await ctx.db.doc(`rateLimits/daily-edit-${uid}`).get()).get('count') as number | undefined;
+
+describe('cupo de ediciones con ubicación (RF-2 (018), D-T7 (018))', () => {
+  it('RF-2 (018) · 2.1: una edición que conserva la ubicación (lee el punto exacto) cobra sin fallar la transacción', async () => {
+    id = ((await create({ mode: 'set', ...EXACT })) as { id: string }).id;
+    expect(await edit(ana, 1, { mode: 'keep' }, { name: 'Otro nombre' })).toEqual({ ok: true, version: 2 });
+    expect(await exactOf(2)).toEqual(EXACT);
+    expect(await editCount(ana)).toBe(1);
+  });
+
+  it('RF-2 (018) · 2.1: una edición que quita la ubicación (purga el historial) cobra sin fallar la transacción', async () => {
+    id = ((await create({ mode: 'set', ...EXACT })) as { id: string }).id;
+    expect(await edit(ana, 1, { mode: 'remove' })).toEqual({ ok: true, version: 2 });
+    expect((await apice())['location']).toBeNull();
+    expect(await exactOf(1)).toBeUndefined();
+    expect(await editCount(ana)).toBe(1);
+  });
+
+  it('RF-2 (018) · 2.2: con el cupo agotado, quitar la ubicación responde rate-limited y no purga nada', async () => {
+    id = ((await create({ mode: 'set', ...EXACT })) as { id: string }).id;
+    await seedEditQuota(ana, 100);
+    expect(await codeOf(edit(ana, 1, { mode: 'remove' }))).toBe('rate-limited');
+    expect(await exactOf(1)).toEqual(EXACT);
+    expect((await apice())['version']).toBe(1);
   });
 });

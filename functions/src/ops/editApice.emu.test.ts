@@ -1,4 +1,5 @@
 // T-2.11 a T-2.14: editar un ápice (RF-7 (001), RF-8 (001), RF-10 (001), RF-11 (001), RF-12 (001)).
+// RF-2 (018), D-T7 (018): cupo de ediciones.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../testing';
 import { codeOf, VALID, withBeforeTransaction } from '../testing/apiceKit';
@@ -123,4 +124,43 @@ describe('editApice · concurrencia', () => {
     expect(results.filter((r) => !r.ok)).toHaveLength(1);
     expect(await versionOf()).toBe(2);
   }, 20_000);
+});
+
+const seedEditQuota = (uid: string, count: number) =>
+  ctx.db.doc(`rateLimits/daily-edit-${uid}`).set({ count, windowStart: ctx.now(), expiresAt: new Date(ctx.now().getTime() + 24 * 3600 * 1000) });
+const editCount = async (uid: string) => (await ctx.db.doc(`rateLimits/daily-edit-${uid}`).get()).get('count') as number | undefined;
+
+describe('editApice · cupo de ediciones (RF-2 (018))', () => {
+  it('RF-2 (018) · 2.1: editar cobra una unidad del cupo diario de ediciones de quien edita', async () => {
+    await edit(beto, 1, { name: 'Otro nombre' });
+    expect(await editCount(beto)).toBe(1);
+    expect(await editCount(ana)).toBeUndefined();
+  });
+
+  it('RF-2 (018) · 2.2: con el cupo agotado responde rate-limited y no escribe', async () => {
+    await seedEditQuota(beto, 100);
+    expect(await codeOf(edit(beto, 1, { name: 'Otro nombre' }))).toBe('rate-limited');
+    expect(await versionOf()).toBe(1);
+    expect(await editCount(beto)).toBe(100);
+  });
+
+  it('RF-2 (018) · 2.3: un conflicto de versión no cobra', async () => {
+    await edit(beto, 1, { name: 'Primero' });
+    await seedEditQuota(ana, 5);
+    expect(await edit(ana, 1, { name: 'Segundo' })).toMatchObject({ ok: false, conflict: true });
+    expect(await editCount(ana)).toBe(5);
+  });
+
+  it('RF-2 (018) · 2.3: una edición sin cambios no cobra', async () => {
+    await edit(beto, 1, { name: 'Otro nombre' });
+    await seedEditQuota(beto, 7);
+    expect(await edit(beto, 2, { name: '  Otro nombre ' })).toEqual({ ok: true, version: 2 });
+    expect(await editCount(beto)).toBe(7);
+  });
+
+  it('RF-2 (018) · 2.3: una edición rechazada por permisos no cobra', async () => {
+    await ctx.db.doc(`apices/${id}`).update({ isArchived: true });
+    expect(await codeOf(edit(beto, 1, { name: 'Tarde' }))).toBe('apice-archived');
+    expect(await editCount(beto)).toBeUndefined();
+  });
 });
