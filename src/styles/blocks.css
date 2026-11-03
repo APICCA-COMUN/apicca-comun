@@ -49,6 +49,13 @@ label:has(> :is(input:not([type='checkbox'], [type='radio']), select, textarea).
   margin-block-end: 1rem;
 }
 
+/* RF-4 (020) · 4.1, D-1 (020), D-T6 (020): la casilla suelta de un formulario, como el consentimiento, ocupa su propia
+   fila, así que el envío que la sigue empieza debajo. Por dentro la casilla sigue en línea con su texto (`.choice`). */
+:where(form) > label:has(> input:is([type='checkbox'], [type='radio'])) {
+  display: block;
+  margin-block-end: 1rem;
+}
+
 /* Acciones (RF-4 (003) · 4.1, RF-2 (008) · 2.1, RF-6.3 (002), D-T18 (002)): píldora de al menos 48 px; la forma y el peso las
    distinguen, además del color. */
 button.block,

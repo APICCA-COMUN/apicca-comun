@@ -94,7 +94,9 @@
   margin-block-end: 1.5rem;
 }
 
-/* RF-4 (005) · 4.4: desde 900 px, los pasos van en una fila unidos por un camino, con el nodo de cada paso encima. */
+/* RF-4 (005) · 4.4: desde 900 px, los pasos van en una fila unidos por un camino, con el nodo de cada paso encima.
+   RF-1 (020) · 1.2, D-T2 (020): `align-content: start` deja la marca de cada paso en 18 px aunque el `li` se estire,
+   así que los tres nodos quedan a la misma altura. */
 @media (min-width: 900px) {
   .home__steps {
     display: flex;
@@ -105,6 +107,7 @@
     flex: 1 1 0;
     min-inline-size: 0;
     grid-template-columns: minmax(0, 1fr);
+    align-content: start;
     gap: 1.25rem;
   }
 

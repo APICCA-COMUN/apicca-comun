@@ -1,4 +1,4 @@
-// RF-2 (001) · /registro/:token: crea el acceso con el correo de la invitación (D-T15 (001)).
+// RF-2 (001), RF-3 (020) · /registro/:token: crea el acceso con el correo de la invitación (D-T15 (001)).
 // RF-13 (003) · 13.1, 13.2, D-T19 (003): formulario en un lote angosto; «Entrar» es un enlace de texto.
 // RF-6 (002) · 6.1, 6.3: campos, avisos y envío como bloques; «Crear mi acceso» es la acción principal.
 // Ante cualquier error del servidor conserva lo escrito mientras la página siga abierta.
@@ -86,50 +86,46 @@ export function RegisterPage({ token, ops = realRegisterOps }: { token: string; 
 
   if (isSignedIn(session)) {
     return (
-      <main>
-        <div className="lot lot--access">
-          <h1>Crear acceso</h1>
-          <SignedInNotice />
-        </div>
-      </main>
+      <div className="lot lot--access">
+        <h1>Crear acceso</h1>
+        <SignedInNotice />
+      </div>
     );
   }
   return (
-    <main>
-      <div className="lot lot--access">
-        <h1>Crear acceso</h1>
-        {inspection.kind === 'loading' && <p role="status" className="block">Comprobando tu invitación…</p>}
-        {inspection.kind === 'rejected' && <p role="alert" className="block">{inspection.message}</p>}
-        {inspection.kind === 'account-exists' && (
-          <p>
-            Este correo ya tiene una cuenta. <Link href="/entrar">Entrar</Link>
-          </p>
-        )}
-        {inspection.kind === 'ready' && (
-          <form onSubmit={(e) => void submit(e)}>
-            <label>
-              Correo
-              <input className="block" type="email" value={inspection.email} readOnly />
-            </label>
-            <label>
-              Contraseña
-              <input className="block" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} />
-            </label>
-            <label>
-              Nombre
-              <input className="block" type="text" autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
-            <label>
-              Nombre de usuario
-              <input className="block" type="text" autoComplete="username" required value={username} onChange={(e) => setUsername(e.target.value)} />
-            </label>
-            {error !== null && <p role="alert" className="block">{error}</p>}
-            <button type="submit" className="block action-primary" disabled={busy}>
-              Crear mi acceso
-            </button>
-          </form>
-        )}
-      </div>
-    </main>
+    <div className="lot lot--access">
+      <h1>Crear acceso</h1>
+      {inspection.kind === 'loading' && <p role="status" className="block">Comprobando tu invitación…</p>}
+      {inspection.kind === 'rejected' && <p role="alert" className="block">{inspection.message}</p>}
+      {inspection.kind === 'account-exists' && (
+        <p>
+          Este correo ya tiene una cuenta. <Link href="/entrar">Entrar</Link>
+        </p>
+      )}
+      {inspection.kind === 'ready' && (
+        <form onSubmit={(e) => void submit(e)}>
+          <label>
+            Correo
+            <input className="block" type="email" value={inspection.email} readOnly />
+          </label>
+          <label>
+            Contraseña
+            <input className="block" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} />
+          </label>
+          <label>
+            Nombre
+            <input className="block" type="text" autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label>
+            Nombre de usuario
+            <input className="block" type="text" autoComplete="username" required value={username} onChange={(e) => setUsername(e.target.value)} />
+          </label>
+          {error !== null && <p role="alert" className="block">{error}</p>}
+          <button type="submit" className="block action-primary" disabled={busy}>
+            Crear mi acceso
+          </button>
+        </form>
+      )}
+    </div>
   );
 }

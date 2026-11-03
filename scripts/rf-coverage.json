@@ -331,5 +331,9 @@
   "018": {
     "all": ["RF-1", "RF-2", "RF-3", "RF-4", "RNF-1", "RNF-2", "RNF-3"],
     "pending": ["RNF-1", "RNF-2", "RNF-3"]
+  },
+  "020": {
+    "all": ["RF-1", "RF-2", "RF-3", "RF-4", "RNF-1", "RNF-2", "RNF-3"],
+    "pending": ["RNF-1", "RNF-2", "RNF-3"]
   }
 }

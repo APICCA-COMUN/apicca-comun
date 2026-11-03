@@ -43,6 +43,16 @@
   overflow: hidden;
 }
 
+/* RF-2 (020) · 2.1, D-T3 (020): acercar y alejar miden 44 × 44 en todo mapa, como `.icon-button` (RF-2.2 (008)).
+   La especificidad (0,3,1) gana a la de `leaflet.css` sin depender del orden de las hojas; `border-box` cuenta el
+   borde de «+» dentro de los 44 px. */
+.leaflet-container .leaflet-bar.block a {
+  box-sizing: border-box;
+  inline-size: var(--size-icon-control);
+  block-size: var(--size-icon-control);
+  line-height: var(--size-icon-control);
+}
+
 .leaflet-bar a,
 .leaflet-bar a:hover,
 .leaflet-bar a:focus {

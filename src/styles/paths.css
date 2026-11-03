@@ -1,6 +1,8 @@
 /* RF-9 (003) · 9.1, 9.2, 9.5, D-T1 (003), D-T9 (003) · Caminos y nodos: trazos de 15 px con extremos y uniones redondeados,
    `surface` sobre `background` o `line` sobre `surface`; nodos de 18 px en `surface` con aro de 4 px `charcoal`.
-   Sin animación. Con colores forzados el trazo pasa a CanvasText y el nodo conserva su aro. Solo tokens. */
+   Sin animación. Con colores forzados el trazo pasa a CanvasText y el nodo conserva su aro. Solo tokens.
+   RF-1 (020) · 1.1, D-T1 (020): el nodo va posicionado, sin `z-index`, para pintarse encima de los caminos que lo
+   siguen en el DOM sin crear un contexto de apilamiento nuevo. */
 .road-segment {
   display: block;
   overflow: visible;
@@ -19,6 +21,7 @@
 }
 
 .node {
+  position: relative;
   display: inline-block;
   box-sizing: border-box;
   flex: none;

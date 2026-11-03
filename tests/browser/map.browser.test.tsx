@@ -178,6 +178,17 @@ describe.each(THEMES)('mapa en el tema %s', (theme) => {
     expect(contrastRatio(hex(getComputedStyle(link).color), hex(style.backgroundColor))).toBeGreaterThanOrEqual(4.5);
   });
 
+  it('RF-2 (020) · 2.1, D-T3 (020): acercar y alejar miden al menos 44 × 44 px', async () => {
+    document.documentElement.dataset['theme'] = theme;
+    const container = await mount(LISTED);
+    for (const control of container.querySelectorAll<HTMLElement>('.leaflet-control-zoom-in, .leaflet-control-zoom-out')) {
+      const box = control.getBoundingClientRect();
+      expect(box.width, control.className).toBeGreaterThanOrEqual(44);
+      expect(box.height, control.className).toBeGreaterThanOrEqual(44);
+    }
+    expect(container.querySelectorAll('.leaflet-control-zoom-in, .leaflet-control-zoom-out')).toHaveLength(2);
+  });
+
   it('RF-2 (002) · 2.1, D-T20 (002): los colores de leaflet.css (atribución, zoom, emergentes) quedan sobrescritos por tokens', async () => {
     document.documentElement.dataset['theme'] = theme;
     const container = await mount(LISTED);
