@@ -55,7 +55,7 @@ APICCA COMÚN: **API para Crear y Conectar Acciones Comunes**. No es una API lit
 - Node 24 en la máquina local, en la CI y en el runtime de las functions (RF-5 (014)).
 - Firestore: base `(default)` (`nam5`); la base nombrada `apicca` se borró el 10 de octubre de 2026 (spec 006). Functions en `us-central1`. Storage: bucket `apicca-com.firebasestorage.app` en `us-east1`.
 - Secretos de Functions: `OPENROUTER_API_KEY`, `IP_HASH_SALT`. Modelo de imagen: `black-forest-labs/flux.2-klein-4b` por OpenRouter.
-- Canal de prueba: `npm run build && npx firebase hosting:channel:deploy preview --only apicca --project apicca-com --expires 7d` → `https://apicca--preview-0rd2vdcl.web.app`.
+- Canal de prueba: `npm run build && npx firebase hosting:channel:deploy preview --only apicca --project apicca-com --expires 7d` → `https://apicca--preview-1wnxpjee.web.app` (el sufijo cambió el 3 de noviembre de 2026; la URL vigente la imprime el comando).
 - Producción: siempre con `--only` y por partes (`hosting:apicca`, `functions`, `firestore:rules`, `firestore:indexes`, `storage`). Antes, la persona confirma el objetivo.
 - Si cambian `functions/`, las reglas o los índices, despliégalos aparte; publicar solo el hosting no los actualiza.
 - Cada despliegue suma una fila en `docs/despliegues.md` (RF-6 (013)); los procedimientos están en `docs/operacion.md`.
