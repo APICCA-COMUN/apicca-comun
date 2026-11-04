@@ -1,8 +1,7 @@
-// RF-6 (008) · 6.6 a 6.10, D-10 (008), RF-10 (003) · 10.1 a 10.4, 10.6 a 10.8, RF-9 (003) · 9.4, RNF-5 (003), D-T11 (003) · Inicio: qué es APICCA, un mapa
-// ilustrado, la acción principal según la sesión, los cinco ejes, tres pasos sobre un camino y los enlaces a
-// Prototipado y a la Constitución. No consulta ápices (los muestra Prototipado, RF-18 (003)). Los textos de los ejes
-// y de los pasos vienen de `homeContent` (D-21 (003)). Forma de RF-4 (005): encabezado a dos columnas desde 900 px, pasos
-// en fila unidos por un camino y cierre centrado.
+// RF-6 (008) · 6.6 a 6.10, D-10 (008), RF-10 (003) · 10.1 a 10.4, 10.6 a 10.8, RF-9 (003) · 9.4, RNF-5 (003), D-T11 (003),
+// RF-16 (019) · 16.1 a 16.3, D-6 (019), D-7 (019), D-16 (019), D-T10 (019) · Inicio: qué es APICCA, un mapa
+// ilustrado con su rótulo «Así se verá el terreno», la acción principal según la sesión, los cinco ejes, tres pasos sobre un
+// camino con la marca «Pronto» si aplica, y los enlaces a Prototipado y a la Constitución de APICCA COMÚN.
 import { AXES } from '../../shared/domain/apice';
 import { Link } from '../app/router';
 import { useSession } from '../app/session';
@@ -38,6 +37,7 @@ export function Home() {
           </div>
         </div>
         <div className="home__hero-map">
+          <p className="home__map-label">Así se verá el terreno</p>
           <MapIllustration />
         </div>
       </header>
@@ -72,7 +72,10 @@ export function Home() {
                 )}
               </span>
               <div className="home__step-text">
-                <h3>{step.title}</h3>
+                <h3>
+                  {step.title}
+                  {step.soon ? <> <span className="home__step-soon">Pronto</span></> : null}
+                </h3>
                 <p>{step.text}</p>
               </div>
             </li>
@@ -81,7 +84,7 @@ export function Home() {
       </section>
       <section className="home__closing" aria-labelledby="home-closing">
         <h2 id="home-closing">Nada se compra ni se vende: se hace juntas.</h2>
-        <Link href="/constitucion">Leer los 7 principios</Link>
+        <Link href="/constitucion">Leer la Constitución de APICCA COMÚN</Link>
       </section>
     </>
   );

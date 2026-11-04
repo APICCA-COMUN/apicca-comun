@@ -21,7 +21,6 @@ import { SessionProvider } from '../../src/app/session';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
 import PointPickerMap from '../../src/map/PointPickerMap';
 import { signInAs, signOutNow } from './session';
-import { lotColumns, lotLayout, lotTrail } from '../../shared/domain/lotLayout';
 import { APICE_IDS, AUTHOR, CONSTITUTION_IDS, FACILITATOR } from './seed-data';
 
 type Account = typeof AUTHOR | typeof FACILITATOR;
@@ -41,17 +40,9 @@ const ROUTES: { path: string; as?: Account; form?: true }[] = [
   { path: '/facilitacion/invitaciones', as: FACILITATOR, form: true },
 ];
 
-/** Los nodos que pide el trazado de cada lote montado: el zigzag (`lotTrail`) o la retícula (`lotLayout`), según su ancho. */
-function lotNodes(): number {
-  return [...host!.querySelectorAll<HTMLElement>('.apice-lot')].reduce((total, lot) => {
-    const buildings = lot.querySelectorAll('.apice-lot__building').length;
-    const shape = lot.classList.contains('apice-lot--trail') ? lotTrail(buildings) : lotLayout(buildings, lotColumns(lot.clientWidth));
-    return total + shape.nodes.length;
-  }, 0);
-}
-
 /**
- * Las rutas con nodos: los pasos y el mapa ilustrado del Inicio, el lote de Prototipado y la Constitución.
+ * Las rutas con nodos: los pasos y el mapa ilustrado del Inicio y la Constitución. El lote de Prototipado ya no
+ * tiene nodos ni caminos: es la retícula (RF-8 (019) · 8.1, D-T5 (019)).
  * `ready`: textos que la página pinta solo cuando ya leyó sus datos, como en `pages.browser.test.tsx`.
  * `nodes`: dónde están los nodos de la ruta, y `count`, cuántos debe haber (QA-1 de la implementación): si faltara
  * alguno, la medida de RF-1 (020) · 1.1 no lo vería.
@@ -59,20 +50,13 @@ function lotNodes(): number {
 const NODE_ROUTES: { path: string; ready?: string[]; nodes: string; count: () => number }[] = [
   // Tres pasos y los cinco nodos del mapa ilustrado (`NODES`, `src/components/MapIllustration.tsx:45-51`).
   { path: '/', nodes: '.home__step [data-testid="node"], .map-illustration [data-testid="node"]', count: () => 3 + 5 },
-  { path: '/prototipado', nodes: '.apice-lot [data-testid="node"]', count: lotNodes },
   // Un nodo por sección de la constitución sembrada (RF-11 (008) · 11.5).
   { path: '/constitucion', ready: ['Agua compartida', 'Escuchar primero'], nodes: '.constitution__node [data-testid="node"]', count: () => Object.keys(CONSTITUTION_IDS.sections).length },
 ];
 
-/** Los nodos del lote y sus caminos no reciben el puntero; solo para medir, esta hoja se lo devuelve. */
-const HIT_TESTING = `
-.apice-lot__node, .apice-lot__node *, .apice-lot__roads, .apice-lot__roads * { pointer-events: auto !important; }
-`;
-
 let signedInAs: string | null = null;
 let host: HTMLDivElement | undefined;
 let root: Root | undefined;
-let sheet: HTMLStyleElement | undefined;
 let previousPath: string;
 
 async function actNow(run: () => void | Promise<void>) {
@@ -189,9 +173,6 @@ beforeAll(async () => {
   await commands.seedFull();
   previousPath = location.pathname + location.search;
   history.replaceState(null, '', '/');
-  sheet = document.createElement('style');
-  sheet.textContent = HIT_TESTING;
-  document.head.append(sheet);
   host = document.createElement('div');
   document.body.append(host);
   const created = createRoot(host);
@@ -211,7 +192,6 @@ afterAll(async () => {
   const mounted = root;
   if (mounted !== undefined) await actNow(() => mounted.unmount());
   host?.remove();
-  sheet?.remove();
   scrollTo(0, 0);
   history.replaceState(null, '', previousPath);
   await page.viewport(1280, 800);
@@ -224,7 +204,7 @@ describe('RF-1 (020) · nodos legibles', () => {
       await useAccount(undefined);
       await show(path, ready);
       const shown = () => [...host!.querySelectorAll(nodes)].filter(hasBox).length;
-      // El lote llega con los datos y se acomoda a su ancho: se espera a que pinte los nodos que pide.
+      // La Constitución llega con los datos: se espera a que pinte los nodos que pide.
       await waitFor(() => count() > 0 && shown() === count()).catch(() => undefined);
       await waitFor(() => document.getAnimations().length === 0);
       expect(count()).toBeGreaterThan(0);

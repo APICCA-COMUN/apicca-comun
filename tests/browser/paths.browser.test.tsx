@@ -1,5 +1,5 @@
 // RF-9 (003) · 9.1, 9.2, 9.5, D-T9 (003) · Caminos y nodos en Chromium real: trazo de 14 a 16 px con extremos y uniones
-// redondeados, `surface` sobre `background` y `line` sobre `surface`; nodo de 18 px con aro de 4 px `charcoal`;
+// redondeados, `surface` sobre `background` y `line` sobre `surface`; nodo de 18 px con aro de 4 px en `node-ring` (RF-20 (019) · 20.3);
 // sin animaciones; con colores forzados el trazo calcula CanvasText o no se muestra.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cdp } from 'vitest/browser';
@@ -97,17 +97,18 @@ describe.each(['light', 'dark'] as const)('caminos y nodos en el tema %s (003)',
     }
   });
 
-  it('RF-9 (003) · 9.2: el nodo es un círculo de 18 px en surface con aro de 4 px charcoal', async () => {
+  it('RF-9 (003) · 9.2, RF-20 (019) · 20.3: el nodo es un círculo de 18 px en surface con aro de 4 px en node-ring', async () => {
     await mount(scene());
     for (const node of host.querySelectorAll<HTMLElement>('.node')) {
       const style = getComputedStyle(node);
       const box = node.getBoundingClientRect();
       expect(box.width).toBe(18);
       expect(box.height).toBe(18);
-      expect(style.borderTopLeftRadius).toBe('50%');
+      // RF-3 (019) · 3.3: redondo con `radius-pill`.
+      expect(style.borderTopLeftRadius).toMatch(/^(50%|999px)$/);
       expect(style.borderTopWidth).toBe('4px');
       expect(style.borderTopStyle).toBe('solid');
-      expect(style.borderTopColor).toBe(tokenColor('charcoal'));
+      expect(style.borderTopColor).toBe(tokenColor('node-ring'));
       expect(style.backgroundColor).toBe(tokenColor('surface', 'backgroundColor'));
     }
   });

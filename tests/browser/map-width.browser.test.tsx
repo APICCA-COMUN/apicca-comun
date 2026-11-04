@@ -86,6 +86,9 @@ describe.each(WIDTHS)('mapa a %i px', (width) => {
         <App />
       </SessionProvider>,
     );
+    // El mapa se pide con «Ver en el mapa» (RF-10 (019) · 10.5).
+    const toggle = await waitFor(() => [...host!.querySelectorAll('button')].find((button) => button.textContent === 'Ver en el mapa'));
+    await actNow(() => toggle.click());
     const map = await waitFor(() => host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]'));
     await waitFor(() => map.querySelector('.leaflet-container'));
     const lot = map.closest<HTMLElement>('.prototyping')!;

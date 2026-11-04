@@ -21,7 +21,7 @@ function setup() {
 const fill = async () => {
   fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Huerta' } });
   fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'Una huerta común' } });
-  await userEvent.click(screen.getByRole('checkbox', { name: 'Agua' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Agua' }));
 };
 
 describe('ApiceNew · ubicación', () => {

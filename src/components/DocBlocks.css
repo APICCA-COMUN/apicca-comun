@@ -23,9 +23,10 @@
   color: var(--text-muted);
 }
 
+/* RF-2 (019), D-T3 (019): código en línea con tamaño meta. */
 .doc-blocks code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.9em;
+  font-size: var(--type-meta-size);
 }
 
 .doc-blocks pre {

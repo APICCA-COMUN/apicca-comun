@@ -1,0 +1,35 @@
+/* RF-12 (019) · 12.1, 12.3, 12.4, D-T6 (019): el formulario del ápice.
+   Etiqueta y leyenda encima de su campo; los grupos son lotes (borde `line`, `radius-lot`, como en lots.css); el contador va al
+   final del campo, debajo, y deja al menos 8 px antes de lo que sigue. */
+.content-form__field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  margin-block-end: 1rem;
+}
+
+.content-form__counter {
+  align-self: flex-end;
+  margin-block-end: 0.5rem;
+  color: var(--text-muted);
+}
+
+.content-form fieldset {
+  box-sizing: border-box;
+  min-inline-size: 0;
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lot);
+}
+
+.content-form legend {
+  padding-inline: 0.25rem;
+}
+
+.content-form .axis-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

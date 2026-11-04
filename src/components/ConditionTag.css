@@ -1,29 +1,32 @@
 /* RF-6 (003) · 6.1, 6.2, D-T20 (003): un punto de color seguido del texto, de 14 px y peso 700, en text-muted,
    sin píldora ni borde. El punto no usa `action-blue` ni `brand-red`, reservados (RF-2 (002) · 2.3, 2.4). Con colores forzados el punto pasa a CanvasText y el texto sigue. Solo tokens. */
 
+/* RF-2 (019), D-T3 (019): etiqueta en tamaño meta. */
 .tag {
   display: inline-flex;
   align-items: baseline;
   gap: 0.5rem;
   color: var(--text-muted);
-  font-size: 0.875rem;
+  font-size: var(--type-meta-size);
   font-weight: 700;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
 
+/* RF-3 (019), D-T4 (019): punto redondo con radio píldora. */
 .tag-dot {
   flex: none;
   align-self: center;
   width: 0.5rem;
   height: 0.5rem;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   background-color: var(--text-muted);
 }
 
-.tag[data-condition='visibility'] .tag-dot { background-color: var(--axis-agua-stroke); }
+/* RF-15 (019) · 15.2, D-15 (019), D-T9 (019): sin colores de eje; el archivado sigue en `field-border`. */
+.tag[data-condition='visibility'] .tag-dot { background-color: var(--text-muted); }
 .tag[data-condition='archived'] .tag-dot { background-color: var(--field-border); }
-.tag[data-condition='status'] .tag-dot { background-color: var(--axis-alimento-stroke); }
+.tag[data-condition='status'] .tag-dot { background-color: var(--text-muted); }
 .tag[data-condition='reference'] .tag-dot { background-color: var(--text-muted); }
 
 @media (forced-colors: active) {

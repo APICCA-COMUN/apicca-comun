@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { hexToRgb } from './identity/color';
+import { TERRAIN_PALETTE, TOKENS } from './identity/tokens';
 import {
   PALETTE,
   PIXEL_SIZE,
@@ -20,6 +22,10 @@ describe('paleta y cuantización', () => {
       expect(color).toHaveLength(3);
       for (const channel of color) expect(Number.isInteger(channel) && channel >= 0 && channel <= 255).toBe(true);
     }
+  });
+
+  it('RF-1 (019) · 1.2, D-T24 (019): la paleta del pixelado es la del terreno, en su orden', () => {
+    expect(PALETTE.map((c) => [...c])).toEqual(TERRAIN_PALETTE.map(({ theme, token }) => hexToRgb(TOKENS[theme][token])));
   });
 
   it('RF-17 (001): toda salida de quantizeToPalette usa solo colores de la paleta y conserva el tamaño', () => {

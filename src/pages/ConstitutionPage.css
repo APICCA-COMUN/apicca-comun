@@ -23,9 +23,10 @@
   gap: 8px;
 }
 
+/* RF-2 (019), D-T3 (019): título display. */
 .constitution__head h1 {
   margin: 0;
-  font-size: clamp(32px, 5vw, 44px);
+  font-size: var(--type-display-size);
   line-height: 1.15;
   font-weight: 800;
 }
@@ -47,13 +48,14 @@
   gap: 28px;
 }
 
+/* RF-3 (019), D-T4 (019): extremo redondeado con radio píldora. */
 .constitution__list::before {
   content: '';
   position: absolute;
   inset-inline-start: 14px;
   inset-block: 32px;
   inline-size: 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background-color: var(--surface);
   box-shadow: var(--shadow-block);
 }
@@ -80,11 +82,11 @@
   color: var(--text-muted);
 }
 
-/* RF-11 (008) · 11.6: el pie va alineado con las tarjetas. */
+/* RF-11 (008) · 11.6, RF-2 (019), D-T3 (019): el pie va alineado con las tarjetas, en tamaño meta. */
 .constitution__updated {
   margin: 0;
   padding-inline-start: 50px;
-  font-size: 14px;
+  font-size: var(--type-meta-size);
   color: var(--text-muted);
 }
 

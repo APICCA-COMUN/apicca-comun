@@ -27,9 +27,10 @@
   display: contents;
 }
 
+/* RF-2 (019), D-T3 (019): título display. */
 .documentation__article h1 {
   margin: 0;
-  font-size: clamp(34px, 5vw, 48px);
+  font-size: var(--type-display-size);
   line-height: 1.15;
   font-weight: 800;
 }
@@ -62,7 +63,7 @@
 .documentation__index a {
   display: inline-block;
   padding-block: 10px;
-  font-size: 15px;
+  font-size: var(--type-label-size);
 }
 
 .documentation__section + .documentation__section {
@@ -71,7 +72,7 @@
 
 .documentation__section-title {
   margin-block: 0 0.25rem;
-  font-size: 14px;
+  font-size: var(--type-meta-size);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -87,7 +88,7 @@
   /* Un `span` en bloque y no un `p`: es metadato (RF-5 (002) · 5.6), no un párrafo (RF-5 (002) · 5.5). */
   display: block;
   margin: 0;
-  font-size: 18px;
+  font-size: var(--type-lead-size);
   color: var(--text-muted);
 }
 
@@ -104,7 +105,7 @@
   display: inline-flex;
   align-items: center;
   min-block-size: 44px;
-  font-size: 15px;
+  font-size: var(--type-label-size);
   font-weight: 700;
   text-decoration: underline;
 }

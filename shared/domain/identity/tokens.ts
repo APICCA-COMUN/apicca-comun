@@ -1,5 +1,5 @@
 // Contrato de tokens de §4.0 con los valores de plan §2 bis: único origen de los valores
-// de diseño (RNF-4 (002), RF-2 (002), D-T3 (002)); valores de §4.0 (003) según D-T2 (003); `radius-lot` de D-T1 (005); tokens y escala de la 008 según D-T1 (008) y D-T2 (008). La hoja de estilos se genera desde aquí.
+// de diseño (RNF-4 (002), RF-2 (002), D-T3 (002)); valores de §4.0 (003) según D-T2 (003); `radius-lot` de D-T1 (005); tokens y escala de la 008 según D-T1 (008) y D-T2 (008); `radius-pill`, `node-ring`, `veil` y la escala fluida de D-T2 (019) y D-T3 (019); la paleta del terreno de D-T24 (019). La hoja de estilos se genera desde aquí.
 
 export const THEMES = ['light', 'dark'] as const;
 export type ThemeName = (typeof THEMES)[number];
@@ -20,6 +20,10 @@ const light = {
   'on-accent': '#FFFFFF',
   'field-border': '#7A7368',
   focus: '#005FB8',
+  // Aro de los nodos y de la inicial: 3:1 o más sobre el fondo y la superficie (RF-20 (019) · 20.3, D-T13 (019)).
+  'node-ring': '#33363B',
+  // Velo detrás de un diálogo abierto (RF-14 (019) · 14.1, D-T8 (019)); lleva transparencia, como las sombras.
+  veil: 'rgb(20 33 61 / .45)',
   'logo-gray': '#666666',
   'logo-red': '#FF0000',
   'logo-blue': '#0096FF',
@@ -38,6 +42,8 @@ const light = {
   'radius-lot': '18px',
   // Radio del edificio y de las esquinas superiores de los campos (RF-2 (008)).
   'radius-building': '10px',
+  // Píldora de las acciones y círculo de los botones de ícono y de los nodos (RF-3 (019), D-T4 (019)).
+  'radius-pill': '999px',
   'shadow-block': '10px 10px 0 rgb(20 33 61 / .13)',
   'shadow-raised': '18px 18px 0 rgb(20 33 61 / .13)',
   'duration-raise': '150ms',
@@ -65,6 +71,8 @@ const dark: Record<TokenName, string> = {
   'on-accent': '#14213D',
   'field-border': '#8E97AD',
   focus: '#FFD166',
+  'node-ring': '#C4BDB0',
+  veil: 'rgb(0 0 0 / .6)',
   'logo-gray': '#FFFFFF',
   'logo-red': '#FF0000',
   'logo-blue': '#0096FF',
@@ -83,6 +91,7 @@ const dark: Record<TokenName, string> = {
   'radius-lot': '18px',
   // Radio del edificio y de las esquinas superiores de los campos (RF-2 (008)).
   'radius-building': '10px',
+  'radius-pill': '999px',
   'shadow-block': '10px 10px 0 rgb(0 0 0 / .32)',
   'shadow-raised': '18px 18px 0 rgb(0 0 0 / .32)',
   'duration-raise': '150ms',
@@ -94,11 +103,15 @@ const dark: Record<TokenName, string> = {
 
 export const TOKENS: Readonly<Record<ThemeName, Readonly<Record<TokenName, string>>>> = { light, dark };
 
-/** Escala de texto del sistema de diseño (RF-1 (008) · 1.2, D-T2 (008)): igual en los dos temas. */
+/**
+ * Escala de texto del sistema de diseño (RF-1 (008) · 1.2, D-T2 (008)): igual en los dos temas.
+ * `display` (h1 y cierre del Inicio) y `heading` (h2 de sección) son fluidos; su máximo no pasa de 2,5 veces el
+ * mínimo, para cumplir WCAG 1.4.4 con el zoom del navegador (RF-2 (019), D-T3 (019)).
+ */
 export const TYPE_SCALE = {
-  display: { size: '48px', line: '1.1', weight: '800' },
+  display: { size: 'clamp(32px, 5vw, 48px)', line: '1.1', weight: '800' },
   numeral: { size: '34px', line: '1', weight: '800' },
-  heading: { size: '28px', line: '1.2', weight: '800' },
+  heading: { size: 'clamp(28px, 3.6vw, 40px)', line: '1.2', weight: '800' },
   'doc-heading': { size: '24px', line: '1.25', weight: '800' },
   title: { size: '22px', line: '1.2', weight: '800' },
   subheading: { size: '20px', line: '1.25', weight: '700' },
@@ -109,6 +122,36 @@ export const TYPE_SCALE = {
 } as const;
 
 export const TOKEN_NAMES = Object.keys(light) as readonly TokenName[];
+
+/** Una referencia a un token de un tema. */
+export interface TokenRef {
+  theme: ThemeName;
+  token: TokenName;
+}
+
+/**
+ * Paleta del terreno (RF-1 (019) · 1.1, D-T24 (019)): 16 referencias a tokens, de la más oscura a la más clara. El
+ * pixelado de las imágenes nuevas usa estos colores (RF-1 (019) · 1.2). El trazo de comunicación queda fuera porque casi
+ * repite su relleno. Si cambia un token de la lista, cambia la paleta de las imágenes que se acepten después.
+ */
+export const TERRAIN_PALETTE: readonly TokenRef[] = [
+  { theme: 'dark', token: 'background' },
+  { theme: 'dark', token: 'surface' },
+  { theme: 'dark', token: 'line' },
+  { theme: 'light', token: 'charcoal' },
+  { theme: 'light', token: 'axis-agua-stroke' },
+  { theme: 'light', token: 'axis-alimento-stroke' },
+  { theme: 'light', token: 'axis-energia-stroke' },
+  { theme: 'light', token: 'axis-cobijo-stroke' },
+  { theme: 'light', token: 'axis-comunicacion-fill' },
+  { theme: 'light', token: 'axis-agua-fill' },
+  { theme: 'light', token: 'axis-alimento-fill' },
+  { theme: 'light', token: 'axis-cobijo-fill' },
+  { theme: 'light', token: 'axis-energia-fill' },
+  { theme: 'light', token: 'line' },
+  { theme: 'light', token: 'background' },
+  { theme: 'light', token: 'surface' },
+];
 
 // Tintado de las teselas del mapa (D-T8 (002)); no es token público de §4.0. Con
 // `forced-colors: active` no se aplica ninguno.

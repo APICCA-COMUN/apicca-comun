@@ -1,7 +1,9 @@
-// RF-6 (005) · 6.1 a 6.3, 6.7, 6.9, D-6 (005), D-T3 (005): retícula del lote ilustrado. Cada ápice ocupa una celda según
-// su lugar en la lista, de izquierda a derecha y de arriba abajo; los caminos corren entre las filas y entre las
-// columnas, como calles entre manzanas, y cada cruce lleva un nodo. Las medidas van en unidades de celda. Es
-// determinista: la misma lista y el mismo ancho dan siempre el mismo dibujo. Sin React ni DOM.
+// RF-6 (005) · 6.1, 6.2, 6.7, 6.9, D-6 (005), D-T3 (005): retícula del lote ilustrado. Cada ápice ocupa una celda según
+// su lugar en la lista, de izquierda a derecha y de arriba abajo. Las medidas van en unidades de celda. Es determinista:
+// la misma lista y el mismo ancho dan siempre el mismo dibujo. Sin React ni DOM.
+// RF-8 (019) · 8.1, D-9 (019), D-T5 (019): la retícula no dibuja caminos ni nodos hasta que una spec defina la relación
+// que representan. RF-8 (019) · 8.3, D-9 (019) revisada, D-T26 (019): el recorrido en zigzag de Prototipado conserva los
+// suyos (RF-6 (005) · 6.10, 6.11).
 
 /** Ancho de una celda del lote, en píxeles. */
 export const LOT_CELL = 160;
@@ -13,7 +15,7 @@ export interface LotCell {
   column: number;
 }
 
-/** Tramo recto de camino, de (x1, y1) a (x2, y2), en unidades de celda. */
+/** Tramo recto de camino, de (x1, y1) a (x2, y2): en el recorrido, en porcentaje del lote. */
 export interface LotRoad {
   x1: number;
   y1: number;
@@ -25,8 +27,6 @@ export interface LotLayout {
   columns: number;
   rows: number;
   cells: LotCell[];
-  roads: LotRoad[];
-  nodes: { x: number; y: number }[];
 }
 
 /** Columnas que caben en `width` píxeles: de 1 a 6. */
@@ -37,16 +37,11 @@ export function lotColumns(width: number): number {
 
 /** Dibujo de `count` edificios en `maxColumns` columnas como mucho. */
 export function lotLayout(count: number, maxColumns: number): LotLayout {
-  if (count <= 0) return { columns: 0, rows: 0, cells: [], roads: [], nodes: [] };
+  if (count <= 0) return { columns: 0, rows: 0, cells: [] };
   const columns = Math.min(count, Math.max(1, Math.floor(maxColumns)));
   const rows = Math.ceil(count / columns);
   const cells = Array.from({ length: count }, (_, index) => ({ row: Math.floor(index / columns), column: index % columns }));
-  const roads: LotRoad[] = [];
-  for (let y = 1; y < rows; y += 1) roads.push({ x1: 0, y1: y, x2: columns, y2: y });
-  for (let x = 1; x < columns; x += 1) roads.push({ x1: x, y1: 0, x2: x, y2: rows });
-  const nodes: { x: number; y: number }[] = [];
-  for (let y = 1; y < rows; y += 1) for (let x = 1; x < columns; x += 1) nodes.push({ x, y });
-  return { columns, rows, cells, roads, nodes };
+  return { columns, rows, cells };
 }
 
 /** Índice del edificio vecino en la dirección de la flecha, o `null` si no hay. */

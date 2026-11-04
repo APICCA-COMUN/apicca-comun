@@ -1,25 +1,29 @@
-/* RF-1 (002) · 1.1, RF-7 (003) · 7.1, 7.8, RF-4 (008) · 4.1, 4.4: la cabecera va sobre el fondo, sin sombra ni recuadro,
+/* RF-21 (019), D-T14 (019): por debajo de 1024 px la fila lleva logo, «Menú», tema y sesión con separaciones de 8 px
+   (351 px a 360 px); la lista del menú pasa a su propia línea (SiteNav.css). Desde 1024 px, separaciones de 16 px.
+   RF-1 (002) · 1.1, RF-7 (003) · 7.1, 7.8, RF-4 (008) · 4.1, 4.4: la cabecera va sobre el fondo, sin sombra ni recuadro,
    en una columna de `content-max`; se parte en líneas antes que desbordar (D-T16 (002), D-T4 (008)). */
 .site-header__inner {
   box-sizing: content-box;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 32px;
+  gap: 4px 8px;
   max-inline-size: var(--content-max);
   margin-inline: auto;
   padding: 20px clamp(16px, 4vw, 48px);
 }
 
-.site-header__inner > .site-nav {
-  flex: 1 1 auto;
+@media (min-width: 1024px) {
+  .site-header__inner {
+    gap: 12px 16px;
+  }
 }
 
 .site-header__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: 8px;
   margin-inline-start: auto;
 }
 

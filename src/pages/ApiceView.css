@@ -1,4 +1,4 @@
-/* RF-12 (003) · 12.1, 12.5: la ficha vive en un lote (`lots.css`); el edificio va junto al nombre. Sin colores. */
+/* RF-12 (003) · 12.1, 12.5, RF-18 (019) · 18.1, D-T12 (019), RF-11 (019), RF-4 (019) · 4.5: la ficha vive en un lote (`lots.css`); el edificio va sobre el nombre h1. Sin colores. */
 
 .apice-view__head {
   display: flex;
@@ -8,13 +8,53 @@
   min-width: 0;
 }
 
-.apice-view__head h2 {
+.apice-view__head h1 {
   flex: 1 1 12rem;
   min-width: 0;
   margin: 0;
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-line);
 }
 
 .apice-view__head .building {
   flex: 0 1 auto;
   max-width: 100%;
+}
+
+/* RF-11 (019) · 11.1, 11.3, D-T23 (019): el edificio va arriba y el h1 debajo; los ejes, sin viñetas. */
+.apice-view__head {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.apice-view__head h1 {
+  flex: none;
+}
+
+.apice-view__axes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* RF-4 (019) · 4.5: la imagen de una idea, en un bloque propio con su pixelado. */
+.apice-view__image {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+/* RF-11 (019) · 11.2: Necesidades y Aportes, dos lotes contiguos; en una columna por debajo de 640 px. */
+.apice-view__workshop {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.apice-view__workshop h2 {
+  margin-top: 0;
 }

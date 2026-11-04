@@ -1,12 +1,12 @@
 /* Generado por `npm run gen-tokens` desde shared/domain/identity/tokens.ts. No editar a mano. */
 :root {
-  --type-display-size: 48px;
+  --type-display-size: clamp(32px, 5vw, 48px);
   --type-display-line: 1.1;
   --type-display-weight: 800;
   --type-numeral-size: 34px;
   --type-numeral-line: 1;
   --type-numeral-weight: 800;
-  --type-heading-size: 28px;
+  --type-heading-size: clamp(28px, 3.6vw, 40px);
   --type-heading-line: 1.2;
   --type-heading-weight: 800;
   --type-doc-heading-size: 24px;
@@ -49,6 +49,8 @@
   --on-accent: #FFFFFF;
   --field-border: #7A7368;
   --focus: #005FB8;
+  --node-ring: #33363B;
+  --veil: rgb(20 33 61 / .45);
   --logo-gray: #666666;
   --logo-red: #FF0000;
   --logo-blue: #0096FF;
@@ -65,6 +67,7 @@
   --radius-block: 14px;
   --radius-lot: 18px;
   --radius-building: 10px;
+  --radius-pill: 999px;
   --shadow-block: 10px 10px 0 rgb(20 33 61 / .13);
   --shadow-raised: 18px 18px 0 rgb(20 33 61 / .13);
   --duration-raise: 150ms;
@@ -91,6 +94,8 @@
   --on-accent: #14213D;
   --field-border: #8E97AD;
   --focus: #FFD166;
+  --node-ring: #C4BDB0;
+  --veil: rgb(0 0 0 / .6);
   --logo-gray: #FFFFFF;
   --logo-red: #FF0000;
   --logo-blue: #0096FF;
@@ -107,6 +112,7 @@
   --radius-block: 14px;
   --radius-lot: 18px;
   --radius-building: 10px;
+  --radius-pill: 999px;
   --shadow-block: 10px 10px 0 rgb(0 0 0 / .32);
   --shadow-raised: 18px 18px 0 rgb(0 0 0 / .32);
   --duration-raise: 150ms;
@@ -134,6 +140,8 @@
     --on-accent: #14213D;
     --field-border: #8E97AD;
     --focus: #FFD166;
+    --node-ring: #C4BDB0;
+    --veil: rgb(0 0 0 / .6);
     --logo-gray: #FFFFFF;
     --logo-red: #FF0000;
     --logo-blue: #0096FF;
@@ -150,6 +158,7 @@
     --radius-block: 14px;
     --radius-lot: 18px;
     --radius-building: 10px;
+    --radius-pill: 999px;
     --shadow-block: 10px 10px 0 rgb(0 0 0 / .32);
     --shadow-raised: 18px 18px 0 rgb(0 0 0 / .32);
     --duration-raise: 150ms;

@@ -1,8 +1,10 @@
 // RF-6 (001), RF-7 (001), RF-8 (001), RF-9 (001), RNF-10 (001) · Formulario de la ficha de un ápice: valida con el dominio,
 // dice cuántos caracteres sobran, conserva lo escrito como borrador y no interpreta marcas (texto plano).
+// RF-12 (019) · 12.1, 12.3, 12.4, D-T6 (019): etiqueta y leyenda encima, grupos como lotes y contador al final del campo.
+// RF-17 (019) · 17.1, 17.2, D-T11 (019): el estado se llama «Etapa» y muestra sus valores con mayúscula inicial.
 // RF-6 (002) · 6.1, 6.3: campos y aviso como bloques; el envío es la acción principal.
 import { useState, type ComponentType, type FormEvent } from 'react';
-import { APICE_STATUSES, INITIAL_APICE_STATUS, validateContent, type ApiceStatus, type Axis, type ContentField, type ContentIssue } from '../../shared/domain/apice';
+import { APICE_STAGE_LABEL, APICE_STATUSES, INITIAL_APICE_STATUS, validateContent, type ApiceStatus, type Axis, type ContentField, type ContentIssue } from '../../shared/domain/apice';
 import { AXES } from '../../shared/domain/apice';
 import { LIMITS } from '../../shared/domain/limits';
 import type { Location, Point } from '../../shared/domain/location';
@@ -12,6 +14,7 @@ import { ApiClientError, type LocationEdit } from '../data/api';
 import { AxisPicker } from './AxisPicker';
 import { KEEP_LOCATION, resolveLocationDraft, restoreLocationDraft, type LocationDraft } from './locationDraft';
 import { LocationPicker, type PointMapProps } from './LocationPicker';
+import './ContentForm.css';
 
 export interface FormValues {
   name: string;
@@ -153,7 +156,7 @@ export function ContentForm({ initial, draftKey, submitLabel, onSubmit, showStat
   };
 
   return (
-    <form onSubmit={(event) => void submit(event)} noValidate>
+    <form className="content-form" onSubmit={(event) => void submit(event)} noValidate>
       {TEXT_FIELDS.map(({ field, label, limit, multiline }) => {
         const issue = issueFor(field);
         const errorId = `${draftKey}-${field}-error`;
@@ -165,14 +168,14 @@ export function ContentForm({ initial, draftKey, submitLabel, onSubmit, showStat
           'aria-describedby': issue === undefined ? undefined : errorId,
         };
         return (
-          <div key={field}>
+          <div key={field} className="content-form__field">
             <label htmlFor={shared.id}>{label}</label>
             {multiline ? (
               <textarea {...shared} onChange={(event) => update({ [field]: event.target.value })} />
             ) : (
               <input type="text" {...shared} onChange={(event) => update({ [field]: event.target.value })} />
             )}
-            <span>{`${[...values[field]].length} / ${limit}`}</span>
+            <span className="content-form__counter">{`${[...values[field]].length} / ${limit}`}</span>
             {issue !== undefined && <p id={errorId}>{issueText(issue)}</p>}
           </div>
         );
@@ -180,12 +183,12 @@ export function ContentForm({ initial, draftKey, submitLabel, onSubmit, showStat
       <AxisPicker value={values.axes} onChange={(axes) => update({ axes })} describedBy={issueFor('axes') ? `${draftKey}-axes-error` : undefined} />
       {issueFor('axes') !== undefined && <p id={`${draftKey}-axes-error`}>{issueText(issueFor('axes') as ContentIssue)}</p>}
       {showStatus && (
-        <div>
-          <label htmlFor={`${draftKey}-status`}>Estado</label>
+        <div className="content-form__field">
+          <label htmlFor={`${draftKey}-status`}>Etapa</label>
           <select className="block" id={`${draftKey}-status`} value={values.status} onChange={(event) => update({ status: event.target.value as ApiceStatus })}>
             {APICE_STATUSES.map((status) => (
               <option key={status} value={status}>
-                {status}
+                {APICE_STAGE_LABEL[status]}
               </option>
             ))}
           </select>

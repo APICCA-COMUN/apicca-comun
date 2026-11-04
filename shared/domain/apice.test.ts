@@ -8,6 +8,7 @@ import {
   validateContent,
   type ContentInput,
 } from './apice';
+import * as apice from './apice';
 import { LIMITS } from './limits';
 
 describe('apice · tipos base', () => {
@@ -116,5 +117,20 @@ describe('normalizeContent', () => {
     expect(normalizeContent({ ...base, name: '   ' }).name).toBe('');
     expect(issuesOf({ ...base, name: '   \t ' })).toEqual([{ field: 'name', code: 'field-required' }]);
     expect(issuesOf({ ...base, description: '\n \n' })).toEqual([{ field: 'description', code: 'field-required' }]);
+  });
+
+  it('RF-17 (019) · 17.2, D-T11 (019): APICE_STAGE_LABEL nombra cada etapa con mayúscula inicial, sin cambiar el valor guardado', () => {
+    expect(apice.APICE_STAGE_LABEL).toEqual({ idea: 'Idea', prototipo: 'Prototipo', 'en marcha': 'En marcha' });
+    expect(Object.keys(apice.APICE_STAGE_LABEL ?? {})).toEqual([...apice.APICE_STATUSES]);
+  });
+});
+
+describe('hasNeeds · RF-9 (019), D-T18 (019)', () => {
+  it('RF-9 (019) · 9.1: hay necesidades solo si el campo tiene texto además de espacios', () => {
+    expect(apice.hasNeeds('Manos para cavar.')).toBe(true);
+    expect(apice.hasNeeds('  agua  ')).toBe(true);
+    expect(apice.hasNeeds('')).toBe(false);
+    expect(apice.hasNeeds('   \n\t')).toBe(false);
+    expect(apice.hasNeeds(undefined)).toBe(false);
   });
 });

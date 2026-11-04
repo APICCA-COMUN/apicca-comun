@@ -490,7 +490,13 @@ export const seedFull: BrowserCommand<[], void> = async () => {
 
       // Referencia retirada por la facilitación (functions/src/ops/referenceRemoval.ts): el contador ya no la cuenta.
       const retractedPath = `apices/${APICE_IDS.withRetractedReference}/references/${REFERENCE_IDS.retracted}`;
-      await writeApice(db, at, { id: APICE_IDS.withRetractedReference, content: content('Referencia retirada', 'idea', ['agua']), ...author });
+      // Idea con imagen y sin necesidades (RF-4 (019) · 4.5, RF-9 (019), D-T18 (019)): el edificio es solo la base y no lleva pin.
+      await writeApice(db, at, {
+        id: APICE_IDS.withRetractedReference,
+        content: { ...content('Referencia retirada', 'idea', ['agua']), needs: '' },
+        ...author,
+        image: { id: 'imagen-idea', altText: 'Tablero de dos tonos de la idea', png },
+      });
       await setDoc(
         doc(db, retractedPath),
         referenceDoc(retractedPath, 'Imagen retirada', {

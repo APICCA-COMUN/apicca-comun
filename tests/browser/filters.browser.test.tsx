@@ -50,7 +50,8 @@ describe.each(['light', 'dark'] as const)('filtros de eje en el tema %s (003)', 
       const box = button.getBoundingClientRect();
       expect(Math.round(box.width)).toBe(44);
       expect(Math.round(box.height)).toBe(44);
-      expect(getComputedStyle(button).borderRadius).toMatch(/^(50%|22px)$/);
+      // RF-3 (019) · 3.3, D-T4 (019): redondo con `radius-pill` (999px), que en un botón de 44 × 44 da un círculo.
+      expect(getComputedStyle(button).borderRadius).toMatch(/^(50%|22px|999px)$/);
     }
   });
 

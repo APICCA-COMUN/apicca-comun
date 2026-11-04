@@ -3,6 +3,7 @@
 // recibe quien es autora o facilitadora (`exact`); para las demás personas no existe en pantalla.
 // RF-6 (002) · 6.1, 6.3: campos y avisos como bloques, radios con «choice» y botones como acciones secundarias.
 // RF-1 (016), RNF-1 (016), D-T5 (016): sin `mayRaise` no se fija un punto ni se vuelve exacta; quitar y «Aproximada» siguen.
+// RF-12 (019) · 12.1, D-T6 (019): latitud y longitud usan el campo del formulario, con la etiqueta encima.
 import { Component, lazy, Suspense, useId, useState, type ComponentType, type ReactNode } from 'react';
 import { DEFAULT_PRECISION, displayLocation, validateCoordinates, type Location, type Point, type Precision } from '../../shared/domain/location';
 import { KEEP_LOCATION, resolveLocationDraft, typeCoordinates, type LocationDraft } from './locationDraft';
@@ -102,7 +103,7 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
       )}
 
       {!mayRaise && <p className="block">Solo la autoría y la facilitación pueden fijar la ubicación o volverla exacta.</p>}
-      <div>
+      <div className="content-form__field">
         <label htmlFor={`${id}-lat`}>Latitud</label>
         <input
           id={`${id}-lat`}
@@ -115,7 +116,7 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
           onChange={(event) => onChange(typeCoordinates(value, { lat: event.target.value }))}
         />
       </div>
-      <div>
+      <div className="content-form__field">
         <label htmlFor={`${id}-lng`}>Longitud</label>
         <input
           id={`${id}-lng`}

@@ -3,7 +3,7 @@
 .filter-axis {
   inline-size: 44px;
   block-size: 44px;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
 }
 
 .filter-axis[aria-pressed='true'] {

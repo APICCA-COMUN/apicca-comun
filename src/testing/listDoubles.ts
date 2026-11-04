@@ -12,6 +12,7 @@ export function listed(n: number, extra: Partial<ListedApice> = {}): ListedApice
     status: 'idea',
     updatedAt: { seconds: 1_790_000_000 - n, nanoseconds: 0 },
     image: null,
+    needs: '',
     ...extra,
   };
 }

@@ -1,5 +1,7 @@
-// RF-1 (001), RF-4 (001), RF-5 (001), RF-6 (002) · 6.1, 6.3, RF-7 (003) · 7.9 · Armazón común de las páginas de facilitación: solo para quien facilita,
-// navegación entre ellas, lectura de listas y el cuadro que muestra y copia un enlace de invitación.
+// RF-1 (001), RF-4 (001), RF-5 (001), RF-6 (002) · 6.1, 6.3, RF-7 (003) · 7.9,
+// RF-13 (019) · 13.1, 13.2, D-T7 (019), RF-18 (019) · 18.1, D-T12 (019) · Armazón común de las páginas de facilitación:
+// solo para quien facilita, navegación entre ellas, listas sin viñeta con filas como bloques, enlace abreviado con
+// acción de copiar al portapapeles y un solo h1 por página.
 import { useEffect, useState, type ReactNode } from 'react';
 import { FACILITATION_MENU, isCurrentSection } from '../../shared/domain/navigation';
 import { Link, useRoute } from '../app/router';
@@ -7,6 +9,7 @@ import { useSession, type PersonSession } from '../app/session';
 import { usePageTitle } from '../app/usePageTitle';
 import { ApiClientError } from '../data/api';
 import '../components/SiteNav.css';
+import './Facilitation.css';
 
 const AREA = 'Facilitación';
 
@@ -16,7 +19,20 @@ export function errorText(error: unknown): string {
 }
 
 /** El servidor devuelve la ruta (`/registro/<token>`); la persona necesita la URL completa para compartirla. */
-export const absoluteLink = (path: string): string => `${window.location.origin}${path}`;
+export const absoluteLink = (path: string): string =>
+  path.startsWith('http://') || path.startsWith('https://') ? path : `${window.location.origin}${path}`;
+
+/** Muestra la ruta sin el origen; para tokens largos abrevia con «…» para no desbordar en pantallas angostas. */
+export function shortenLink(path: string): string {
+  const prefix = '/registro/';
+  if (path.startsWith(prefix)) {
+    const token = path.slice(prefix.length);
+    if (token.length > 12) {
+      return `${prefix}…${token.slice(-6)}`;
+    }
+  }
+  return path;
+}
 
 export function FacilitationShell({ title, children }: { title: string; children: (session: PersonSession) => ReactNode }) {
   usePageTitle({ area: AREA, contentTitle: title });
@@ -27,7 +43,7 @@ export function FacilitationShell({ title, children }: { title: string; children
     return <p>Esta página es solo para quienes facilitan.</p>;
   }
   return (
-    <section>
+    <section className="facilitation">
       <nav aria-label="Facilitación" className="site-nav">
         {FACILITATION_MENU.map((item) => (
           <Link
@@ -40,7 +56,7 @@ export function FacilitationShell({ title, children }: { title: string; children
           </Link>
         ))}
       </nav>
-      <h2>{title}</h2>
+      <h1>{title}</h1>
       {children(session)}
     </section>
   );
@@ -54,25 +70,48 @@ export function useRows<T>(subscribe: (callback: (rows: T[]) => void, onError: (
   return { rows, failed };
 }
 
-/** Enlace de invitación en claro, con botón para copiarlo. */
+/** Enlace de invitación abreviado, con botón para copiar el enlace completo (RF-13 (019) · 13.2, D-T7 (019)). */
 export function LinkBox({ path }: { path: string }) {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  // Cada intento monta un aviso nuevo, para que el lector lo anuncie también la segunda vez (RNF-1 (019)).
+  const [attempt, setAttempt] = useState(0);
   const url = absoluteLink(path);
+  const abbreviated = shortenLink(path);
+
   const copy = async () => {
+    setAttempt((count) => count + 1);
     try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('Clipboard no disponible');
+      }
       await navigator.clipboard.writeText(url);
-      setCopied(true);
+      setCopyState('copied');
     } catch {
-      setCopied(false);
+      setCopyState('failed');
     }
   };
+
   return (
-    <span>
-      <code>{url}</code>{' '}
+    <span className="link-box">
+      <code>{abbreviated}</code>{' '}
       <button type="button" className="block action-secondary" onClick={() => void copy()}>
         Copiar enlace
       </button>
-      {copied ? <span> Enlace copiado.</span> : null}
+      {copyState === 'idle' ? null : (
+        <span key={attempt} role="status" className="link-box__status">
+          {copyState === 'copied' ? 'Enlace copiado.' : 'No se pudo copiar automáticamente. Copia el enlace a mano:'}
+        </span>
+      )}
+      {copyState === 'failed' ? (
+        <input
+          type="text"
+          readOnly
+          value={url}
+          aria-label="Enlace completo de la invitación"
+          className="block link-box__manual"
+          onFocus={(event) => event.currentTarget.select()}
+        />
+      ) : null}
     </span>
   );
 }

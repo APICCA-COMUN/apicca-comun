@@ -1,6 +1,8 @@
 // RNF-1 (002), D-T21 (002), plan §9.4: matriz de accesibilidad en Chromium real:
 // recorre '/', '/entrar', '/prototipado', '/tablero' (con la sesión de la autora), '/documentacion', '/constitucion' y las otras cinco rutas de la constitución común (RNF-4 (004)) en la matriz de colores forzados y contraste aumentado × dos temas (claro y oscuro),
 // verificando que cada control navegable con el tabulador muestra un indicador de foco visible.
+// RNF-1 (019): las pantallas de la fase 1 (cabecera con «Menú», formularios del ápice, Facilitación y Foro) a 360 px, en los
+// dos temas, con colores normales y forzados, también con «Menú» abierto.
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
@@ -15,7 +17,9 @@ import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
 import { signInAs, signOutNow } from './session';
-import { AUTHOR, CONSTITUTION_IDS } from './seed-data';
+import { APICE_IDS, AUTHOR, CONSTITUTION_IDS, FACILITATOR } from './seed-data';
+
+type Account = typeof AUTHOR | typeof FACILITATOR;
 
 interface MatrixCase {
   readonly feature: 'forced-colors' | 'prefers-contrast';
@@ -79,7 +83,7 @@ const ROUTES: readonly { path: string; as?: typeof AUTHOR }[] = [
 let signedInAs: string | null = null;
 
 /** Cambia de cuenta solo si hace falta; `undefined` cierra la sesión. */
-async function useAccount(account: typeof AUTHOR | undefined) {
+async function useAccount(account: Account | undefined) {
   const wanted = account?.uid ?? null;
   if (wanted === signedInAs) return;
   if (signedInAs !== null) await signOutNow();
@@ -234,5 +238,40 @@ describe.each(['light', 'dark'] as const)('constitución común a 360 px · tema
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
     (document.activeElement as HTMLElement | null)?.blur();
     await expectFocusRings(computed('color', 'focus'));
+  });
+});
+
+/** Las pantallas que cambia la fase 1 de la 019, con la cuenta que las abre. */
+const ROUTES_019: readonly { path: string; as?: Account }[] = [
+  { path: '/' },
+  { path: '/prototipado' },
+  { path: '/foro' },
+  { path: '/apices/nuevo', as: AUTHOR },
+  { path: `/apices/${APICE_IDS.withImage}/editar`, as: AUTHOR },
+  { path: '/facilitacion/invitaciones', as: FACILITATOR },
+];
+
+describe.each(['light', 'dark'] as const)('fase 1 de la 019 a 360 px · tema %s', (theme) => {
+  describe.each([false, true])('colores forzados: %s', (isForced) => {
+    it.each(ROUTES_019)('RNF-1 (019): en $path a 360 px, sin desplazamiento horizontal y con foco visible en cada parada, también con «Menú» abierto', async ({ path, as }) => {
+      if (isForced) await cdp().send('Emulation.setEmulatedMedia', { features: [{ name: 'forced-colors', value: 'active' }] });
+      document.documentElement.dataset['theme'] = theme;
+      await page.viewport(360, 800);
+      await useAccount(as);
+      await show(path);
+      if (as !== undefined) expect(location.pathname).toBe(path);
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
+      const expectedColor = isForced ? resolveSystemColor('Highlight', 'outlineColor') : computed('color', 'focus');
+      (document.activeElement as HTMLElement | null)?.blur();
+      await expectFocusRings(expectedColor);
+      // Con «Menú» abierto, los destinos también muestran el foco y la página sigue sin desplazarse a los lados.
+      const toggle = [...host!.querySelectorAll<HTMLButtonElement>('header button')].find((button) => button.textContent?.trim() === 'Menú')!;
+      await actNow(() => toggle.click());
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
+      (document.activeElement as HTMLElement | null)?.blur();
+      await expectFocusRings(expectedColor);
+      await actNow(() => toggle.click());
+    });
   });
 });

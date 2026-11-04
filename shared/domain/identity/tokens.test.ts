@@ -1,8 +1,9 @@
 // RNF-4 (002), RF-2 (002): los tokens de §4.0 viven en un solo módulo, con valor en los dos temas.
 // RF-1 (003) · 1.1, 1.2, RF-2 (003) · 2.2, 2.3, D-T2 (003): los valores de §4.0 (003) sustituyen a los de la 002.
+// RF-1 (019) · 1.1, D-T24 (019): la paleta del terreno sale de los tokens.
 import { describe, expect, it } from 'vitest';
 import { contrastRatio } from './color';
-import { MAP_TINT, THEMES, TOKENS, TOKEN_NAMES, TYPE_SCALE } from './tokens';
+import { MAP_TINT, TERRAIN_PALETTE, THEMES, TOKENS, TOKEN_NAMES, TYPE_SCALE } from './tokens';
 
 const ms = (value: string): number => {
   const match = /^(\d+(?:\.\d+)?)(ms|s)$/.exec(value);
@@ -16,7 +17,7 @@ describe('tokens', () => {
     expect([...TOKEN_NAMES].sort()).toEqual(Object.keys(TOKENS.light).sort());
   });
 
-  it('RNF-4 (002): están todos los tokens de la tabla de §4.0, con los cinco ejes', () => {
+  it('RNF-4 (002), D-T2 (019): están todos los tokens de la tabla de §4.0, con los cinco ejes y los de la 019', () => {
     const axisKeys = ['agua', 'alimento', 'cobijo', 'energia', 'comunicacion'];
     const expected = [
       'background', 'line', 'surface', 'text', 'text-muted', 'charcoal', 'on-charcoal', 'on-charcoal-muted',
@@ -24,6 +25,7 @@ describe('tokens', () => {
       ...axisKeys.flatMap((k) => [`axis-${k}-fill`, `axis-${k}-stroke`]),
       'radius-block', 'radius-lot', 'radius-building', 'shadow-block', 'shadow-raised', 'duration-raise',
       'footer-bg', 'size-control', 'size-icon-control', 'focus-offset', 'content-max',
+      'radius-pill', 'node-ring', 'veil',
     ];
     expect([...TOKEN_NAMES].sort()).toEqual(expected.sort());
   });
@@ -89,7 +91,8 @@ describe('tokens', () => {
   it('RNF-4 (002): los colores son hexadecimales de seis cifras', () => {
     for (const theme of THEMES) {
       for (const [name, value] of Object.entries(TOKENS[theme])) {
-        if (/^(radius|shadow|duration|size|content)-|^focus-offset$/.test(name)) continue;
+        // `veil` lleva transparencia, como las sombras (D-T2 (019)).
+        if (/^(radius|shadow|duration|size|content)-|^focus-offset$|^veil$/.test(name)) continue;
         expect(value, `${theme} ${name}`).toMatch(/^#[0-9A-F]{6}$/);
       }
     }
@@ -110,11 +113,11 @@ describe('tokens', () => {
     }
   });
 
-  it('RF-1 (008) · 1.2: la escala de texto tiene los diez estilos con tamaño, altura de línea y peso', () => {
+  it('RF-1 (008) · 1.2, RF-2 (019) · 2.3, D-T3 (019): la escala de texto tiene los diez estilos con tamaño, altura de línea y peso; display y heading son fluidos', () => {
     expect(TYPE_SCALE).toEqual({
-      display: { size: '48px', line: '1.1', weight: '800' },
+      display: { size: 'clamp(32px, 5vw, 48px)', line: '1.1', weight: '800' },
       numeral: { size: '34px', line: '1', weight: '800' },
-      heading: { size: '28px', line: '1.2', weight: '800' },
+      heading: { size: 'clamp(28px, 3.6vw, 40px)', line: '1.2', weight: '800' },
       'doc-heading': { size: '24px', line: '1.25', weight: '800' },
       title: { size: '22px', line: '1.2', weight: '800' },
       subheading: { size: '20px', line: '1.25', weight: '700' },
@@ -125,12 +128,75 @@ describe('tokens', () => {
     });
   });
 
-  it('RNF-1 (008): el texto del pie alcanza 4,5:1 sobre footer-bg y la inicial del avatar sobre axis-alimento-fill, en los dos temas', () => {
+  it('RNF-1 (008), RF-15 (019) · 15.1, D-T9 (019): el texto del pie alcanza 4,5:1 sobre footer-bg y la inicial (on-charcoal) sobre charcoal, en los dos temas', () => {
     for (const theme of THEMES) {
       const t = TOKENS[theme];
       expect(contrastRatio(t['on-charcoal'], t['footer-bg']), `${theme} on-charcoal`).toBeGreaterThanOrEqual(4.5);
       expect(contrastRatio(t['on-charcoal-muted'], t['footer-bg']), `${theme} on-charcoal-muted`).toBeGreaterThanOrEqual(4.5);
-      expect(contrastRatio(t.charcoal, t['axis-alimento-fill']), `${theme} avatar`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(t['on-charcoal'], t.charcoal), `${theme} inicial`).toBeGreaterThanOrEqual(4.5);
     }
+  });
+
+  it('RF-2 (019) · 2.3, D-T3 (019): los tamaños fluidos no pasan de 2,5 veces su mínimo (WCAG 1.4.4)', () => {
+    for (const name of ['display', 'heading'] as const) {
+      const match = /^clamp\((\d+)px, [\d.]+vw, (\d+)px\)$/.exec(TYPE_SCALE[name].size);
+      expect(match, name).not.toBeNull();
+      expect(Number(match![2]) / Number(match![1]), name).toBeLessThanOrEqual(2.5);
+    }
+  });
+
+  it('RF-3 (019) · 3.1, D-T2 (019): radius-pill vale 999 px en los dos temas', () => {
+    for (const theme of THEMES) expect(TOKENS[theme]['radius-pill']).toBe('999px');
+  });
+
+  it('RF-20 (019) · 20.3, D-T2 (019), D-T13 (019): node-ring contrasta 3:1 o más con background y surface, en los dos temas', () => {
+    expect(TOKENS.light['node-ring']).toBe('#33363B');
+    expect(TOKENS.dark['node-ring']).toBe('#C4BDB0');
+    for (const theme of THEMES) {
+      const t = TOKENS[theme];
+      expect(contrastRatio(t['node-ring'], t.background), `${theme} fondo`).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(t['node-ring'], t.surface), `${theme} superficie`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('RF-14 (019) · 14.1, D-T2 (019): veil vela el fondo con transparencia en los dos temas', () => {
+    expect(TOKENS.light.veil).toBe('rgb(20 33 61 / .45)');
+    expect(TOKENS.dark.veil).toBe('rgb(0 0 0 / .6)');
+  });
+
+  it('RF-1 (019) · 1.1, D-T24 (019): la paleta del terreno son 16 referencias a tokens de eje, charcoal, surface, line y background, con 16 colores distintos', () => {
+    const allowed = /^(axis-(agua|alimento|cobijo|energia|comunicacion)-(fill|stroke)|charcoal|surface|line|background)$/;
+    expect(TERRAIN_PALETTE).toHaveLength(16);
+    for (const { theme, token } of TERRAIN_PALETTE) {
+      expect(THEMES).toContain(theme);
+      expect(token).toMatch(allowed);
+    }
+    const hexes = TERRAIN_PALETTE.map(({ theme, token }) => TOKENS[theme][token].toUpperCase());
+    expect(new Set(hexes).size).toBe(16);
+    for (const hex of hexes) expect(hex).toMatch(/^#[0-9A-F]{6}$/);
+  });
+
+  it('RF-1 (019) · 1.1, D-T24 (019): toma los 5 rellenos claros, 4 trazos claros sin comunicación, charcoal y fondo, superficie y línea de los dos temas', () => {
+    const key = ({ theme, token }: { theme: string; token: string }) => `${theme}:${token}`;
+    expect(TERRAIN_PALETTE.map(key).sort()).toEqual(
+      [
+        'light:axis-agua-fill',
+        'light:axis-alimento-fill',
+        'light:axis-cobijo-fill',
+        'light:axis-energia-fill',
+        'light:axis-comunicacion-fill',
+        'light:axis-agua-stroke',
+        'light:axis-alimento-stroke',
+        'light:axis-cobijo-stroke',
+        'light:axis-energia-stroke',
+        'light:charcoal',
+        'dark:background',
+        'dark:surface',
+        'dark:line',
+        'light:background',
+        'light:line',
+        'light:surface',
+      ].sort(),
+    );
   });
 });

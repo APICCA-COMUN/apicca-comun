@@ -3,7 +3,9 @@
 // RF-1 (004) · 1.2, 1.3; RF-2 (004) · 2.1, 2.2; RF-4 (004) · 4.1–4.3, 4.5, 4.6, 4.10; RF-5 (004) · 5.1, 5.3;
 // RF-12 (004) · 12.5; RF-15 (004) · 15.1; RF-17 (004) · 17.1 · Las secciones vigentes salen de Firestore; sin ellas la página lo dice,
 // sin texto de respaldo (T-11.4). El facilitador edita antes de la apertura.
+// RF-14 (019), D-T8 (019): «Nuevo documento» es un `Dialog` siempre montado; Esc lo cierra y conserva lo escrito, «Cancelar» lo descarta.
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Dialog } from '../components/Dialog';
 import {
   validateDocumentText,
   validateDocumentTitle,
@@ -401,8 +403,8 @@ export function ConstitutionPage({
       )}
       {documentsError && <p className="constitution__notice">No se pudieron cargar los documentos.</p>}
 
-      {creating && isFacilitator && (
-        <div role="dialog" aria-modal="true" aria-labelledby="new-document-title">
+      {isFacilitator && (
+        <Dialog open={creating} labelledBy="new-document-title" onClose={() => setCreating(false)}>
           <form onSubmit={(e) => void createDocument(e)}>
             <h2 id="new-document-title">Nuevo documento</h2>
             <label>
@@ -423,12 +425,14 @@ export function ConstitutionPage({
               onClick={() => {
                 setCreating(false);
                 setDocError(null);
+                setDocTitle('');
+                setDocText('');
               }}
             >
               Cancelar
             </button>
           </form>
-        </div>
+        </Dialog>
       )}
 
       <p>

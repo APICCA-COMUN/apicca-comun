@@ -1,4 +1,6 @@
-// RF-5 (001), RF-6 (002) · 6.1, 6.3; RF-4 (003) · 4.6, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1 · Cuentas: suspender y reactivar (secundarias). No se ofrece suspender a quien facilita ni a la propia cuenta.
+// RF-5 (001), RF-6 (002) · 6.1, 6.3; RF-4 (003) · 4.6, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1,
+// RF-13 (019) · 13.1, 13.2, D-T7 (019) · Cuentas: suspender y reactivar (secundarias), con filas como bloques sin viñeta.
+// No se ofrece suspender a quien facilita ni a la propia cuenta.
 import { useMemo, useState } from 'react';
 import { canSuspend } from '../../shared/domain/access';
 import { api, type ApiOps, type OpClient } from '../data/api';
@@ -41,20 +43,26 @@ function Accounts({ source, client, self }: Required<Props> & { self: { uid: str
       {error === null ? null : <p role="alert" className="block">{error}</p>}
       {failed ? <p role="alert" className="block">No se pudo leer la lista.</p> : null}
       <div className="lot">
-        <ul>
+        <ul className="facilitation-list">
           {sorted.map((account) => (
-            <li key={account.uid} className="block">
-              <strong>{account.username}</strong> {account.name} ({account.email}){' '}
-              {account.role === 'facilitator' ? 'Facilita · ' : ''}
-              <span>{account.status === 'active' ? 'Activa' : 'Suspendida'}</span>{' '}
+            <li key={account.uid} className="block facilitation-row">
+              <span className="facilitation-row__primary">
+                <strong>{account.username}</strong> {account.name} ({account.email}){' '}
+                {account.role === 'facilitator' ? 'Facilita · ' : ''}
+                <span>{account.status === 'active' ? 'Activa' : 'Suspendida'}</span>
+              </span>
               {account.status === 'suspended' ? (
-                <button type="button" className="block action-secondary" disabled={busy} onClick={() => void change('reactivateAccount', account.uid)}>
-                  Reactivar
-                </button>
+                <span className="facilitation-row__actions">
+                  <button type="button" className="block action-secondary" disabled={busy} onClick={() => void change('reactivateAccount', account.uid)}>
+                    Reactivar
+                  </button>
+                </span>
               ) : canSuspend(self, account).ok ? (
-                <button type="button" className="block action-secondary" disabled={busy} onClick={() => void change('suspendAccount', account.uid)}>
-                  Suspender
-                </button>
+                <span className="facilitation-row__actions">
+                  <button type="button" className="block action-secondary" disabled={busy} onClick={() => void change('suspendAccount', account.uid)}>
+                    Suspender
+                  </button>
+                </span>
               ) : null}
             </li>
           ))}

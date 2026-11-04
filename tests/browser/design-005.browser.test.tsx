@@ -208,14 +208,14 @@ describe('documentación y constitución', () => {
       return found.length >= 3 && found;
     });
     expect(cards[0]!.closest('.lot')).toBeNull();
-    const keys = ['agua', 'alimento', 'cobijo'];
     cards.slice(0, 3).forEach((card, index) => {
       const style = getComputedStyle(card);
       expect(style.backgroundColor).toBe(resolved('backgroundColor', 'var(--surface)'));
       expect(style.boxShadow).not.toBe('none');
       const number = card.querySelector<HTMLElement>('.section-block__number')!;
       expect(number.textContent).toBe(String(index + 1));
-      expect(getComputedStyle(number).color).toBe(resolved('color', `var(--axis-${keys[index]}-stroke)`));
+      // RF-15 (019) · 15.2, D-T9 (019): el número va en `text`, sin color de eje.
+      expect(getComputedStyle(number).color).toBe(resolved('color', 'var(--text)'));
       expect(parseFloat(getComputedStyle(number).fontSize)).toBeGreaterThanOrEqual(32);
     });
   });
@@ -230,8 +230,8 @@ describe('Prototipado de escritorio', () => {
   it('RF-7 (005) · 7.12, RF-8 (005) · 8.5: a 1280 px el panel mide 320 px o más, a la derecha del lote, separado 32 px', async () => {
     await page.viewport(1280, 800);
     await open('/prototipado');
+    const stage = await waitFor(() => host!.querySelector<HTMLElement>('.apice-lot-section__stage'));
     const panel = await waitFor(() => host!.querySelector<HTMLElement>('aside[aria-label="Ápice elegido"]'));
-    const stage = host!.querySelector<HTMLElement>('.apice-lot-section__stage')!;
     const panelBox = panel.getBoundingClientRect();
     const stageBox = stage.getBoundingClientRect();
     expect(panelBox.width).toBeGreaterThanOrEqual(319.5);
@@ -242,7 +242,8 @@ describe('Prototipado de escritorio', () => {
     expect(getComputedStyle(panel).backgroundColor).toBe(resolved('backgroundColor', 'var(--surface)'));
   });
 
-  it('RF-6 (005) · 6.10, 6.11: a 1280 px el lote va en zigzag, con caminos de 14 px en surface, nodos de 18 px y el elegido con anillo doble', async () => {
+  // RF-6 (005) · 6.10 y 6.11 se retiraron en la fase 1 de la 019 y volvieron con D-9 (019) revisada (RF-8 (019) · 8.3, D-T26 (019)).
+  it('RF-8 (019) · 8.3, RF-6 (005) · 6.10, 6.11, D-T26 (019): a 1280 px el lote va en zigzag, con caminos de 14 px en surface, nodos de 18 px, el elegido con anillo doble y sin edificios encimados', async () => {
     await page.viewport(1280, 800);
     await open('/prototipado');
     const lot = await waitFor(() => host!.querySelector<HTMLElement>('.apice-lot--trail'));
@@ -255,22 +256,38 @@ describe('Prototipado de escritorio', () => {
     expect(node).not.toBeNull();
     expect(node.getBoundingClientRect().width).toBeCloseTo(18, 0);
     expect(getComputedStyle(node).borderTopWidth).toBe('4px');
-    const chosen = lot.querySelector<HTMLElement>('.apice-lot__building[aria-pressed="true"]')!;
-    expect(chosen).not.toBeNull();
+    const chosen = await waitFor(() => lot.querySelector<HTMLElement>('.apice-lot__building[aria-pressed="true"]'));
     const chosenStyle = getComputedStyle(chosen);
     expect(chosenStyle.position).toBe('absolute');
-    expect(chosenStyle.borderTopLeftRadius).toBe('10px');
     // Anillo doble (fondo y foco) más la sombra elevada: tres sombras.
     expect(chosenStyle.boxShadow.split(/,\s*(?=rgb)/)).toHaveLength(3);
+    const boxes = [...lot.querySelectorAll<HTMLElement>('.apice-lot__building')].map((b) => b.getBoundingClientRect());
+    for (const [i, a] of boxes.entries())
+      for (const b of boxes.slice(i + 1)) {
+        const apart = a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
+        expect(apart, `${JSON.stringify(a)} / ${JSON.stringify(b)}`).toBe(true);
+      }
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
   });
 
-  it('RF-8 (005) · 8.3: el contador va a la derecha del título', async () => {
+  it('RF-8 (019) · 8.1, D-T26 (019): a 360 px Prototipado usa la retícula, sin caminos', async () => {
+    await page.viewport(360, 780);
+    await open('/prototipado');
+    const lot = await waitFor(() => host!.querySelector<HTMLElement>('.apice-lot'));
+    expect(lot.classList.contains('apice-lot--trail')).toBe(false);
+    expect(lot.querySelector('.apice-lot__roads, .node')).toBeNull();
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
+  });
+
+  // RF-8 (005) · 8.3 lo afina RF-7 (019) · 7.1: el contador deja la fila del título y va en la franja, sobre el terreno.
+  it('RF-8 (005) · 8.3, RF-7 (019) · 7.1: el contador va en la franja, entre el título y el terreno', async () => {
     await page.viewport(1280, 800);
     await open('/prototipado');
-    const status = await waitFor(() => host!.querySelector<HTMLElement>('.prototyping__head [role="status"]'));
+    const status = await waitFor(() => host!.querySelector<HTMLElement>('.apice-lot-section__strip [role="status"]'));
     const heading = host!.querySelector<HTMLElement>('.prototyping__head h1')!;
-    expect(status.getBoundingClientRect().left).toBeGreaterThan(heading.getBoundingClientRect().right);
+    const stage = await waitFor(() => host!.querySelector<HTMLElement>('.apice-lot-section__stage'));
+    expect(status.getBoundingClientRect().top).toBeGreaterThan(heading.getBoundingClientRect().bottom);
+    expect(status.getBoundingClientRect().bottom).toBeLessThanOrEqual(stage.getBoundingClientRect().top);
   });
 });
 

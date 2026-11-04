@@ -28,15 +28,15 @@ describe('Filters', () => {
 
   it('RF-21 (001): elegir un estado lo aplica y «Todos» lo quita', async () => {
     const onChange = setup({ axes: [], status: 'idea' });
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Estado' }), 'prototipo');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Etapa' }), 'prototipo');
     expect(onChange).toHaveBeenLastCalledWith({ axes: [], status: 'prototipo' });
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Estado' }), '');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Etapa' }), '');
     expect(onChange).toHaveBeenLastCalledWith({ axes: [], status: null });
   });
 
   it('RF-21 (001): combinar filtros conserva los dos', async () => {
     const onChange = setup({ axes: ['agua'], status: null });
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Estado' }), 'en marcha');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Etapa' }), 'en marcha');
     expect(onChange).toHaveBeenLastCalledWith({ axes: ['agua'], status: 'en marcha' });
   });
 
@@ -95,5 +95,14 @@ describe('Filters · identidad (002)', () => {
       expect(parent.querySelector(`.axis-icon--${key}`)).toBeTruthy();
     }
     expect(container.querySelectorAll('fieldset .axis-icon')).toHaveLength(5);
+  });
+
+  it('RF-17 (019) · 17.1, 17.2, D-T11 (019): el filtro se llama «Etapa» y sus valores llevan mayúscula inicial', async () => {
+    const onChange = setup();
+    const stage = screen.getByRole('combobox', { name: 'Etapa' });
+    // La primera opción, la que quita el filtro, no cambia de texto en esta spec.
+    expect([...stage.querySelectorAll('option')].slice(1).map((option) => option.textContent)).toEqual(['Idea', 'Prototipo', 'En marcha']);
+    await userEvent.selectOptions(stage, 'Prototipo');
+    expect(onChange).toHaveBeenLastCalledWith({ axes: [], status: 'prototipo' });
   });
 });

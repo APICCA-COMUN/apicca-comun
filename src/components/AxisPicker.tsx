@@ -1,6 +1,8 @@
-// RF-6 (001), RF-6 (002), RF-4 (002) · 4.2 · Selector de ejes: casillas dentro de un grupo, en el orden de los ejes del dominio.
+// RF-6 (001), RF-6 (002), RF-4 (002) · 4.2, RF-12 (019) · 12.2, D-T6 (019) · Selector de ejes: botones de ícono con `aria-pressed`
+// dentro de un grupo, en el orden de los ejes del dominio.
 import { AXES, type Axis } from '../../shared/domain/apice';
-import { AXIS_LABEL, AxisBadge } from './AxisIcon';
+import { AXIS_LABEL } from './AxisIcon';
+import { AxisToggle } from './AxisToggle';
 
 export { AXIS_LABEL };
 
@@ -12,17 +14,14 @@ interface AxisPickerProps {
 }
 
 export function AxisPicker({ value, onChange, describedBy }: AxisPickerProps) {
-  const toggle = (axis: Axis, checked: boolean): void => {
-    onChange(AXES.filter((candidate) => (candidate === axis ? checked : value.includes(candidate))));
+  const toggle = (axis: Axis): void => {
+    onChange(AXES.filter((candidate) => (candidate === axis ? !value.includes(axis) : value.includes(candidate))));
   };
   return (
-    <fieldset aria-describedby={describedBy}>
+    <fieldset aria-describedby={describedBy} className="axis-picker">
       <legend>Ejes</legend>
       {AXES.map((axis) => (
-        <label key={axis}>
-          <input type="checkbox" className="choice" checked={value.includes(axis)} onChange={(event) => toggle(axis, event.target.checked)} />
-          <AxisBadge axis={axis} />
-        </label>
+        <AxisToggle key={axis} axis={axis} pressed={value.includes(axis)} onToggle={() => toggle(axis)} showLabel />
       ))}
     </fieldset>
   );

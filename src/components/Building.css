@@ -22,9 +22,155 @@
   flex: none;
 }
 
+/* RF-2 (019), D-T3 (019): texto vacío con tamaño meta. */
 .building .pixel-image--empty {
   border-color: var(--field-border);
   background-color: var(--surface);
   color: var(--text);
-  font-size: 0.875rem;
+  font-size: var(--type-meta-size);
+}
+
+/* RF-4 (019) · 4.1 a 4.4, D-T19 (019): el edificio crece por etapa. La base lleva el relleno del primer eje y el
+   techo, su trazo; la etapa se lee por la forma (una, dos o tres partes) y por el texto. Solo colores de tokens. */
+.building {
+  position: relative;
+  --building-fill: var(--on-charcoal-muted);
+  --building-stroke: var(--on-charcoal);
+}
+
+.building--axis-agua {
+  --building-fill: var(--axis-agua-fill);
+  --building-stroke: var(--axis-agua-stroke);
+}
+
+.building--axis-alimento {
+  --building-fill: var(--axis-alimento-fill);
+  --building-stroke: var(--axis-alimento-stroke);
+}
+
+.building--axis-cobijo {
+  --building-fill: var(--axis-cobijo-fill);
+  --building-stroke: var(--axis-cobijo-stroke);
+}
+
+.building--axis-energia {
+  --building-fill: var(--axis-energia-fill);
+  --building-stroke: var(--axis-energia-stroke);
+}
+
+.building--axis-comunicacion {
+  --building-fill: var(--axis-comunicacion-fill);
+  --building-stroke: var(--axis-comunicacion-stroke);
+}
+
+.building__structure {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  max-width: 100%;
+}
+
+.building__roof {
+  height: 20px;
+  background-color: var(--building-stroke);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  transform-origin: bottom;
+  animation: building-grow 240ms ease-out;
+}
+
+/* El marco de 2 px es `BODY_FRAME` en Building.tsx: la estructura lo suma para que la imagen mida 64·n (RF-7 (002) · 7.2). */
+.building__body {
+  display: flex;
+  border: 2px solid var(--building-stroke);
+  background-color: var(--charcoal);
+  line-height: 0;
+  transform-origin: bottom;
+  animation: building-grow 240ms ease-out;
+}
+
+.building__body .pixel-image {
+  max-width: 100%;
+}
+
+/* El cuerpo anula el interlineado para que la imagen no deje hueco; el marcador «Sin imagen» lo recupera, o sus dos
+   líneas se encimarían (caso límite §6 de la 019). */
+.building__body .pixel-image--empty {
+  line-height: var(--type-meta-line);
+}
+
+.building__base {
+  height: 20px;
+  background-color: var(--building-fill);
+  border-bottom: 3px solid var(--building-stroke);
+}
+
+.building__stage {
+  color: var(--on-charcoal);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line);
+}
+
+/* RF-13 (002) · 13.1, RF-4 (019) · 4.4: la etiqueta de la etapa va sobre `charcoal`, así que usa `on-charcoal` y no
+   `text-muted`, que no contrasta con ese fondo. */
+.building__stage .tag,
+.building__stage .tag .tag-dot {
+  color: var(--on-charcoal);
+}
+
+.building__stage .tag .tag-dot {
+  background-color: var(--on-charcoal);
+}
+
+/* RF-9 (019) · 9.1, 9.3, D-T21 (019): círculo de 14 px, decorativo y sin cifras; el texto está en la tarjeta y el panel. */
+.building__pin {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-pill);
+  background-color: var(--building-fill);
+  border: 2px solid var(--on-charcoal);
+  box-sizing: border-box;
+}
+
+@keyframes building-grow {
+  from {
+    transform: scaleY(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* RNF-5 (019): con movimiento reducido las partes no animan. */
+@media (prefers-reduced-motion: reduce) {
+  .building__roof,
+  .building__body {
+    animation-name: none;
+    transition-duration: 0s;
+  }
+}
+
+/* Colores forzados (caso límite §6): la forma y el texto dicen la etapa; los colores pasan al sistema. */
+@media (forced-colors: active) {
+  .building__roof {
+    background-color: CanvasText;
+  }
+
+  .building__body {
+    border-color: CanvasText;
+  }
+
+  .building__base {
+    background-color: Canvas;
+    border-color: CanvasText;
+  }
+
+  .building__pin {
+    background-color: Highlight;
+    border-color: CanvasText;
+  }
 }

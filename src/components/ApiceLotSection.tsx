@@ -1,9 +1,12 @@
-// RF-6 (005) · 6.12, RF-7 (005) · 7.1, 7.8, 7.9, 7.11, 7.12, 7.13, RF-8 (005) · 8.2, 8.5, D-10 (005), D-T7 (005), D-T8 (005), D-T12 (005) · Lote ilustrado con su panel:
+// RF-7 (005) · 7.1, 7.8, 7.9, 7.11, 7.12, RF-8 (005) · 8.5, D-10 (005), D-T7 (005), D-T8 (005), D-T12 (005) · Lote ilustrado con su panel:
 // lleva la selección, pide confirmar el descarte de cambios sin guardar con un aviso dentro de la página y avisa si la
-// edición rápida está a la vista. Con `alwaysPanel`, el panel nunca se cierra:
-// muestra el primer ápice si no hay elegido y, con la lista vacía, el lote vacío y un aviso (RF-6 (005) · 6.12, RF-7 (005) · 7.13).
-// La ranura `toolbar` va sobre el borde inferior del lote; sin ápices y sin `alwaysPanel`, va suelta.
-import { useEffect, useState, type ReactNode } from 'react';
+// edición rápida está a la vista. Con `alwaysPanel`, el panel nunca se cierra y muestra el primer ápice si no hay elegido.
+// El lote es la retícula, sin caminos (RF-8 (019) · 8.1, D-T5 (019)); con `layout="trail"`, el recorrido en zigzag de
+// Prototipado (RF-8 (019) · 8.3, D-T26 (019)).
+// RF-7 (019) · 7.1, 7.2, 7.3, D-T20 (019): los filtros ya no flotan sobre el lote (van en la franja de `TerrainStrip`); el
+// panel va al lado desde 900 px y debajo en menos; mientras carga, el panel dice «Cargando ápices…». Sin ápices no se
+// pinta: el vacío lo nombra la página (RF-19 (019), D-T22 (019)).
+import { useEffect, useState } from 'react';
 import type { ApiOps, OpClient } from '../data/api';
 import type { ApiceSource, ListedApice } from '../data/apices';
 import { ApiceLot } from './ApiceLot';
@@ -12,9 +15,11 @@ import './ApiceLotSection.css';
 
 interface Props {
   items: readonly ListedApice[];
-  toolbar?: ReactNode;
+  /** Los ápices aún no llegan (RF-7 (019) · 7.3). */
+  loading?: boolean;
   /** Prototipado: el panel siempre está a la vista, con el primer ápice si nadie eligió (RF-7 (005) · 7.12). */
   alwaysPanel?: boolean;
+  /** Prototipado: el recorrido en zigzag (RF-8 (019) · 8.3). */
   layout?: 'grid' | 'trail';
   source?: ApiceSource;
   client?: OpClient<ApiOps>;
@@ -22,7 +27,7 @@ interface Props {
   onEditingChange?(editing: boolean): void;
 }
 
-export function ApiceLotSection({ items, toolbar, alwaysPanel = false, layout, source, client, onSaved, onEditingChange }: Props) {
+export function ApiceLotSection({ items, loading = false, alwaysPanel = false, layout = 'grid', source, client, onSaved, onEditingChange }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
@@ -47,28 +52,21 @@ export function ApiceLotSection({ items, toolbar, alwaysPanel = false, layout, s
     setSelectedId(id);
   };
 
-  const empty = items.length === 0;
-  const blank = empty && alwaysPanel;
-  if (empty && toolbar === undefined && !blank) return null;
+  if (items.length === 0 && !(loading && alwaysPanel)) return null;
 
-  // La barra conserva su lugar en el árbol al llegar los ápices, para no perder el foco ni el clic en curso.
   return (
     <div className={`apice-lot-section${alwaysPanel ? ' apice-lot-section--always' : ''}`}>
-      <div className={empty && !blank ? undefined : 'apice-lot-section__stage'}>
-        {blank && <div className="apice-lot-section__lot apice-lot-section__lot--empty" />}
-        {!empty && (
+      {items.length > 0 && (
+        <div className="apice-lot-section__stage">
           <div className="apice-lot-section__lot">
-            <ApiceLot items={items} selectedId={selected?.id ?? null} onSelect={choose} {...(layout === undefined ? {} : { layout })} />
+            <ApiceLot items={items} selectedId={selected?.id ?? null} onSelect={choose} layout={layout} />
           </div>
-        )}
-        {toolbar !== undefined && (
-          <div className={`apice-lot-section__toolbar${empty && !blank ? '' : ' apice-lot-section__toolbar--floating'}`}>{toolbar}</div>
-        )}
-      </div>
-      {blank && (
+        </div>
+      )}
+      {items.length === 0 && (
         <div className="apice-lot-section__side">
           <aside className="block apice-panel" aria-label="Ápice elegido">
-            <p>Aún no hay ápices para mostrar.</p>
+            <p>Cargando ápices…</p>
           </aside>
         </div>
       )}

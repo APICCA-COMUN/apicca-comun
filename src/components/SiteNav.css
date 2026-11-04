@@ -1,10 +1,50 @@
-/* RF-7 (003) · 7.4, RF-4 (008) · 4.2, 4.3: enlaces de 16/700 y 44 px; la sección vigente se marca con peso 800 y
-   subrayado de 3 px a 8 px, no solo con el color. */
+/* RF-7 (003) · 7.4, RF-4 (008) · 4.2, 4.3 y RF-21 (019), D-12 (019), D-T14 (019): enlaces de 16/700 y 44 px; la sección
+   vigente se marca con peso 800 y subrayado de 3 px a 8 px, no solo con el color. Por debajo de 1024 px el `nav` no
+   genera caja propia: su botón «Menú» queda en la fila de la cabecera y la lista pasa a una línea completa debajo
+   (empuja el contenido; no flota). Desde 1024 px los destinos van en la fila y el botón se oculta. */
 .site-nav {
-  display: flex;
-  flex-wrap: wrap;
+  display: contents;
+}
+
+button.block.site-nav__toggle {
+  display: inline-flex;
   align-items: center;
-  gap: 4px 8px;
+  box-sizing: border-box;
+  min-block-size: var(--size-icon-control);
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--type-body-size);
+  font-weight: 700;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+button.block.site-nav__toggle:hover {
+  text-decoration: underline;
+}
+
+button.block.site-nav__toggle[aria-expanded='true'] {
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 8px;
+}
+
+.site-nav__list {
+  display: none;
+  order: 3;
+  flex: 1 0 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.site-nav[data-open='true'] .site-nav__list {
+  display: flex;
 }
 
 .menu-link {
@@ -13,7 +53,7 @@
   min-block-size: var(--size-icon-control);
   padding-inline: 10px;
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: var(--type-body-size);
   font-weight: 700;
   text-decoration: none;
 }
@@ -29,4 +69,26 @@
   text-decoration: underline;
   text-decoration-thickness: 3px;
   text-underline-offset: 8px;
+}
+
+@media (min-width: 1024px) {
+  .site-nav {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+  }
+
+  button.block.site-nav__toggle {
+    display: none;
+  }
+
+  .site-nav__list {
+    display: flex;
+    order: 0;
+    flex: 0 1 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+  }
 }

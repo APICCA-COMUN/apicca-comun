@@ -25,7 +25,7 @@ function setup(session: SessionState, handlers: Parameters<typeof fakeClient>[0]
 const fill = async (name: string, description: string) => {
   fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: name } });
   fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: description } });
-  await userEvent.click(screen.getByRole('checkbox', { name: 'Agua' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Agua' }));
 };
 
 describe('ApiceNew', () => {
@@ -42,7 +42,7 @@ describe('ApiceNew', () => {
 
   it('RF-6 (001): el formulario nuevo no ofrece elegir el estado, porque nace en «idea» y privado', () => {
     setup(person);
-    expect(screen.queryByLabelText('Estado')).toBeNull();
+    expect(screen.queryByLabelText('Etapa')).toBeNull();
     expect(screen.getByText(/privado/i)).toBeTruthy();
     expect(screen.getByText(/idea/i)).toBeTruthy();
   });

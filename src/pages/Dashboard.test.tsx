@@ -118,7 +118,7 @@ describe('Dashboard · lista y estados (T-4.19)', () => {
   it('RF-11 (003) · 11.2: pide la lista «mine» con el uid de la persona', async () => {
     const { source, requests } = fakeListSource(2);
     setup(member, source);
-    await screen.findAllByRole('article');
+    await screen.findByRole('button', { name: 'Ápice 1, Idea' });
     expect(requests[0]?.audience).toBe('mine');
     expect(requests[0]?.uid).toBe('u-ana');
   });
@@ -126,30 +126,24 @@ describe('Dashboard · lista y estados (T-4.19)', () => {
   it('RF-11 (003) · 11.3: muestra la lista con las mismas fichas y enlaces que Prototipado, y el mapa con los mismos ápices', async () => {
     const withPoint = listed(1, { location: { lat: 4.6, lng: -74.1, precision: 'approximate' } });
     const { source } = fakeListSource(2, () => [withPoint, listed(2)]);
+    window.history.replaceState(null, '', '/tablero?vista=lista');
     setup(member, source);
     expect(await screen.findAllByRole('article')).toHaveLength(2);
     expect(screen.getByRole('link', { name: /Ápice 1/ }).getAttribute('href')).toBe('/apices/a1');
+    await userEvent.click(screen.getByRole('button', { name: 'Ver en el mapa' }));
     expect(await screen.findByRole('button', { name: 'Marcador Ápice 1' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Marcador Ápice 2' })).toBeNull();
   });
 
   it('RF-11 (003) · 11.3: pagina con «Ver más» como la lista de Prototipado', async () => {
     const { source, requests } = fakeListSource(30);
+    window.history.replaceState(null, '', '/tablero?vista=lista');
     setup(member, source);
     await screen.findAllByRole('article');
     await userEvent.click(await screen.findByRole('button', { name: /más/i }));
     await waitFor(() => expect(requests).toHaveLength(2));
     expect(requests[1]?.audience).toBe('mine');
     expect(requests[1]?.cursor).not.toBeNull();
-  });
-
-  it('RF-11 (003) · 11.6 y RF-4 (003) · 4.9: sin ápices muestra su mensaje y «Crear el primero» secundario', async () => {
-    const { container } = setup(member, emptyListSource().source);
-    const link = await screen.findByRole('link', { name: 'Crear el primero' });
-    expect(link.classList.contains('action-secondary')).toBe(true);
-    expect(link.classList.contains('action-primary')).toBe(false);
-    expect(screen.getByText(/Todavía no tienes ápices/)).toBeTruthy();
-    expectOnePrimary(container, 'Nuevo ápice');
   });
 
   it('RF-11 (003) · 11.7: el visitante va a /entrar?volver=%2Ftablero sin dejar /tablero en el historial', async () => {
@@ -218,7 +212,7 @@ describe('Dashboard · aviso de propuestas abiertas (T-10.18)', () => {
   it('RF-15 (004) · 15.1: si el aviso no se puede leer, Mi tablero sigue sin aviso y sin rechazo suelto', async () => {
     const fetchNotice = vi.fn().mockRejectedValue(new Error('sin red'));
     setup(member, fakeListSource(1).source, undefined, { fetchNotice });
-    await screen.findAllByRole('article');
+    await screen.findByRole('button', { name: 'Ápice 1, Idea' });
     await waitFor(() => expect(fetchNotice).toHaveBeenCalled());
     await new Promise((done) => setTimeout(done, 0));
     expect(screen.queryByRole('status', { name: /aviso de propuestas abiertas/i })).toBeNull();
@@ -237,15 +231,20 @@ describe('Dashboard · aviso de propuestas abiertas (T-10.18)', () => {
 });
 
 describe('Dashboard · RF-9 (005)', () => {
-  it('RF-9 (005) · 9.1: «Mis ápices» lleva el lote ilustrado de los ápices propios, encima del mapa y la lista', async () => {
+  it('RF-9 (005) · 9.1, RF-6 (019) · 6.1, 6.3, RF-10 (019) · 10.5: «Mis ápices» lleva el terreno de los ápices propios, sin la lista a la vez, y el mapa debajo solo cuando se pide', async () => {
     setup(member, fakeListSource(2).source);
-    await screen.findByRole('button', { name: 'Ápice 1' });
+    await screen.findByRole('button', { name: 'Ápice 1, Idea' });
     const heading = screen.getByRole('heading', { level: 2, name: 'Mis ápices' });
-    const building = screen.getByRole('button', { name: 'Ápice 1' });
+    const building = screen.getByRole('button', { name: 'Ápice 1, Idea' });
     expect(heading.compareDocumentPosition(building) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(building.compareDocumentPosition(screen.getByLabelText('Mapa de ápices')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(building.compareDocumentPosition(screen.getByRole('region', { name: 'Ápices' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getAllByRole('button', { name: /^Ápice \d$/ })).toHaveLength(2);
+    expect(screen.queryByLabelText('Mapa de ápices')).toBeNull();
+    const toggle = screen.getByRole('button', { name: 'Ver en el mapa' });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    await userEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(building.compareDocumentPosition(await screen.findByLabelText('Mapa de ápices')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Ápices' })).toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Ápice \d, Idea$/ })).toHaveLength(2);
   });
 
   it('RF-9 (005) · 9.2: «Nuevo ápice» lleva un «+» decorativo y conserva su nombre', () => {
@@ -258,10 +257,53 @@ describe('Dashboard · RF-9 (005)', () => {
 
   it('RF-7 (005) · 7.11: con la edición rápida a la vista, «Nuevo ápice» pasa a secundario', async () => {
     setup(member, fakeListSource(2).source);
-    await screen.findByRole('button', { name: 'Ápice 1' });
-    await userEvent.click(screen.getByRole('button', { name: 'Ápice 2' }));
+    await screen.findByRole('button', { name: 'Ápice 1, Idea' });
+    await userEvent.click(screen.getByRole('button', { name: 'Ápice 2, Idea' }));
     const panel = screen.getByRole('complementary', { name: 'Ápice elegido' });
     await within(panel).findByRole('button', { name: 'Guardar cambios' });
     expectOnePrimary(document.body, 'Guardar cambios');
+  });
+});
+
+describe('Dashboard · terreno (019)', () => {
+  const lot = () => document.querySelector('.apice-lot');
+  const list = () => screen.queryByRole('region', { name: 'Ápices' });
+
+  it('RF-6 (019) · 6.2, 6.3, D-T20 (019): «Ver como lista» muestra la lista con ?vista=lista y «Ver como terreno» vuelve', async () => {
+    setup(member, fakeListSource(2).source);
+    await screen.findByRole('button', { name: 'Ápice 1, Idea' });
+    await userEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
+    expect(await within(list()!).findAllByRole('article')).toHaveLength(2);
+    expect(lot()).toBeNull();
+    expect(window.location.pathname).toBe('/tablero');
+    expect(new URLSearchParams(window.location.search).get('vista')).toBe('lista');
+    await userEvent.click(screen.getByRole('button', { name: 'Ver como terreno' }));
+    await waitFor(() => expect(lot()).not.toBeNull());
+    expect(list()).toBeNull();
+    expect(window.location.search).toBe('');
+  });
+
+  it('RF-7 (019) · 7.1, 7.3, D-T20 (019): el contador y el control de vista van en la franja; mientras carga, «Cargando ápices…»', async () => {
+    setup(member, { fetchPage: () => new Promise<never>(() => undefined) });
+    const strip = document.querySelector('.apice-lot-section__strip') as HTMLElement;
+    expect(strip).not.toBeNull();
+    expect(within(strip).getByRole('status').textContent).toBe('Cargando ápices…');
+    expect(within(strip).getByRole('button', { name: 'Ver como lista' })).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/no tienes ápices/i);
+  });
+
+  it('RF-19 (019) · 19.1 a 19.4, D-T22 (019): sin ápices, solo el terreno de partida con una frase, «Propón tu primer ápice» y «Nuevo ápice» secundario', async () => {
+    setup(member, emptyListSource().source);
+    const terrain = await screen.findByRole('region', { name: 'Terreno de partida' });
+    expect(terrain.querySelectorAll('.starting-terrain__base')).toHaveLength(5);
+    expect(screen.getByText('Todavía no tienes ápices en el terreno.')).toBeTruthy();
+    expect(screen.getAllByText(/no hay ápices|no tienes ápices/i)).toHaveLength(1);
+    const action = screen.getByRole('link', { name: 'Propón tu primer ápice' });
+    expect(action.getAttribute('href')).toBe('/apices/nuevo');
+    expect(screen.getByRole('link', { name: 'Nuevo ápice' }).classList.contains('action-secondary')).toBe(true);
+    expectOnePrimary(document.body, 'Propón tu primer ápice');
+    expect(screen.queryByLabelText('Mapa de ápices')).toBeNull();
+    expect(document.querySelector('.apice-lot-section__strip')).toBeNull();
+    expect(list()).toBeNull();
   });
 });

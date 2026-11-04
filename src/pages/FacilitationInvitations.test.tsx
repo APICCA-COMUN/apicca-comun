@@ -46,7 +46,7 @@ describe('FacilitationInvitations', () => {
     expect(within(screen.getByText('vieja@ejemplo.org').closest('li')!).getByText('Aceptada')).toBeTruthy();
   });
 
-  it('RF-1 (001): invitar un correo muestra el enlace completo y se puede copiar', async () => {
+  it('RF-1 (001), RF-13 (019) · 13.2: invitar un correo muestra el enlace abreviado y se puede copiar el enlace completo', async () => {
     const user = userEvent.setup();
     const { calls } = setup([], { invite: () => ({ link: '/registro/abc123' }) });
     await user.type(screen.getByLabelText('Correo'), 'ana@ejemplo.org');
@@ -54,16 +54,18 @@ describe('FacilitationInvitations', () => {
     expect(calls).toEqual([{ op: 'invite', payload: { email: 'ana@ejemplo.org' } }]);
     const url = `${window.location.origin}/registro/abc123`;
     const status = await screen.findByRole('status');
-    expect(status.textContent).toContain(url);
+    expect(status.textContent).toContain('/registro/abc123');
+    expect(status.textContent).not.toContain(window.location.origin);
     await user.click(within(status).getByRole('button', { name: 'Copiar enlace' }));
     expect(await navigator.clipboard.readText()).toBe(url);
   });
 
-  it('RF-1 (001): una invitación pendiente deja volver a ver y copiar su enlace', async () => {
+  it('RF-1 (001), RF-13 (019) · 13.2: una invitación pendiente deja volver a ver el enlace abreviado y copiar el completo', async () => {
     const user = userEvent.setup();
     setup([row('ana@ejemplo.org')]);
     const item = screen.getByText('ana@ejemplo.org').closest('li')!;
-    expect(item.textContent).toContain(`${window.location.origin}/registro/tok-ana`);
+    expect(item.textContent).toContain('/registro/tok-ana');
+    expect(item.textContent).not.toContain(window.location.origin);
     await user.click(within(item).getByRole('button', { name: 'Copiar enlace' }));
     expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/registro/tok-ana`);
   });

@@ -24,7 +24,7 @@ describe('ContentForm', () => {
     renderForm();
     for (const label of ['Nombre', 'Descripción', 'Necesidades', 'Aportes']) expect(screen.getByLabelText(label)).toBeTruthy();
     expect(screen.getByRole('group', { name: 'Ejes' })).toBeTruthy();
-    expect(screen.queryByLabelText('Estado')).toBeNull();
+    expect(screen.queryByLabelText('Etapa')).toBeNull();
   });
 
   it('RF-6 (001): enviar vacío no llama a onSubmit y dice qué falta', async () => {
@@ -43,7 +43,7 @@ describe('ContentForm', () => {
     expect(screen.getByText('121 / 120')).toBeTruthy();
     type('Descripción', 'd'.repeat(10_003));
     expect(screen.getByText('Sobran 3 caracteres.')).toBeTruthy();
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Agua' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Agua' }));
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -60,8 +60,8 @@ describe('ContentForm', () => {
     const user = userEvent.setup();
     type('Nombre', 'Huerta');
     type('Descripción', 'Una huerta común');
-    await user.click(screen.getByRole('checkbox', { name: 'Alimento' }));
-    await user.click(screen.getByRole('checkbox', { name: 'Alimento' }));
+    await user.click(screen.getByRole('button', { name: 'Alimento' }));
+    await user.click(screen.getByRole('button', { name: 'Alimento' }));
     await user.click(screen.getByRole('button', { name: 'Guardar' }));
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByText('Elige al menos un eje.')).toBeTruthy();
@@ -72,8 +72,8 @@ describe('ContentForm', () => {
     const user = userEvent.setup();
     type('Nombre', '  Huerta  ');
     type('Descripción', 'Una huerta\ncomún');
-    await user.click(screen.getByRole('checkbox', { name: 'Energía' }));
-    await user.click(screen.getByRole('checkbox', { name: 'Agua' }));
+    await user.click(screen.getByRole('button', { name: 'Energía' }));
+    await user.click(screen.getByRole('button', { name: 'Agua' }));
     await user.click(screen.getByRole('button', { name: 'Guardar' }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit).toHaveBeenCalledWith({
@@ -90,7 +90,7 @@ describe('ContentForm', () => {
     const initial: FormValues = { ...EMPTY_VALUES, name: 'A', description: 'B', axes: ['agua'] };
     const { onSubmit } = renderForm({ initial, showStatus: true });
     const user = userEvent.setup();
-    await user.selectOptions(screen.getByLabelText('Estado'), 'prototipo');
+    await user.selectOptions(screen.getByLabelText('Etapa'), 'prototipo');
     await user.click(screen.getByRole('button', { name: 'Guardar' }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ status: 'prototipo' })));
   });
@@ -143,7 +143,7 @@ describe('ContentForm', () => {
 
   it('RF-5 (003) · 5.2; RF-17 (003) · 17.1: cada campo tiene su etiqueta visible encima, asociada con for/id', () => {
     renderForm({ showStatus: true });
-    for (const name of ['Nombre', 'Descripción', 'Necesidades', 'Aportes', 'Estado']) {
+    for (const name of ['Nombre', 'Descripción', 'Necesidades', 'Aportes', 'Etapa']) {
       const control = screen.getByLabelText(name);
       const label = document.querySelector(`label[for="${control.id}"]`);
       expect(label, name).not.toBeNull();
@@ -163,5 +163,16 @@ describe('ContentForm', () => {
       expect(described?.textContent, name).toBe(text);
     }
     expect(screen.getByLabelText('Necesidades').getAttribute('aria-invalid')).toBe('false');
+  });
+
+  it('RF-17 (019) · 17.1, 17.2, D-T11 (019): con showStatus el campo se llama «Etapa», con mayúscula inicial, y envía el valor de siempre', async () => {
+    const initial: FormValues = { ...EMPTY_VALUES, name: 'A', description: 'B', axes: ['agua'] };
+    const { onSubmit } = renderForm({ initial, showStatus: true });
+    const stage = screen.getByLabelText('Etapa');
+    expect([...stage.querySelectorAll('option')].map((option) => option.textContent)).toEqual(['Idea', 'Prototipo', 'En marcha']);
+    const user = userEvent.setup();
+    await user.selectOptions(stage, 'En marcha');
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ status: 'en marcha' })));
   });
 });

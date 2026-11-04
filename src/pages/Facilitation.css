@@ -1,0 +1,81 @@
+/* RF-13 (019) · 13.1, 13.2, D-T7 (019): listas de facilitación sin viñeta ni sangría, filas como bloques */
+
+.facilitation {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.facilitation h1 {
+  font-size: var(--type-display-size);
+  line-height: 1.15;
+  font-weight: 800;
+  margin: 0;
+}
+
+.facilitation ul,
+.facilitation-list {
+  list-style: none;
+  list-style-type: none;
+  padding-inline-start: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.facilitation ul > li,
+.facilitation-list > li {
+  list-style: none;
+  list-style-type: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.facilitation-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.facilitation-row__primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.facilitation-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* RF-13 (019) · 13.2, D-T7 (019): enlace abreviado y acción de copiar */
+.link-box {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  max-inline-size: 100%;
+}
+
+.link-box code {
+  font-size: var(--type-meta-size);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.link-box__status {
+  font-size: var(--type-meta-size);
+  color: var(--text-muted);
+}
+
+.link-box__manual {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  box-sizing: border-box;
+}

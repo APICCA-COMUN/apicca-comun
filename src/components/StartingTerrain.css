@@ -1,0 +1,39 @@
+/* RF-19 (019) · 19.1, 19.5, D-T22 (019): terreno de partida compacto. Cinco bases redondeadas, una por eje, en una fila
+   que cabe en una sola línea a 360 px; con el aviso de propuestas abiertas encima, la invitación sigue en la primera
+   pantalla de 360 × 780 px. Los colores de eje solo los pone el ícono. */
+
+.starting-terrain {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+}
+
+.starting-terrain__bases {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.starting-terrain__base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lot);
+  background-color: var(--surface);
+}
+
+.starting-terrain__phrase {
+  margin: 0;
+  max-width: 32rem;
+  font-size: var(--type-lead-size);
+  line-height: var(--type-lead-line);
+}

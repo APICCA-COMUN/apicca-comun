@@ -24,6 +24,7 @@ async function seed(): Promise<void> {
         updatedAt: Timestamp.fromMillis(Date.parse('2026-09-01T00:00:00Z') + i * 60_000),
         image: null,
         version: 1,
+        ...(i === 0 ? { needs: 'Manos para cavar.' } : i === 1 ? {} : { needs: '' }),
       });
     }
   });
@@ -117,6 +118,17 @@ describe('lista paginada de ápices', () => {
       expect(ids).toHaveLength(20);
       expect(ids.slice(0, 3)).toEqual(['a29', 'a28', 'a27']);
       expect(ids.every((id) => Number(id.slice(1)) >= 10)).toBe(true);
+    });
+  });
+
+  it('RF-9 (019) · 9.1, D-T18 (019): cada ápice de la lista trae sus necesidades, y texto vacío si faltan', async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+      const source = createListSource(context.firestore() as never);
+      const page = await source.fetchPage({ audience: 'mine', uid: 'u-ana', filters: { axes: [], status: null } });
+      const needs = Object.fromEntries(page.items.map((item) => [item.id, item.needs]));
+      expect(needs['a00']).toBe('Manos para cavar.');
+      expect(needs['a01']).toBe('');
+      expect(needs['a02']).toBe('');
     });
   });
 });

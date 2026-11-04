@@ -66,7 +66,7 @@ describe('ApiceEdit', () => {
     const { calls, drafts } = setup(apice(), { editApice: () => ({ ok: true, version: 3 }) });
     expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Huerta');
     edit('Nueva descripción');
-    await userEvent.selectOptions(screen.getByLabelText('Estado'), 'prototipo');
+    await userEvent.selectOptions(screen.getByLabelText('Etapa'), 'prototipo');
     await save();
     await waitFor(() => expect(window.location.pathname).toBe('/apices/a1'));
     expect(calls).toEqual([

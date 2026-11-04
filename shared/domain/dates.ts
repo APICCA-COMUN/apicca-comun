@@ -1,7 +1,9 @@
 // Fecha de un hecho. Se guarda como día `YYYY-MM-DD` sin hora y se compara como cadena.
 // Colombia es UTC−5 sin horario de verano, así que "hoy" se calcula restando cinco horas al instante
 // UTC, igual que haría una regla de Firestore; sin `Intl`, para que el navegador y
-// el servidor den el mismo día.
+// el servidor den el mismo día. RF-11 (019) · 11.4: `formatLongDate` da la fecha larga de la ficha.
+
+import type { TimestampLike } from './order';
 
 const COLOMBIA_OFFSET_MS = 5 * 3600 * 1000;
 const EVENT_DATE_FORM = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -42,4 +44,12 @@ export function validateEventDate(eventDate: string, now: Date): EventDateResult
     return { ok: false, reason: 'no puede ser futura: solo se registra lo ya ocurrido' };
   }
   return { ok: true };
+}
+
+const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'] as const;
+
+/** Fecha larga de un instante en hora de Bogotá: «3 de noviembre de 2026» (RF-11 (019) · 11.4, D-T23 (019)). */
+export function formatLongDate(at: TimestampLike): string {
+  const shifted = new Date(at.seconds * 1000 - COLOMBIA_OFFSET_MS);
+  return `${shifted.getUTCDate()} de ${MONTHS[shifted.getUTCMonth()]} de ${shifted.getUTCFullYear()}`;
 }

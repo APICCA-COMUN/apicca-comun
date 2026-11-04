@@ -43,7 +43,7 @@
   overflow: hidden;
 }
 
-/* RF-2 (020) · 2.1, D-T3 (020): acercar y alejar miden 44 × 44 en todo mapa, como `.icon-button` (RF-2.2 (008)).
+/* RF-2 (020) · 2.1, D-T3 (020): acercar y alejar miden 44 × 44 en todo mapa, como `.icon-button` (RF-2 (008) · 2.2).
    La especificidad (0,3,1) gana a la de `leaflet.css` sin depender del orden de las hojas; `border-box` cuenta el
    borde de «+» dentro de los 44 px. */
 .leaflet-container .leaflet-bar.block a {
@@ -78,14 +78,14 @@
   color: var(--text);
 }
 
-/* Pin (RF-8 (002) · 8.3, D-T9 (002)): `6 + 14·n` por 20 px, con íconos de 12 px. Leaflet pone el tamaño. */
+/* Pin (RF-8 (002) · 8.3, D-T9 (002), RF-3 (019), D-T4 (019)): `6 + 14·n` por 20 px, con íconos de 12 px y radio de edificio. Leaflet pone el tamaño. */
 .apicca-pin {
   box-sizing: border-box;
   display: flex;
   align-items: center;
   padding: 3px 2px;
   border: 1px solid var(--charcoal);
-  border-radius: 6px;
+  border-radius: var(--radius-building);
   background: var(--charcoal);
   box-shadow: var(--shadow-block);
 }

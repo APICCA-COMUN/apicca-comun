@@ -1,0 +1,24 @@
+/* RF-14 (019), D-T8 (019) · Diálogo modal: un bloque centrado en la ventana, velado con `veil` por detrás. Solo tokens. */
+
+.dialog {
+  box-sizing: border-box;
+  inline-size: min(32rem, calc(100% - 2rem));
+  max-block-size: calc(100% - 2rem);
+  margin: auto;
+  padding: 1rem;
+  overflow: auto;
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-block);
+  box-shadow: var(--shadow-block);
+}
+
+.dialog::backdrop {
+  background-color: var(--veil);
+}
+
+/* Con un diálogo abierto, la página de fondo no se desplaza. */
+:root:has(dialog[open]) {
+  overflow: hidden;
+}

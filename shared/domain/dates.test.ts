@@ -1,7 +1,7 @@
 // Fecha de un hecho: día `YYYY-MM-DD` en la hora de Colombia (UTC−5, sin horario de verano);
 // forma, calendario y no futura.
 import { describe, expect, it } from 'vitest';
-import { todayInColombia, validateEventDate } from './dates';
+import { formatLongDate, todayInColombia, validateEventDate } from './dates';
 
 describe('shared/domain/dates', () => {
   it('a las 03:00 UTC en Colombia sigue siendo el día anterior', () => {
@@ -35,5 +35,19 @@ describe('shared/domain/dates', () => {
     for (const bad of ['', '2026-9-2', '02/09/2026', '2026-09-02T00:00', '2026-13-01', '2026-00-10', '2026-09-00', 'hoy']) {
       expect(validateEventDate(bad, now), bad).toEqual({ ok: false, reason: expect.stringContaining('AAAA-MM-DD') });
     }
+  });
+
+  it('RF-11 (019) · 11.4, D-T23 (019): la fecha larga lleva día sin cero, mes en minúscula y año', () => {
+    const at = (iso: string) => ({ seconds: Date.parse(iso) / 1000, nanoseconds: 0 });
+    expect(formatLongDate(at('2026-11-03T15:00:00Z'))).toBe('3 de noviembre de 2026');
+    expect(formatLongDate(at('2026-01-15T12:00:00Z'))).toBe('15 de enero de 2026');
+    expect(formatLongDate(at('2026-12-31T20:00:00Z'))).toBe('31 de diciembre de 2026');
+  });
+
+  it('RF-11 (019) · 11.4, D-T23 (019): la fecha larga usa la hora de Bogotá (UTC−5)', () => {
+    const at = (iso: string) => ({ seconds: Date.parse(iso) / 1000, nanoseconds: 0 });
+    expect(formatLongDate(at('2026-11-03T04:59:59Z'))).toBe('2 de noviembre de 2026');
+    expect(formatLongDate(at('2026-11-03T05:00:00Z'))).toBe('3 de noviembre de 2026');
+    expect(formatLongDate(at('2026-01-01T02:00:00Z'))).toBe('31 de diciembre de 2025');
   });
 });

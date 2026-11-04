@@ -3,7 +3,7 @@
 // hacia abajo y a la derecha (RF-3 (003) · 3.1, 3.4); con piezas de prueba, el lote lleva borde `line` y ninguna
 // sombra (3.2), los botones, el diálogo abierto y los campos siguen RF-4 (003) y RF-5 (003), y con colores forzados y contraste
 // aumentado los bordes se mantienen. Siguen vigentes de la 002: el foco de teclado se pinta con `focus` (6.4), a 360 px no hay desplazamiento horizontal (6.6) y
-// el nombre de 120 caracteres y el usuario de 24 se ajustan sin cortarse ni desbordar (6.7). Con la siembra
+// el nombre de 120 caracteres y el usuario de 24 se ajustan sin cortarse ni desbordar (6.7; en Prototipado, bajo su edificio, RF-5 (019)). Con la siembra
 // completa (T-8.1, RNF-5 (002)) los 360 px recorren todas las rutas de la app, con sesión donde la ruta la pide.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { cdp, commands, page, userEvent } from 'vitest/browser';
@@ -136,10 +136,12 @@ function visibleRight(element: Element): number {
  * (RF-6 (002) · 6.5), los campos y la acción destructiva llevan su borde (RF-5 (003) · 5.1, RF-4 (003) · 4.4).
  */
 /** El ojo de Entrar va dentro del campo, sin sombra propia (RF-5 (005) · 5.1). */
+// Fuera queda también el que está bajo el puntero: con `:hover` sube a `shadow-raised` (blocks.css). Desde la 019 el
+// primer edificio del terreno puede quedar donde el puntero dejó la prueba anterior.
 const activeBlocks = () =>
   [...host!.querySelectorAll<HTMLElement>('.block')].filter(
     (el) =>
-      !el.matches(':disabled, [aria-disabled="true"], [aria-busy="true"], input, select, textarea, .action-destructive, .sign-in-form__reveal'),
+      !el.matches(':disabled, [aria-disabled="true"], [aria-busy="true"], :hover, input, select, textarea, .action-destructive, .sign-in-form__reveal'),
   );
 
 /** El elemento con el texto exacto más interno dentro de `main`. */
@@ -199,8 +201,7 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
     const [x, y] = [...shadow.matchAll(/(-?[\d.]+)px/g)].map((match) => parseFloat(match[1]!));
     expect(x).toBeGreaterThan(0);
     expect(y).toBeGreaterThan(0);
-    // Los edificios del zigzag son ilustración (radio 10 y sombra elevada del canvas): se miden en design-005 (RF-6 (005) · 6.10).
-    const blocks = activeBlocks().filter((el) => !el.matches('.apice-lot__building--trail'));
+    const blocks = activeBlocks();
     expect(blocks.length).toBeGreaterThan(0);
     const odd = blocks
       .filter((el) => {
@@ -265,12 +266,15 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
     document.documentElement.dataset['theme'] = theme;
     await page.viewport(360, 800);
     await show(path);
-    const heading = await waitFor(() => [...host!.querySelectorAll<HTMLElement>('main h1, main h2, main h3')].find((el) => el.textContent === LONG_NAME));
+    // En Prototipado el nombre se ve bajo su edificio del terreno (RF-5 (019), RF-6 (019)); en la ficha, en el h1.
+    const heading = await waitFor(() =>
+      [...host!.querySelectorAll<HTMLElement>('main h1, main h2, main h3, main .apice-lot__name')].find((el) => el.textContent === LONG_NAME),
+    );
     expect(getComputedStyle(heading).textOverflow).not.toBe('ellipsis');
     expectWrappedInside(heading, LONG_NAME, 2);
   });
 
-  it.each(['/prototipado', `/apices/${LONG_APICE_ID}`])('RF-7 (002) · 7.1, 7.2, D-T10 (002): en %s a 360 px todo edificio deja al menos 64 px para la imagen', async (path) => {
+  it.each(['/prototipado', `/apices/${LONG_APICE_ID}`])('RF-7 (002) · 7.1, 7.2, D-T10 (002), RF-4 (019) · 4.1: en %s a 360 px todo edificio deja al menos 64 px para la imagen', async (path) => {
     document.documentElement.dataset['theme'] = theme;
     await page.viewport(360, 800);
     await show(path);
@@ -282,7 +286,14 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
       const style = getComputedStyle(building);
       const inner = building.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       expect(inner).toBeGreaterThanOrEqual(64);
-      expect(building.querySelector<HTMLElement>('.pixel-image')!.getBoundingClientRect().width).toBe(64 * Math.min(Math.floor(inner / 64), path === '/prototipado' ? 2 : 4));
+      // Una idea es solo la base, sin imagen (RF-4 (019) · 4.1, D-14 (019)); el edificio del terreno es compacto, de
+      // escala 1 (D-T19 (019)).
+      const picture = building.querySelector<HTMLElement>('.pixel-image');
+      if (building.dataset['stage'] === 'idea') {
+        expect(picture).toBeNull();
+        continue;
+      }
+      expect(picture!.getBoundingClientRect().width).toBe(64 * Math.min(Math.floor(inner / 64), path === '/prototipado' ? 1 : 4));
     }
   });
 

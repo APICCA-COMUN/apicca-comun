@@ -1,9 +1,11 @@
 // RF-7 (005) · 7.1 a 7.8, 7.10, 7.12, D-7 (005), D-10 (005), D-T6 (005) · Panel lateral del lote: la ficha resumida del
+// RF-9 (019) · 9.2, D-T21 (019): «Tiene necesidades» en texto.
+// RF-17 (019) · 17.1, 17.2, D-T11 (019): «Etapa» y sus valores con mayúscula inicial. RF-12 (019) · 12.3, D-T6 (019): grupos como lotes.
 // ápice elegido y, para quien puede editarlo (RF-10 (001)), «Editar ápice» con la edición rápida de nombre, descripción, ejes y estado. Guarda con
 // `editApice` sobre la versión que leyó, con las necesidades y los aportes del documento y sin tocar la ubicación;
 // un conflicto se resuelve con `ConflictDiff` (RF-11 (001)). Avisa si hay cambios sin guardar y si la edición se ve.
-import { useEffect, useState, type FormEvent } from 'react';
-import { APICE_STATUSES, AXES, validateContent, type ApiceStatus, type Axis, type ContentField } from '../../shared/domain/apice';
+import { useEffect, useLayoutEffect, useState, type FormEvent } from 'react';
+import { APICE_STAGE_LABEL, APICE_STATUSES, AXES, validateContent, hasNeeds, type ApiceStatus, type Axis, type ContentField } from '../../shared/domain/apice';
 import { canEdit, canSeeHistory } from '../../shared/domain/access';
 import type { EditableFields } from '../../shared/domain/versions';
 import { Link } from '../app/router';
@@ -45,10 +47,11 @@ export function ApiceQuickPanel({ apice, source = firestoreApiceSource, client =
   const editable = stored !== null && canEdit(viewer, stored);
   const history = stored !== null && canSeeHistory(viewer, stored);
 
-  useEffect(() => {
+  // En `useLayoutEffect`, antes de pintar: así nunca se ven dos botones azules a la vez (RF-8 (005) · 8.4).
+  useLayoutEffect(() => {
     onEditingChange?.(editable);
   }, [editable]);
-  useEffect(() => () => onEditingChange?.(false), []);
+  useLayoutEffect(() => () => onEditingChange?.(false), []);
 
   return (
     <aside className="block apice-panel" aria-label="Ápice elegido">
@@ -66,7 +69,8 @@ export function ApiceQuickPanel({ apice, source = firestoreApiceSource, client =
               <AxisBadge key={axis} axis={axis} />
             ))}
           </p>
-          <p className="apice-panel__status">{apice.status}</p>
+          <p className="apice-panel__status">{APICE_STAGE_LABEL[apice.status]}</p>
+          {hasNeeds(apice.needs) && <p className="apice-panel__needs">Tiene necesidades</p>}
         </>
       )}
       {editable && (
@@ -227,7 +231,7 @@ function QuickEdit({ id, stored, client, onSaved, onDirtyChange, historyHref }: 
       </fieldset>
       {axesIssue !== undefined && <p id={`quick-${id}-axes-error`}>{issueText(axesIssue)}</p>}
       <fieldset className="apice-panel__segments" role="radiogroup" aria-labelledby={`quick-${id}-status`}>
-        <legend id={`quick-${id}-status`}>Estado</legend>
+        <legend id={`quick-${id}-status`}>Etapa</legend>
         {APICE_STATUSES.map((status) => (
           <label key={status}>
             <input
@@ -238,7 +242,7 @@ function QuickEdit({ id, stored, client, onSaved, onDirtyChange, historyHref }: 
               checked={values.status === status}
               onChange={() => setValues({ ...values, status: status as ApiceStatus })}
             />
-            {status}
+            {APICE_STAGE_LABEL[status]}
           </label>
         ))}
       </fieldset>

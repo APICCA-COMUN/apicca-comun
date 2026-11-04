@@ -1,7 +1,6 @@
 // RF-2 (004) · 2.1, 2.2; RF-16 (004) · 16.3: bloque de una sección de la constitución con formato y enlaces.
-// RF-11 (005) · 11.2, 11.3, D-T10 (005): con `number`, la tarjeta muestra en grande el número de la sección, en texto y
-// con el color cíclico de un eje.
-import { axisForIndex } from '../../shared/domain/constitution/axisCycle';
+// RF-11 (005) · 11.2, 11.3, D-T10 (005): con `number`, la tarjeta muestra en grande el número de la sección, en texto.
+// RF-15 (019) · 15.2, D-15 (019), D-T9 (019): el número va en `text`; los colores de eje quedan para los ejes y los ápices.
 import type { Section, SectionMeta } from '../../shared/domain/constitution/types';
 import { todayInColombia } from '../../shared/domain/dates';
 import { parseMarkdown } from '../../shared/domain/docs/markdown';
@@ -40,7 +39,7 @@ export function SectionBlock({ section, number, meta, hasActiveAccount }: Sectio
       <header>
         <div className="section-block__title">
           {number !== undefined && (
-            <span className="section-block__number" data-axis={axisForIndex(number - 1)}>
+            <span className="section-block__number">
               {number}
             </span>
           )}

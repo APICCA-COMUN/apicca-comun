@@ -1,8 +1,11 @@
-// RF-22 (001), RF-9 (001), RF-13 (001), RF-14 (001), RF-17 (001), RF-12 (003) · 12.1, 12.5, RF-6 (002) · 6.1, RF-4 (002) · 4.2, RF-7 (002) · 7.1, 7.2, RF-13 (002) · 13.1, 13.3 · Ficha de un ápice: todos sus datos con marcadores donde falta algo,
+// RF-22 (001), RF-9 (001), RF-13 (001), RF-14 (001), RF-17 (001), RF-12 (003) · 12.1, 12.5, RF-6 (002) · 6.1, RF-4 (002) · 4.2, RF-7 (002) · 7.1, 7.2, RF-13 (002) · 13.1, 13.3,
+// RF-18 (019) · 18.1, D-T12 (019), RF-17 (019) · 17.2, D-T11 (019), RF-11 (019) · 11.1 a 11.4, RF-4 (019) · 4.5, D-T23 (019) · Ficha de un ápice: todos sus datos con marcadores donde falta algo,
 // y los controles de visibilidad y archivo para quien puede usarlos. Un ápice que la persona no puede ver se
-// muestra igual que uno inexistente, para no revelar que existe.
+// muestra igual que uno inexistente, para no revelar que existe. El título de la página es h1.
 import { useEffect, useState } from 'react';
 import { canArchive, canChangeVisibility, canEdit, canView, type ApiceViewer } from '../../shared/domain/access';
+import { hasNeeds } from '../../shared/domain/apice';
+import { formatLongDate } from '../../shared/domain/dates';
 import { Link } from '../app/router';
 import { useSession } from '../app/session';
 import { usePageTitle } from '../app/usePageTitle';
@@ -13,10 +16,9 @@ import { firestoreApiceSource, type ApiceDoc, type ApiceSource } from '../data/a
 import { ArchiveControls } from '../components/ArchiveControls';
 import { ProposalPanel } from '../components/ProposalPanel';
 import { ReferenceManager } from '../components/ReferenceManager';
-import { formatDate } from '../components/ApiceCard';
 import { AxisBadge } from '../components/AxisIcon';
 import { Building } from '../components/Building';
-import { ConditionTag } from '../components/ConditionTag';
+import { PixelImage } from '../components/PixelImage';
 import { describeLocation } from '../components/locationText';
 import { VisibilityControl } from '../components/VisibilityControl';
 import './ApiceView.css';
@@ -42,7 +44,7 @@ export function ApiceView({ id, source = firestoreApiceSource, client = api, ref
   if (apice === null || !canView(viewer, apice)) {
     return (
       <section>
-        <h2>Ápice</h2>
+        <h1>Ápice</h1>
         <p>No se encontró el ápice.</p>
       </section>
     );
@@ -51,25 +53,33 @@ export function ApiceView({ id, source = firestoreApiceSource, client = api, ref
   return (
     <article className="lot apice-view">
       <header className="apice-view__head">
-        <h2>{apice.name}</h2>
-        <Building image={apice.image ?? null} axes={apice.axes} max={4} />
+        <Building image={apice.image ?? null} axes={apice.axes} stage={apice.status} needs={hasNeeds(apice.needs)} max={4} />
+        <h1>{apice.name}</h1>
       </header>
+      {apice.status === 'idea' && apice.image ? (
+        <figure className="block apice-view__image">
+          <PixelImage image={apice.image} />
+        </figure>
+      ) : null}
       <p>{apice.description}</p>
-      <ul aria-label="Ejes">
+      <ul className="apice-view__axes" aria-label="Ejes">
         {apice.axes.map((axis) => (
           <li key={axis}>
             <AxisBadge axis={axis} />
           </li>
         ))}
       </ul>
-      <p>
-        <ConditionTag condition="status">{apice.status}</ConditionTag>
-      </p>
-      <h3>Necesidades</h3>
-      <p>{apice.needs === '' ? 'Aún no se han escrito necesidades.' : apice.needs}</p>
-      <h3>Aportes</h3>
-      <p>{apice.offers === '' ? 'Aún no se han escrito aportes.' : apice.offers}</p>
-      <h3>Ubicación</h3>
+      <div className="apice-view__workshop">
+        <section className="lot">
+          <h2>Necesidades</h2>
+          <p>{apice.needs === '' ? 'Aún no se han escrito necesidades.' : apice.needs}</p>
+        </section>
+        <section className="lot">
+          <h2>Aportes</h2>
+          <p>{apice.offers === '' ? 'Aún no se han escrito aportes.' : apice.offers}</p>
+        </section>
+      </div>
+      <h2>Ubicación</h2>
       <p>{describeLocation(apice.location)}</p>
       {session.status === 'person' ? (
         <ProposalPanel
@@ -90,7 +100,7 @@ export function ApiceView({ id, source = firestoreApiceSource, client = api, ref
       />
       <p>
         Creado por {apice.authorUsername ?? 'una persona de la comunidad'}
-        {apice.updatedAt === undefined ? '' : ` · Última edición el ${formatDate(apice.updatedAt)}`}
+        {apice.updatedAt === undefined ? '' : ` · Última edición el ${formatLongDate(apice.updatedAt)}`}
         {apice.lastEditedByUsername === undefined ? '' : ` por ${apice.lastEditedByUsername}`}
       </p>
       {session.status === 'person' ? <Link href={`/apices/${apice.id}/historial`}>Historial</Link> : null}

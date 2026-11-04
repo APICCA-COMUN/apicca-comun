@@ -2,6 +2,9 @@
 // montar (con la sesión de la autora en `/tablero`), solo `.action-destructive` y `[role=alert]` calculan `brand-red` (RF-2 (002) · 2.3), solo
 // `.action-primary` y los enlaces calculan `action-blue` (RF-2 (002) · 2.4) y solo el interior de
 // `.logo` calcula un `logo-*` (RF-2 (002) · 2.3). Se miran el color, el fondo y los cuatro bordes.
+// RF-15 (019) · 15.2, D-15 (019), D-T9 (019): los colores de eje (`axis-*`) solo los calculan los íconos de eje, los
+// edificios y el lote, los pines del mapa, las hebras y los edificios del mapa ilustrado y los hilos por eje del Foro.
+// Para ellos también se miran `fill` y `stroke`, porque las hebras y los íconos son SVG.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { commands, userEvent } from 'vitest/browser';
 import { act } from 'react';
@@ -12,6 +15,7 @@ import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
 import '../../src/styles/paths.css';
+import { AXES } from '../../shared/domain/apice';
 import { THEMES } from '../../shared/domain/identity';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
@@ -32,6 +36,7 @@ const PATHS: { path: string; as?: typeof AUTHOR }[] = [
   { path: '/constitucion' },
   { path: '/ruta-que-no-existe' },
   { path: '/tablero', as: AUTHOR },
+  { path: '/foro' },
 ];
 
 let signedInAs: string | null = null;
@@ -56,7 +61,18 @@ const ALLOWED: Record<string, string> = {
   'logo-blue': '.logo',
 };
 
-const PROPERTIES = ['color', 'backgroundColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor'] as const;
+/** Dónde pueden aparecer los colores de eje (RF-15 (019) · 15.2). */
+const AXIS_PLACES = '.axis-icon, .building, .apice-lot, .apicca-pin, .map-illustration, .forum__axis, .forum-message__initial';
+/** Los nombres de token de cada eje, sin tildes, como en `tokens.ts`. */
+const AXIS_TOKENS = AXES.flatMap((axis) => {
+  const key = axis.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return [`axis-${key}-fill`, `axis-${key}-stroke`];
+});
+for (const token of AXIS_TOKENS) ALLOWED[token] = AXIS_PLACES;
+
+const PROPERTIES = ['color', 'backgroundColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor', 'fill', 'stroke'] as const;
+/** `fill` y `stroke` solo se miran para los colores de eje: el resto de los tokens reservados no se pinta en SVG fuera de su lugar. */
+const SVG_PROPERTIES = new Set<string>(['fill', 'stroke']);
 
 let host: HTMLDivElement | undefined;
 let root: Root | undefined;
@@ -105,12 +121,13 @@ function misuses(container: Element): string[] {
   for (const element of [container, ...container.querySelectorAll('*')]) {
     const style = getComputedStyle(element);
     for (const property of PROPERTIES) {
-      if (property !== 'color' && property !== 'backgroundColor') {
+      if (property.startsWith('border')) {
         const side = property.replace('Color', 'Width') as 'borderTopWidth';
         if (parseFloat(style[side]) === 0) continue;
       }
-      const tokens = reserved.get(style[property]);
-      if (tokens === undefined) continue;
+      const all = reserved.get(style[property]);
+      const tokens = SVG_PROPERTIES.has(property) ? all?.filter((token) => token.startsWith('axis-')) : all;
+      if (tokens === undefined || tokens.length === 0) continue;
       // Un valor compartido por varios tokens basta que esté permitido para uno.
       if (tokens.some((token) => element.closest(ALLOWED[token]!) !== null)) continue;
       found.push(`${tokens.join('/')} en ${property}: ${element.outerHTML.slice(0, 100)}`);
@@ -152,7 +169,7 @@ afterAll(async () => {
 });
 
 describe.each(THEMES)('uso del color en el tema %s', (theme) => {
-  it.each(PATHS)('RF-2 (002) · 2.3, 2.4: en $path los colores reservados solo están donde les toca', async ({ path, as }) => {
+  it.each(PATHS)('RF-2 (002) · 2.3, 2.4, RF-15 (019) · 15.2: en $path los colores reservados y los de eje solo están donde les toca', async ({ path, as }) => {
     document.documentElement.dataset['theme'] = theme;
     await useAccount(as);
     await show(path);

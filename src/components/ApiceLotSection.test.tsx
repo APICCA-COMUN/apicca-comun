@@ -27,7 +27,7 @@ const source: ApiceSource = {
   },
 };
 
-function setup(items: readonly ListedApice[], session: SessionState = person, always = false) {
+function setup(items: readonly ListedApice[], session: SessionState = person, always = false, loading = false) {
   const { client } = fakeClient({ editApice: () => ({ ok: true, version: 2 }) });
   const onSaved = vi.fn();
   const onEditingChange = vi.fn();
@@ -39,8 +39,8 @@ function setup(items: readonly ListedApice[], session: SessionState = person, al
         client={client}
         onSaved={onSaved}
         onEditingChange={onEditingChange}
-        toolbar={<p>barra</p>}
         alwaysPanel={always}
+        loading={loading}
       />
     </SessionProvider>
   );
@@ -55,30 +55,30 @@ describe('ApiceLotSection', () => {
   it('RF-6 (005) · 6.6, RF-7 (005) · 7.1: elegir un edificio lo marca y lo muestra en el panel', async () => {
     const { container } = setup(items, { status: 'visitor' });
     expect(panel()).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Ápice 2' }));
-    expect(screen.getByRole('button', { name: 'Ápice 2' }).getAttribute('aria-pressed')).toBe('true');
+    await userEvent.click(screen.getByRole('button', { name: 'Ápice 2, Idea' }));
+    expect(screen.getByRole('button', { name: 'Ápice 2, Idea' }).getAttribute('aria-pressed')).toBe('true');
     expect(panel()!.querySelector('h2')!.textContent).toBe('Ápice 2');
-    expect(screen.getByText('barra')).toBeTruthy();
     expectBlocks(container);
   });
 
-  it('RF-6 (005) · 6.9, D-T8 (005): con la lista vacía no hay lote, y la barra queda suelta', () => {
+  it('RF-6 (005) · 6.9, RF-19 (019), D-T22 (019): con la lista vacía no pinta nada: el vacío lo nombra la página', () => {
     const { container } = setup([]);
-    expect(container.querySelector('.apice-lot')).toBeNull();
-    expect(screen.getByText('barra')).toBeTruthy();
+    expect(container.textContent).toBe('');
+    setup([], person, true);
+    expect(panel()).toBeNull();
   });
 
   it('RF-7 (005) · 7.11, D-T7 (005): avisa cuando la edición rápida está a la vista', async () => {
     const { onEditingChange } = setup(items);
-    await userEvent.click(screen.getByRole('button', { name: 'Ápice 1' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ápice 1, Idea' }));
     await waitFor(() => expect(onEditingChange).toHaveBeenLastCalledWith(true));
   });
 
   it('RF-7 (005) · 7.9: con cambios sin guardar, pide confirmar el descarte antes de cambiar de ápice', async () => {
     const { container } = setup(items);
-    await userEvent.click(screen.getByRole('button', { name: 'Ápice 1' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ápice 1, Idea' }));
     fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'A medio escribir' } });
-    await userEvent.click(screen.getByRole('button', { name: 'Ápice 2' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ápice 2, Idea' }));
     const notice = screen.getByRole('alert');
     expect(notice.textContent).toMatch(/cambios sin guardar/);
     expectBlocks(container);
@@ -86,7 +86,7 @@ describe('ApiceLotSection', () => {
     expect(panel()!.querySelector('h2')!.textContent).toBe('Editar ápice');
     expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Ápice 1');
     expect((screen.getByLabelText('Descripción') as HTMLTextAreaElement).value).toBe('A medio escribir');
-    await userEvent.click(screen.getByRole('button', { name: 'Ápice 2' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ápice 2, Idea' }));
     await userEvent.click(screen.getByRole('button', { name: 'Descartar cambios' }));
     expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Ápice 2');
     expect(screen.queryByRole('alert')).toBeNull();
@@ -94,7 +94,7 @@ describe('ApiceLotSection', () => {
 
   it('RF-7 (005) · 7.8: al guardar, avisa los datos nuevos para el edificio y la fila', async () => {
     const { onSaved } = setup(items);
-    await userEvent.click(screen.getByRole('button', { name: 'Ápice 1' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ápice 1, Idea' }));
     fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Nuevo nombre' } });
     await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith('a1', expect.objectContaining({ name: 'Nuevo nombre' })));
@@ -102,7 +102,7 @@ describe('ApiceLotSection', () => {
 
   it('RF-6 (005) · 6.8: si el ápice elegido sale de la lista, el panel se cierra', async () => {
     const { rerender } = setup(items, { status: 'visitor' });
-    await userEvent.click(screen.getByRole('button', { name: 'Ápice 3' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ápice 3, Idea' }));
     rerender(items.slice(0, 2));
     expect(panel()).toBeNull();
   });
@@ -110,24 +110,22 @@ describe('ApiceLotSection', () => {
   it('RF-7 (005) · 7.12: con el panel siempre visible, muestra el primer ápice sin elegir ninguno', async () => {
     setup(items, { status: 'visitor' }, true);
     expect(panel()!.querySelector('h2')!.textContent).toBe('Ápice 1');
-    expect(screen.getByRole('button', { name: 'Ápice 1' }).getAttribute('aria-pressed')).toBe('true');
-    await userEvent.click(screen.getByRole('button', { name: 'Ápice 3' }));
+    expect(screen.getByRole('button', { name: 'Ápice 1, Idea' }).getAttribute('aria-pressed')).toBe('true');
+    await userEvent.click(screen.getByRole('button', { name: 'Ápice 3, Idea' }));
     expect(panel()!.querySelector('h2')!.textContent).toBe('Ápice 3');
   });
 
   it('RF-7 (005) · 7.12: si el elegido sale de la lista, el panel pasa al primero', async () => {
     const { rerender } = setup(items, { status: 'visitor' }, true);
-    await userEvent.click(screen.getByRole('button', { name: 'Ápice 3' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ápice 3, Idea' }));
     rerender([items[0]!, items[1]!]);
     expect(panel()!.querySelector('h2')!.textContent).toBe('Ápice 1');
   });
 
-  it('RF-6 (005) · 6.12, RF-7 (005) · 7.13: sin ápices y con el panel siempre visible, hay lote vacío, filtros y panel con aviso', () => {
-    const { container } = setup([], { status: 'visitor' }, true);
-    expect(container.querySelector('.apice-lot-section__lot--empty')).not.toBeNull();
-    expect(container.querySelector('.apice-lot-section__toolbar--floating')).not.toBeNull();
-    expect(screen.queryAllByRole('button')).toHaveLength(0);
-    expect(panel()!.textContent).toContain('Aún no hay ápices para mostrar.');
+  it('RF-7 (019) · 7.3: mientras carga, con el panel siempre visible, el panel dice «Cargando ápices…» y no hay lote', () => {
+    const { container } = setup([], { status: 'visitor' }, true, true);
+    expect(container.querySelector('.apice-lot')).toBeNull();
+    expect(panel()!.textContent).toBe('Cargando ápices…');
     expectBlocks(container);
   });
 });

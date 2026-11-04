@@ -100,9 +100,8 @@ describe('ConstitutionPage, lectura de Firestore (004)', () => {
     expect(cards).toHaveLength(6);
     const numbers = cards.map((card) => card.querySelector<HTMLElement>('.section-block__number'));
     expect(numbers.map((n) => n?.textContent)).toEqual(['1', '2', '3', '4', '5', '6']);
-    expect(numbers.map((n) => n?.getAttribute('data-axis'))).toEqual([
-      'agua', 'alimento', 'cobijo', 'energía', 'comunicación', 'agua',
-    ]);
+    // RF-15 (019) · 15.2, D-T9 (019): el número ya no lleva un eje.
+    expect(numbers.every((n) => !n?.hasAttribute('data-axis'))).toBe(true);
     for (const card of cards) expect(card.classList.contains('block')).toBe(true);
     expect(container.querySelectorAll('.constitution__node [data-testid="node"]')).toHaveLength(6);
   });

@@ -1,8 +1,14 @@
 // Pruebas de celda base y escala para edificios de ápices (RF-7 (002) · 7.2, D-T10 (002)).
 import { describe, expect, it } from 'vitest';
-import { BUILDING_CELL, buildingScale } from './building';
+import { BUILDING_CELL, buildingParts, buildingScale } from './building';
 
 describe('building', () => {
+  it('RF-4 (019) · 4.1 a 4.3, D-T19 (019): idea es solo la base; prototipo suma el cuerpo; en marcha suma el techo', () => {
+    expect(buildingParts('idea')).toEqual(['base']);
+    expect(buildingParts('prototipo')).toEqual(['base', 'body']);
+    expect(buildingParts('en marcha')).toEqual(['base', 'body', 'roof']);
+  });
+
   it('RF-7 (002) · 7.2: constante BUILDING_CELL fija la celda en 64 px', () => {
     expect(BUILDING_CELL).toBe(64);
   });

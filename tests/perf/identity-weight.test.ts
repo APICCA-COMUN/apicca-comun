@@ -1,4 +1,4 @@
-// RNF-2 (002), D-T14 (002), RNF-4 (003), RNF-5 (003), D-T24 (003): lo que agrega la identidad visual pesa menos de 150 KB con gzip -9.
+// RNF-2 (002), D-T14 (002), RNF-4 (003), RNF-5 (003), D-T24 (003), RNF-4 (019): lo que agrega la identidad visual pesa menos de 150 KB con gzip -9.
 // Se compila el sitio en una carpeta temporal y se suman: los CSS emitidos, el trozo `identity`
 // (JS de la identidad), la fuente woff2 emitida y `public/brand/favicon.svg`. La `og:image` no cuenta.
 //
@@ -35,7 +35,7 @@ afterAll(() => {
 const gzipped = (buffer: Buffer): number => gzipSync(buffer, { level: 9 }).length;
 
 describe('peso de la identidad', () => {
-  it('RNF-2 (002), RNF-5 (003): con el inicio rediseñado, CSS, trozo identity, fuente y favicon suman menos de 150 KB con gzip -9', async () => {
+  it('RNF-2 (002), RNF-5 (003), RNF-4 (019): con el inicio rediseñado y el terreno vivo, CSS, trozo identity, fuente y favicon suman menos de 150 KB con gzip -9', async () => {
     const outDir = mkdtempSync(join(tmpdir(), 'apicca-weight-'));
     outs.push(outDir);
     // Vitest fija NODE_ENV=test; el peso que importa es el del build de producción.

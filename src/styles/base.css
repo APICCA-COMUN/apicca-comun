@@ -13,33 +13,65 @@ html {
 
 body {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--type-body-size);
   overflow-wrap: anywhere;
 }
 
-/* Los controles no heredan la fuente por defecto: aquí sí, y a 16 px como los párrafos
-   (RF-5 (002) · 5.5). */
+/* RF-22 (019) · 22.1, D-T15 (019): el pie al fondo de la ventana cuando el contenido es más bajo */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100dvh;
+}
+
+#root > header,
+#root > footer {
+  flex: none;
+}
+
+#root > main {
+  flex: 1 0 auto;
+}
+
+/* Los controles no heredan la fuente por defecto: aquí sí, y al tamaño de cuerpo como los párrafos
+   (RF-5 (002) · 5.5, RF-2 (019), D-T3 (019)). */
 input,
 textarea,
 select,
 button {
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--type-body-size);
+}
+
+/* RF-2 (019) · 2.1, 2.3, D-T3 (019): tamaños base de los elementos del navegador */
+h1 {
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-line);
+}
+
+h2 {
+  font-size: var(--type-doc-heading-size);
+}
+
+h3 {
+  font-size: var(--type-lead-size);
 }
 
 /* El monoespaciado genérico lo elige el sistema y cambia entre máquinas; una pila explícita fija cómo se ve el enlace
-   de invitación y las capturas de los dos carriles (RF-9 (017) · 9.2, D-2 (017)). La misma que `DocBlocks.css`. */
+   de invitación y las capturas de los dos carriles (RF-9 (017) · 9.2, D-2 (017)). La misma que `DocBlocks.css`.
+   RF-2 (019) · 2.1, D-T3 (019): hereda el tamaño de fuente. */
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: inherit;
 }
 
 p {
-  font-size: 1rem;
+  font-size: var(--type-body-size);
 }
 
-/* Nada de texto por debajo de 14 px (RF-5 (002) · 5.6). */
+/* Nada de texto por debajo de 14 px (RF-5 (002) · 5.6, RF-2 (019), D-T3 (019)). */
 small {
-  font-size: 0.875rem;
+  font-size: var(--type-meta-size);
 }
 
 a {

@@ -23,10 +23,21 @@
 /* El mapa deja sitio a la sombra larga de los edificios. */
 .home__hero-map {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   min-inline-size: 0;
   padding-inline-end: 18px;
   padding-block-end: 18px;
+}
+
+/* RF-16 (019) · 16.2, D-6 (019): rótulo visible del mapa ilustrado; es un párrafo, así que mide 16 px (RF-5 (002) · 5.5). */
+.home__map-label {
+  margin: 0 0 0.5rem;
+  font-size: var(--type-body-size);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 /* RF-4 (005) · 4.1: dos columnas desde 900 px. */
@@ -47,10 +58,39 @@
   list-style: none;
 }
 
+/* RF-23 (019) · 23.1, D-T16 (019): ejes del Inicio sin uno solo en la última fila.
+   Menos de 720 px: 1 columna.
+   720 a 1279 px: 6 columnas (3 primeros ocupan 2 col, 2 últimos ocupan 3 col -> 3 + 2).
+   Desde 1280 px: 5 columnas. */
 .home__axes {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
+}
+
+@media (min-width: 720px) {
+  .home__axes {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .home__axis:nth-child(-n + 3) {
+    grid-column: span 2;
+  }
+
+  .home__axis:nth-child(n + 4) {
+    grid-column: span 3;
+  }
+}
+
+@media (min-width: 1280px) {
+  .home__axes {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .home__axis:nth-child(-n + 3),
+  .home__axis:nth-child(n + 4) {
+    grid-column: span 1;
+  }
 }
 
 .home__axis {
@@ -63,6 +103,14 @@
   display: grid;
   grid-template-columns: 1.5rem 1fr;
   gap: 1rem;
+}
+
+/* RF-16 (019) · 16.1, D-7 (019), D-T10 (019): marca «Pronto» en pasos futuros */
+.home__step-soon {
+  margin-inline-start: 8px;
+  font-size: var(--type-meta-size);
+  font-weight: 700;
+  color: var(--text-muted);
 }
 
 .home__step-mark {
@@ -137,13 +185,13 @@
   text-align: center;
 }
 
-/* RF-6 (008) · 6.1–6.5, D-T2 (008): escala de los lienzos. El aire entre secciones es `--section-gap` (lots.css). */
+/* RF-6 (008) · 6.1–6.5, D-T2 (008), RF-2 (019), D-T3 (019): escala de la spec 019. El aire entre secciones es `--section-gap` (lots.css). */
 .home__hero {
   margin-block-end: var(--section-gap);
 }
 
 .home__hero-text h1 {
-  font-size: clamp(36px, 5vw, 64px);
+  font-size: var(--type-display-size);
   line-height: 1.05;
   font-weight: 800;
 }
@@ -158,7 +206,7 @@
 
 .home__section h2 {
   margin-block: 0 1rem;
-  font-size: clamp(28px, 3.6vw, 44px);
+  font-size: var(--type-heading-size);
   line-height: 1.12;
   font-weight: 800;
 }
@@ -184,7 +232,7 @@
 
 .home__step-text h3 {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--type-title-size);
   line-height: 1.2;
   font-weight: 800;
 }
@@ -207,7 +255,7 @@
 .home__closing h2 {
   margin: 0;
   max-inline-size: 14em;
-  font-size: clamp(32px, 5vw, 64px);
+  font-size: var(--type-display-size);
   line-height: 1.08;
   font-weight: 800;
 }
@@ -218,7 +266,7 @@
   align-items: center;
   min-block-size: 44px;
   color: var(--text);
-  font-size: 16px;
+  font-size: var(--type-body-size);
   font-weight: 700;
   text-decoration: underline;
 }

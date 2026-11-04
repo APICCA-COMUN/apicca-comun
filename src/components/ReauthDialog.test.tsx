@@ -1,3 +1,4 @@
+// RF-14 (019), D-T8 (019): la reautenticación no se cierra por Esc ni por el navegador; solo entrar o «Descartar y salir».
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -65,6 +66,20 @@ describe('ReauthDialog', () => {
     await setUid('u1');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect((screen.getByLabelText('Ficha') as HTMLTextAreaElement).value).toBe('agua para todas');
+  });
+
+  it('RNF-10 (001), D-T8 (019): si el navegador cierra el diálogo, se vuelve a abrir y el texto sigue en memoria', async () => {
+    const { setUid, drafts } = setup();
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Ficha'), 'texto');
+    await setUid(null);
+    const dialog = await screen.findByRole('dialog');
+    dialog.removeAttribute('open');
+    act(() => {
+      dialog.dispatchEvent(new Event('close'));
+    });
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(drafts.hasAny()).toBe(true);
   });
 
   it('RF-3 (001): sin nada escrito no interrumpe', async () => {

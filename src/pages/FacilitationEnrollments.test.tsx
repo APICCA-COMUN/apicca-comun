@@ -56,12 +56,16 @@ describe('FacilitationEnrollments', () => {
     expect(names('Pendientes').sort()).toEqual(['Nombre antigua', 'Nombre vigente']);
   });
 
-  it('RF-4 (001): aceptar crea la invitación y muestra su enlace completo', async () => {
+  it('RF-4 (001), RF-13 (019) · 13.2: aceptar crea la invitación, muestra su enlace abreviado y copia el completo', async () => {
     const user = userEvent.setup();
     const { calls } = setup([row('a')], { resolveEnrollment: () => ({ link: '/registro/xyz' }) });
     await user.click(screen.getByRole('button', { name: 'Aceptar' }));
     expect(calls).toEqual([{ op: 'resolveEnrollment', payload: { id: 'a', decision: 'accept' } }]);
-    expect((await screen.findByRole('status')).textContent).toContain(`${window.location.origin}/registro/xyz`);
+    const status = await screen.findByRole('status');
+    expect(status.textContent).toContain('/registro/xyz');
+    expect(status.textContent).not.toContain(window.location.origin);
+    await user.click(within(status).getByRole('button', { name: 'Copiar enlace' }));
+    expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/registro/xyz`);
   });
 
   it('RF-4 (001): aceptar con un correo que ya tiene cuenta lo explica', async () => {

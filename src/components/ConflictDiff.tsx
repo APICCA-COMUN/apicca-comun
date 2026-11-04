@@ -1,6 +1,8 @@
+// RF-17 (019) · 17.1, 17.2, D-T11 (019): el campo de estado se llama «Etapa» y sus valores llevan mayúscula inicial.
 // RF-11 (001), RF-6 (002), RF-2 (002) · Conflicto de edición: muestra campo por campo lo vigente frente a lo propio y deja
 // conservar lo propio (se reenvía sobre la versión vigente) o descartarlo. La diferencia se dice con texto, sin depender del color.
 import type { ReactNode } from 'react';
+import { APICE_STAGE_LABEL, type ApiceStatus } from '../../shared/domain/apice';
 import { diffContent, type ContentChange, type EditableFields } from '../../shared/domain/versions';
 import { AXIS_LABEL } from './AxisPicker';
 import './ConflictDiff.css';
@@ -21,7 +23,7 @@ const LABEL: Record<ContentChange['field'], string> = {
   axes: 'Ejes',
   needs: 'Necesidades',
   offers: 'Aportes',
-  status: 'Estado',
+  status: 'Etapa',
 };
 
 const names = (axes: readonly (keyof typeof AXIS_LABEL)[]): string => axes.map((axis) => AXIS_LABEL[axis]).join(', ');
@@ -35,7 +37,8 @@ function Change({ change }: { change: ContentChange }): ReactNode {
       </>
     );
   }
-  const show = (text: string): string => (text === '' ? '(vacío)' : text);
+  const stage = (text: string): string => APICE_STAGE_LABEL[text as ApiceStatus] ?? text;
+  const show = (text: string): string => (text === '' ? '(vacío)' : change.field === 'status' ? stage(text) : text);
   return (
     <>
       <p>

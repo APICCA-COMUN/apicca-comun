@@ -37,16 +37,17 @@ function setup(
     session = person,
     stored = doc(),
     handlers = {},
-  }: { session?: SessionState; stored?: ApiceDoc | null; handlers?: Parameters<typeof fakeClient>[0] } = {},
+    apice = listed(1),
+  }: { session?: SessionState; stored?: ApiceDoc | null; handlers?: Parameters<typeof fakeClient>[0]; apice?: ReturnType<typeof listed> } = {},
 ) {
   const { client, calls } = fakeClient(handlers);
   const onSaved = vi.fn();
   const onDirtyChange = vi.fn();
   const onEditingChange = vi.fn();
-  const { container } = render(
+  const { container, unmount } = render(
     <SessionProvider initial={session}>
       <ApiceQuickPanel
-        apice={listed(1)}
+        apice={apice}
         source={sourceOf(stored)}
         client={client}
         onSaved={onSaved}
@@ -55,7 +56,7 @@ function setup(
       />
     </SessionProvider>,
   );
-  return { container, calls, onSaved, onDirtyChange, onEditingChange };
+  return { container, unmount, calls, onSaved, onDirtyChange, onEditingChange };
 }
 
 const save = () => userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
@@ -68,7 +69,7 @@ describe('ApiceQuickPanel', () => {
     expect(within(panel).getByRole('heading', { name: 'Ápice 1' })).toBeTruthy();
     expect(within(panel).getByText('Descripción 1')).toBeTruthy();
     expect(within(panel).getByText('Agua')).toBeTruthy();
-    expect(within(panel).getByText('idea')).toBeTruthy();
+    expect(within(panel).getByText('Idea')).toBeTruthy();
     expect(within(panel).getByRole('img', { name: 'Sin imagen' })).toBeTruthy();
     expect(within(panel).getByRole('link', { name: 'Ver ficha' }).getAttribute('href')).toBe('/apices/a1');
     expect(within(panel).queryByRole('link', { name: 'Ver historial' })).toBeNull();
@@ -100,7 +101,7 @@ describe('ApiceQuickPanel', () => {
       ['Energía', 'false'],
       ['Comunicación', 'false'],
     ]);
-    const status = within(screen.getByRole('radiogroup', { name: 'Estado' })).getAllByRole('radio') as HTMLInputElement[];
+    const status = within(screen.getByRole('radiogroup', { name: 'Etapa' })).getAllByRole('radio') as HTMLInputElement[];
     expect(status.map((radio) => [radio.value, radio.checked])).toEqual([
       ['idea', true],
       ['prototipo', false],
@@ -118,7 +119,7 @@ describe('ApiceQuickPanel', () => {
     fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: '  Nueva  ' } });
     expect(onDirtyChange).toHaveBeenLastCalledWith(true);
     await userEvent.click(screen.getByRole('button', { name: 'Energía' }));
-    await userEvent.click(screen.getByRole('radio', { name: 'prototipo' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Prototipo' }));
     await save();
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
     expect(calls).toEqual([
@@ -167,5 +168,27 @@ describe('ApiceQuickPanel', () => {
       expect(button.querySelector('svg.axis-icon')?.getAttribute('aria-hidden')).toBe('true');
     }
     expectBlocks(container);
+  });
+
+  it('RF-17 (019) · 17.1, 17.2, D-T11 (019): el panel nombra la «Etapa» y muestra sus valores con mayúscula inicial', () => {
+    setup();
+    const stage = within(screen.getByRole('radiogroup', { name: 'Etapa' })).getAllByRole('radio') as HTMLInputElement[];
+    expect(stage.map((radio) => [radio.value, radio.labels?.[0]?.textContent?.trim()])).toEqual([
+      ['idea', 'Idea'],
+      ['prototipo', 'Prototipo'],
+      ['en marcha', 'En marcha'],
+    ]);
+  });
+  it('RF-9 (019) · 9.2, D-T21 (019): con necesidades el panel dice «Tiene necesidades»; sin ellas, no', () => {
+    const { unmount } = setup({ session: { status: 'visitor' }, apice: listed(1, { needs: 'Tejas' }) });
+    expect(screen.getByText('Tiene necesidades')).toBeTruthy();
+    unmount();
+    setup({ session: { status: 'visitor' }, apice: listed(1, { needs: '  ' }) });
+    expect(screen.queryByText('Tiene necesidades')).toBeNull();
+  });
+
+  it('D-14 (019), RF-4 (019): la imagen de una idea se sigue viendo en el panel', () => {
+    setup({ session: { status: 'visitor' }, apice: listed(1, { status: 'idea', image: { altText: 'Un tanque', png: new Uint8Array([1]) } }) });
+    expect(screen.getByRole('img', { name: 'Un tanque' })).toBeTruthy();
   });
 });

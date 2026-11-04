@@ -1,4 +1,4 @@
-/* RF-7 (008) · 7.6, D-10 (008): ayudas de Entrar bajo una línea, centradas. Solo colores de tokens. */
+/* RF-7 (008) · 7.6, D-10 (008), RF-2 (019), D-T3 (019): ayudas de Entrar bajo una línea, centradas, en tamaño meta. Solo colores de tokens. */
 .login__help {
   display: flex;
   flex-direction: column;
@@ -7,7 +7,7 @@
   margin-block-start: 8px;
   padding-block-start: 16px;
   border-block-start: 1px solid var(--line);
-  font-size: 14px;
+  font-size: var(--type-meta-size);
 }
 
 .login__help p {

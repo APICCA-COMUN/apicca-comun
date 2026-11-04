@@ -17,3 +17,26 @@ export const TILE_ATTRIBUTION =
 export const DEFAULT_CENTER: readonly [number, number] = [-15, -60];
 export const DEFAULT_ZOOM = 3;
 export const MAX_ZOOM = 18;
+
+/** Opciones de la capa de teselas: sin repetir el mundo al alejar (RF-10 (019) · 10.4, D-T25 (019)). */
+export const TILE_OPTIONS = { noWrap: true, maxZoom: MAX_ZOOM, attribution: TILE_ATTRIBUTION } as const;
+
+/** El menor zoom entero en que el mundo (256·2^z px) cubre `width`; nunca menos de 0 (RF-10 (019) · 10.4, D-T25 (019)). */
+export function minZoomForWidth(width: number): number {
+  if (!(width > 256)) return 0;
+  return Math.ceil(Math.log2(width / 256));
+}
+
+/**
+ * Opciones base de ambos mapas, como objeto plano (sin importar Leaflet): la rueda no hace zoom (lo hace Ctrl o ⌘,
+ * `wheel.ts`), el mundo no se repite y no se sale de los límites (RF-10 (019) · 10.3, 10.4, D-T25 (019)).
+ */
+export function mapBaseOptions(width: number) {
+  return {
+    scrollWheelZoom: false,
+    worldCopyJump: false,
+    maxBounds: [[-85, -180], [85, 180]] as [[number, number], [number, number]],
+    maxBoundsViscosity: 1,
+    minZoom: minZoomForWidth(width),
+  };
+}

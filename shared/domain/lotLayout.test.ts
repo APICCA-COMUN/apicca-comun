@@ -31,34 +31,14 @@ describe('lotLayout', () => {
     expect(lotLayout(7, 4)).toEqual(lotLayout(7, 4));
   });
 
-  it('RF-6 (005) · 6.3: caminos entre filas y entre columnas, y un nodo en cada cruce', () => {
-    const { roads, nodes } = lotLayout(6, 3);
-    // Dos filas y tres columnas: un camino entre las filas y dos entre las columnas.
-    expect(roads).toEqual([
-      { x1: 0, y1: 1, x2: 3, y2: 1 },
-      { x1: 1, y1: 0, x2: 1, y2: 2 },
-      { x1: 2, y1: 0, x2: 2, y2: 2 },
-    ]);
-    expect(nodes).toEqual([
-      { x: 1, y: 1 },
-      { x: 2, y: 1 },
-    ]);
-  });
-
-  it('RF-6 (005) · 6.3: con una columna no hay cruces; con una fila, solo caminos entre columnas', () => {
-    expect(lotLayout(3, 1).nodes).toEqual([]);
-    expect(lotLayout(3, 1).roads).toHaveLength(2);
-    const row = lotLayout(3, 4);
-    expect(row.columns).toBe(3);
-    expect(row.nodes).toEqual([]);
-    expect(row.roads).toEqual([
-      { x1: 1, y1: 0, x2: 1, y2: 1 },
-      { x1: 2, y1: 0, x2: 2, y2: 1 },
-    ]);
+  it('RF-8 (019) · 8.1, D-9 (019), D-T5 (019): la retícula solo ubica celdas, sin caminos ni nodos', () => {
+    const layout = lotLayout(6, 3);
+    expect(Object.keys(layout).sort()).toEqual(['cells', 'columns', 'rows']);
+    expect(layout).toEqual({ columns: 3, rows: 2, cells: lotLayout(6, 3).cells });
   });
 
   it('RF-6 (005) · 6.9: con la lista vacía no hay nada que dibujar', () => {
-    expect(lotLayout(0, 4)).toEqual({ columns: 0, rows: 0, cells: [], roads: [], nodes: [] });
+    expect(lotLayout(0, 4)).toEqual({ columns: 0, rows: 0, cells: [] });
   });
 });
 
@@ -109,8 +89,9 @@ describe('RNF-3 (005)', () => {
   });
 });
 
+// RF-8 (019) · 8.3, D-9 (019) revisada, D-T26 (019): el recorrido en zigzag de Prototipado vuelve, con sus caminos.
 describe('lotTrail', () => {
-  it('RF-6 (005) · 6.10, D-T11 (005): con 6 ápices reproduce las posiciones del canvas', () => {
+  it('RF-8 (019) · 8.3, RF-6 (005) · 6.10, D-T11 (005), D-T26 (019): con 6 ápices reproduce las posiciones del canvas', () => {
     const { points, minHeight, nodes } = lotTrail(6);
     expect(minHeight).toBe(560);
     expect(points).toEqual([
@@ -170,7 +151,7 @@ describe('lotTrail', () => {
 
 describe('lotTrailNeighbor', () => {
   const { points } = lotTrail(6);
-  it('RF-6 (005) · 6.11: derecha e izquierda van al siguiente y al anterior del recorrido, y se detienen en los extremos', () => {
+  it('RF-8 (019) · 8.3, RF-6 (005) · 6.11, D-T26 (019): derecha e izquierda van al siguiente y al anterior del recorrido, y se detienen en los extremos', () => {
     expect(lotTrailNeighbor(0, 'ArrowRight', points)).toBe(1);
     expect(lotTrailNeighbor(1, 'ArrowLeft', points)).toBe(0);
     expect(lotTrailNeighbor(5, 'ArrowRight', points)).toBeNull();

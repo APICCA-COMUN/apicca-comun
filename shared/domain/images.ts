@@ -3,6 +3,8 @@
 // (D-T9 (001)); aquí queda lo que cliente y servidor comparten.
 import { invalid, valid, type Validation } from './result';
 import { LIMITS, isBlank, validateLength } from './limits';
+import { hexToRgb } from './identity/color';
+import { TERRAIN_PALETTE, TOKENS } from './identity/tokens';
 
 /** Peso máximo de una referencia: 5 MiB, inclusivo (RF-15 (001)). */
 export const REFERENCE_MAX_BYTES = 5 * 1024 * 1024;
@@ -70,27 +72,10 @@ export const PIXEL_SIZE = 64;
 export type Rgb = readonly [number, number, number];
 
 /**
- * Paleta fija definitiva de 16 colores (RF-17 (001), D-5 (001)): Sweetie 16 (de uso libre),
- * ratificada en T-6.8 tras verificación empírica de contraste y legibilidad a 64 × 64.
+ * Paleta de 16 colores del pixelado (RF-17 (001), D-5 (001)). Desde la 019 es la paleta del terreno, que sale de los
+ * tokens (RF-1 (019) · 1.1, 1.2, D-T24 (019)); antes era Sweetie 16. Las imágenes ya aceptadas no se reprocesan (RF-1 (019) · 1.3).
  */
-export const PALETTE: readonly Rgb[] = [
-  [26, 28, 44],
-  [93, 39, 93],
-  [177, 62, 83],
-  [239, 125, 87],
-  [255, 205, 117],
-  [167, 240, 112],
-  [56, 183, 100],
-  [37, 113, 121],
-  [41, 54, 111],
-  [59, 93, 201],
-  [65, 166, 246],
-  [115, 239, 247],
-  [244, 244, 244],
-  [148, 176, 194],
-  [86, 108, 134],
-  [51, 60, 87],
-];
+export const PALETTE: readonly Rgb[] = TERRAIN_PALETTE.map(({ theme, token }) => hexToRgb(TOKENS[theme][token]));
 
 function nearestPaletteIndex(r: number, g: number, b: number): number {
   let best = 0;

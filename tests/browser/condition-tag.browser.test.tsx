@@ -1,4 +1,4 @@
-// RF-6 (003) · 6.1, 6.2, D-T20 (003) · Etiqueta de condición en Chromium real: punto de color seguido del texto,
+// RF-6 (003) · 6.1, 6.2, D-T20 (003), RF-15 (019) · 15.2 · Etiqueta de condición en Chromium real: punto (sin colores de eje) y texto,
 // de 14 px y peso 700, en text-muted, sin píldora ni borde; con colores forzados el texto sigue.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cdp } from 'vitest/browser';
@@ -13,7 +13,7 @@ import { ConditionTag, type Condition } from '../../src/components/ConditionTag'
 const CONDITIONS: Array<[Condition, string]> = [
   ['visibility', 'Privado'],
   ['archived', 'Archivado'],
-  ['status', 'prototipo'],
+  ['status', 'Prototipo'],
   ['reference', 'Retirada'],
 ];
 
@@ -60,7 +60,7 @@ afterEach(async () => {
 });
 
 describe('ConditionTag en el navegador (003)', () => {
-  it('RF-6 (003) · 6.1: punto de color y luego el texto, de 14 px, peso 700, en text-muted, sin píldora ni borde', async () => {
+  it('RF-6 (003) · 6.1, RF-15 (019) · 15.2: punto en text-muted (salvo el archivado) y luego el texto, de 14 px, peso 700, en text-muted, sin píldora ni borde', async () => {
     await mount(tags());
     const muted = (() => {
       const probe = document.createElement('span');
@@ -84,7 +84,9 @@ describe('ConditionTag en el navegador (003)', () => {
       const dot = tag.querySelector<HTMLElement>('.tag-dot')!;
       const dotStyle = getComputedStyle(dot);
       expect(dotStyle.backgroundColor, condition).not.toBe('rgba(0, 0, 0, 0)');
-      expect(dotStyle.borderTopLeftRadius, condition).toBe('50%');
+      // RF-15 (019) · 15.2, D-T9 (019): el punto no usa colores de eje; solo el archivado conserva `field-border`.
+      if (condition !== 'archived') expect(dotStyle.backgroundColor, condition).toBe(muted);
+      expect(dotStyle.borderTopLeftRadius, condition).toMatch(/^(50%|999px)$/); // RF-3 (019) · 3.3: `radius-pill`
       const dotBox = dot.getBoundingClientRect();
       expect(dotBox.width, condition).toBeGreaterThan(0);
       const range = document.createRange();

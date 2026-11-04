@@ -80,13 +80,14 @@
   background-color: var(--charcoal);
 }
 
+/* RF-3 (019), D-T4 (019): edificio con radio de edificio. */
 .map-illustration__pixels {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   inline-size: 100%;
   block-size: 100%;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: var(--radius-building);
 }
 
 .map-illustration__pixel[data-cell='sky'] { background-color: var(--line); }

@@ -1,0 +1,19 @@
+/* RF-12 (019) · 12.2, D-T6 (019): el botón de eje con nombre es una píldora de al menos 44 px de alto; presionado, va en `charcoal`. */
+.axis-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-block-size: 44px;
+  border-radius: var(--radius-pill);
+}
+
+.axis-toggle[aria-pressed='true'] {
+  background-color: var(--charcoal);
+  border-color: var(--charcoal);
+  color: var(--on-charcoal);
+}
+
+.axis-toggle[aria-pressed='true'] .axis-icon {
+  stroke: currentColor;
+  stroke-width: 1.5;
+}

@@ -121,6 +121,8 @@ export interface ListedApice {
   status: ApiceStatus;
   updatedAt: TimestampLike;
   image: ApiceImage | null;
+  /** Necesidades del ápice; vacío si faltan (RF-9 (019) · 9.1, D-T18 (019)). */
+  needs: string;
   /** Ubicación de pantalla para el mapa del inicio; `null` o ausente: no aparece en el mapa. */
   location?: Location | null;
 }
@@ -168,6 +170,7 @@ export function createListSource(db: Firestore): ListSource {
             status: data['status'] as ApiceStatus,
             updatedAt: data['updatedAt'] as TimestampLike,
             image: readImage(data['image']),
+            needs: typeof data['needs'] === 'string' ? data['needs'] : '',
             location: readLocation(data['location']),
           };
         }),

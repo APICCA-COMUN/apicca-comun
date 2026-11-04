@@ -16,7 +16,11 @@ export const LONG_APICE_ID = 'apice-nombre-largo';
 export const AUTHOR = { uid: 'autora-fija', email: 'autora@ejemplo.org', password: 'clave-de-prueba-1', name: 'Autora Fija', username: 'autora_fija' } as const;
 export const FACILITATOR = { uid: 'facilitacion-fija', email: 'facilitacion@ejemplo.org', password: 'clave-de-prueba-2', name: 'Facilitación Fija', username: 'facilitacion_fija' } as const;
 
-/** Un ápice por condición. Todos son de la autora, salvo los que reutiliza la siembra parcial. */
+/**
+ * Un ápice por condición. Todos son de la autora, salvo los que reutiliza la siembra parcial; `FACILITATOR` no tiene ninguno.
+ * Etapas (RF-4 (019)): `withImage` es prototipo, `allAxes` está en marcha y los demás son ideas. Todos tienen necesidades
+ * salvo `withRetractedReference`.
+ */
 export const APICE_IDS = {
   /** Público, con imagen PNG de 64 × 64 y una referencia activa en Storage. */
   withImage: 'apice-con-imagen',
@@ -28,7 +32,7 @@ export const APICE_IDS = {
   archived: 'apice-archivado',
   /** Con una propuesta de imagen pendiente de la autora. */
   withProposal: 'apice-con-propuesta',
-  /** Con una referencia retirada por la facilitación. */
+  /** Con una referencia retirada por la facilitación. Es una idea con imagen y sin necesidades (RF-4 (019) · 4.5, RF-9 (019)). */
   withRetractedReference: 'apice-referencia-retirada',
 } as const;
 
@@ -39,7 +43,7 @@ export const INVITED_EMAIL = 'invitada@ejemplo.org';
 export const REFERENCE_IDS = { active: 'referencia-activa', retracted: 'referencia-retirada' } as const;
 
 /** Textos de las condiciones, los mismos de la 001 (RF-13 (002) · 13.3). */
-export const CONDITION_TEXTS = { private: 'privado', archived: 'archivado', status: 'prototipo', retracted: 'Retirada' } as const;
+export const CONDITION_TEXTS = { private: 'privado', archived: 'archivado', status: 'Prototipo', retracted: 'Retirada' } as const;
 
 // Constitución común sembrada (T-11.2, RNF-4 (004), D-T18 (004)): abierta, con tres secciones, un documento y tres
 // propuestas. Las ids son fijas para que las rutas de la matriz y de las capturas no cambien entre corridas.

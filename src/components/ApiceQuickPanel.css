@@ -10,14 +10,14 @@
 
 .apice-panel.block {
   padding: 1.5rem;
-  border-radius: 14px;
+  border-radius: var(--radius-block);
   background-color: var(--surface);
 }
 
 .apice-panel__image {
   align-self: flex-start;
   padding: 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-building);
   background-color: var(--charcoal);
   box-shadow: var(--shadow-raised);
   line-height: 0;
@@ -73,6 +73,12 @@
   inline-size: 100%;
 }
 
+/* RF-12 (019) · 12.3, D-T6 (019): los grupos de campos son lotes: sin borde de navegador, con `radius-lot`. */
+.apice-panel__edit fieldset {
+  border-radius: var(--radius-lot);
+  min-inline-size: 0;
+}
+
 .apice-panel__pills,
 .apice-panel__segments {
   margin: 0;
@@ -90,7 +96,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .apice-panel__pills button[aria-pressed='true'] {
@@ -99,9 +105,9 @@
   color: var(--on-charcoal);
 }
 
-.apice-panel__segments {
+.apice-panel__edit .apice-panel__segments {
   padding: 0.25rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background-color: var(--background);
 }
 

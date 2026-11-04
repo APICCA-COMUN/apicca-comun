@@ -31,8 +31,9 @@ main > .lot.lot--access {
   margin-block: clamp(48px, 8vw, 96px);
 }
 
+/* RF-2 (019), D-T3 (019): título display. */
 .lot--access h1 {
-  font-size: clamp(28px, 4vw, 34px);
+  font-size: var(--type-display-size);
   font-weight: 800;
 }
 
@@ -95,9 +96,10 @@ main > .lot {
   gap: 8px 24px;
 }
 
+/* RF-2 (019), D-T3 (019): título display. */
 .prototyping__head h1 {
   margin: 0;
-  font-size: clamp(28px, 5vw, 40px);
+  font-size: var(--type-display-size);
   line-height: 1.1;
   font-weight: 800;
 }
@@ -109,13 +111,4 @@ main > .lot {
   gap: 8px 24px;
 }
 
-.prototyping .filters-count.block {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding: 0.25rem 0.75rem;
-  color: var(--text);
-  font-size: 16px;
-  font-weight: 800;
-}
+/* El contador pasó a la franja del terreno: su estilo está en `TerrainStrip.css` (RF-7 (019) · 7.1, D-T20 (019)). */

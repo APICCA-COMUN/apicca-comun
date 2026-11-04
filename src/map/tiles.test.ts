@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { OSM_TILE_URL, TILE_ATTRIBUTION, TILE_URL, tileUrl } from './tiles';
+import { MAX_ZOOM, mapBaseOptions, minZoomForWidth, OSM_TILE_URL, TILE_ATTRIBUTION, TILE_OPTIONS, TILE_URL, tileUrl } from './tiles';
 
 /** Archivos fuente de `src/` que no son pruebas. */
 function sourceFiles(dir: string): string[] {
@@ -42,5 +42,28 @@ describe('proveedor de teselas', () => {
 
   it('D-T13 (002): fuera del proyecto browser la variable no existe y TILE_URL es la de OpenStreetMap', () => {
     expect(TILE_URL).toBe(OSM_TILE_URL);
+  });
+});
+
+describe('mapa a pedido', () => {
+  it('RF-10 (019) · 10.4: minZoomForWidth da el menor zoom cuyo mundo cubre el ancho', () => {
+    expect(minZoomForWidth(360)).toBe(1);
+    expect(minZoomForWidth(1100)).toBe(3);
+    expect(minZoomForWidth(1280)).toBe(3);
+    expect(minZoomForWidth(0)).toBe(0);
+  });
+
+  it('RF-10 (019) · 10.3, 10.4: mapBaseOptions sin rueda, sin copias del mundo y con límites', () => {
+    expect(mapBaseOptions(1100)).toEqual({
+      scrollWheelZoom: false,
+      worldCopyJump: false,
+      maxBounds: [[-85, -180], [85, 180]],
+      maxBoundsViscosity: 1,
+      minZoom: 3,
+    });
+  });
+
+  it('RF-10 (019) · 10.4: TILE_OPTIONS no repite el mundo', () => {
+    expect(TILE_OPTIONS).toEqual({ noWrap: true, maxZoom: MAX_ZOOM, attribution: TILE_ATTRIBUTION });
   });
 });

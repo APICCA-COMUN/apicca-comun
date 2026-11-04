@@ -44,8 +44,8 @@ async function waitFor<T>(find: () => T | null | undefined, timeoutMs = 10_000):
 beforeAll(async () => {
   await commands.seedPartial();
   previousPath = location.pathname + location.search;
-  // La lista se mudó de / a /prototipado (RF-18 (003), D-19 (003)).
-  history.replaceState(null, '', '/prototipado');
+  // La lista se mudó de / a /prototipado (RF-18 (003), D-19 (003)); desde la 019 es la vista `?vista=lista` (RF-6 (019) · 6.2).
+  history.replaceState(null, '', '/prototipado?vista=lista');
   host = document.createElement('div');
   document.body.append(host);
   const created = createRoot(host);

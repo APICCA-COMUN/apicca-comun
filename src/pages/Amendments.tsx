@@ -1,7 +1,10 @@
 // RF-6 (004) · 6.1–6.2, RF-7 (004) · 7.1–7.3, RF-9 (004) · 9.4, RF-12 (004) · 12.5, D-T13 (004) · Página
 // `/constitucion/propuestas`: propuestas abiertas completas (cierre más próximo primero), cerradas de 20 en 20 y el
 // formulario de abrir una propuesta en un diálogo (`#cambiar-ID`, `#quitar-ID`, `#anadir-ID`). Sin cuenta activa, solo el aviso.
+// RF-14 (019), D-T8 (019): el diálogo es un `Dialog` siempre montado; Esc lo cierra y el formulario conserva lo escrito,
+// «Cancelar» lo descarta (clave nueva).
 import { useEffect, useState } from 'react';
+import { Dialog } from '../components/Dialog';
 import type { Amendment, AmendmentKind, ConstitutionState, Section } from '../../shared/domain/constitution';
 import { todayInColombia } from '../../shared/domain/dates';
 import { parseMarkdown } from '../../shared/domain/docs/markdown';
@@ -63,6 +66,8 @@ export function Amendments({
   const [sections, setSections] = useState<Section[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  /** Cambia con «Cancelar»: el formulario se vuelve a montar vacío. */
+  const [formKey, setFormKey] = useState(0);
 
   useEffect(() => {
     if (hash !== undefined && FORM_HASH.test(hash)) setShowForm(true);
@@ -148,18 +153,22 @@ export function Amendments({
       ) : (
         <p className="block">Las propuestas llegan cuando quien facilita abre la constitución.</p>
       )}
-      {showForm && constitutionOpen && (
-        <div role="dialog" aria-modal="true" aria-labelledby="amendment-dialog-title" className="block">
+      {constitutionOpen && (
+        <Dialog open={showForm} labelledBy="amendment-dialog-title" onClose={closeForm}>
           <h2 id="amendment-dialog-title">Abrir una propuesta</h2>
           <AmendmentForm
+            key={formKey}
             mode="open"
             sections={current.map((s) => ({ id: s.id, title: s.title }))}
             openCount={open.length}
             {...preselection(hash)}
             onSubmit={submit}
-            onCancel={closeForm}
+            onCancel={() => {
+              setFormKey((key) => key + 1);
+              closeForm();
+            }}
           />
-        </div>
+        </Dialog>
       )}
       <h2>Abiertas</h2>
       {open.length === 0 ? (

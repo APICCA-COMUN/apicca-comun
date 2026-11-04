@@ -1,6 +1,6 @@
-// Pruebas de SiteNav (RF-7 (003) · 7.2, 7.3, 7.4; D-T10 (003)): menú principal con la sección vigente marcada.
+// Pruebas de SiteNav (RF-7 (003) · 7.2, 7.3, 7.4; D-T10 (003); RF-21 (019); D-T14 (019)): menú principal con la sección vigente marcada.
 // No navegan: fijan la ubicación con `replaceState`; las rutas las registra el enrutador.
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MAIN_MENU } from '../../shared/domain/navigation';
 import { SessionProvider, type SessionState } from '../app/session';
@@ -60,5 +60,35 @@ describe('SiteNav', () => {
   it('RF-7 (003) · 7.4: en una ruta fuera del menú ningún enlace está marcado', () => {
     setup(PERSON, '/apices/uno');
     expect(screen.getAllByRole('link').some((link) => link.hasAttribute('aria-current'))).toBe(false);
+  });
+
+  it('RF-21 (019) · 21.2, D-T14 (019): el botón «Menú» lleva aria-expanded y aria-controls, y se abre y se cierra', () => {
+    setup(PERSON);
+    const toggle = screen.getByRole('button', { name: 'Menú' });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(document.getElementById(toggle.getAttribute('aria-controls')!)).not.toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('RF-21 (019) · 21.3: Esc cierra la lista y devuelve el foco al botón', () => {
+    setup(PERSON);
+    const toggle = screen.getByRole('button', { name: 'Menú' });
+    fireEvent.click(toggle);
+    const link = screen.getByRole('link', { name: 'Foro' });
+    link.focus();
+    fireEvent.keyDown(link, { key: 'Escape' });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(toggle);
+  });
+
+  it('RF-21 (019) · 21.3: elegir un destino cierra la lista', () => {
+    setup(PERSON);
+    const toggle = screen.getByRole('button', { name: 'Menú' });
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole('link', { name: 'Foro' }));
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
   });
 });

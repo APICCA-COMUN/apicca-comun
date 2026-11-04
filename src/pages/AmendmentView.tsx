@@ -2,7 +2,10 @@
 // RF-12 (004) · 12.5, RF-14 (004) · 14.4, 14.7, RF-17 (004) · 17.1–17.2 · Página `/constitucion/propuestas/:id`:
 // contenido, revisiones, acuerdos contados, objeciones, posturas y deliberación de una propuesta. Refleja el vencimiento
 // antes de pintar. Las acciones siguen la tabla de la spec 004 §4.3; sin cuenta activa, solo el aviso.
+// RF-14 (019), D-T8 (019): «Revisar la propuesta» es un `Dialog` siempre montado para quien puede revisar; Esc lo cierra y
+// conserva lo escrito, «Cancelar» y una revisión guardada lo descartan (clave nueva).
 import { useEffect, useState } from 'react';
+import { Dialog } from '../components/Dialog';
 import { validateComment, type Amendment, type Objection, type Stance } from '../../shared/domain/constitution';
 import { todayInColombia } from '../../shared/domain/dates';
 import { parseMarkdown } from '../../shared/domain/docs/markdown';
@@ -54,6 +57,8 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
   const [stances, setStances] = useState<Stance[]>([]);
   const [objections, setObjections] = useState<Objection[]>([]);
   const [reviseOpen, setReviseOpen] = useState(false);
+  /** Cambia con «Cancelar» o al guardar: el formulario se vuelve a montar con la versión vigente. */
+  const [reviseKey, setReviseKey] = useState(0);
   const [composer, setComposer] = useState<Composer | null>(null);
   const [commentText, setCommentText] = useState('');
   const [commentNote, setCommentNote] = useState<string | null>(null);
@@ -132,6 +137,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
     });
     if (result.ok) {
       setReviseOpen(false);
+      setReviseKey((key) => key + 1);
       return { ok: true, revisionNo: result.revisionNo };
     }
     return result;
@@ -284,19 +290,23 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
         />
       )}
 
-      {reviseOpen && isOpen && isAuthor && !authorSuspended && (
-        <div role="dialog" aria-modal="true" aria-labelledby="revise-title" className="block">
+      {isOpen && isAuthor && !authorSuspended && (
+        <Dialog open={reviseOpen} labelledBy="revise-title" onClose={() => setReviseOpen(false)}>
           <h2 id="revise-title">Revisar la propuesta</h2>
           <AmendmentForm
+            key={reviseKey}
             mode="revise"
             sections={[]}
             kind={amendment.kind}
             {...(amendment.sectionId === null ? {} : { sectionId: amendment.sectionId })}
             initial={{ title: amendment.title, text: amendment.text, motive: amendment.motive }}
             onSubmit={submitRevision}
-            onCancel={() => setReviseOpen(false)}
+            onCancel={() => {
+              setReviseKey((key) => key + 1);
+              setReviseOpen(false);
+            }}
           />
-        </div>
+        </Dialog>
       )}
 
       <section className="lot" aria-label="Deliberación de la propuesta">

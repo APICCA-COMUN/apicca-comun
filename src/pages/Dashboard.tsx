@@ -3,23 +3,35 @@
 // mapa y lista de los ápices propios, «Archivados», «Cerrar sesión», aviso de propuestas abiertas (RF-15 (004) · 15.1) y, para quien facilita, el enlace a Facilitación.
 // RF-9 (005) · 9.1, 9.2, RF-7 (005) · 7.8, 7.11, D-8 (005): «Mis ápices» con el lote ilustrado y su panel encima del mapa y la
 // lista; «Nuevo ápice» lleva un «+» decorativo y pasa a secundario mientras se ve la edición rápida.
-import { useEffect, useState } from "react";
+// RF-6 (019) · 6.1 a 6.3, RF-7 (019) · 7.1 a 7.3, D-T17 (019), D-T20 (019): el terreno es la vista principal y la lista su
+// alternativa (`?vista=lista`), nunca las dos a la vez; el contador y el control de vista van en la franja.
+// RF-19 (019), D-T22 (019): sin ápices, solo el terreno de partida, y «Nuevo ápice» pasa a secundario.
+// RF-10 (019) · 10.5, D-T25 (019): el mapa de los ápices propios va debajo del terreno y solo se monta cuando se pide.
+import { useEffect, useLayoutEffect, useState } from "react";
 import { NO_FILTERS } from "../../shared/domain/discovery";
 import { Link, navigate } from "../app/router";
 import { useSession, useSignOut } from "../app/session";
 import { usePageTitle } from "../app/usePageTitle";
 import { AmendmentNotice } from "../components/AmendmentNotice";
+import { useApiceListing } from "../app/useApiceListing";
 import { ApiceList } from "../components/ApiceList";
 import { ApiceLotSection } from "../components/ApiceLotSection";
 import { ApiceMap } from "../components/ApiceMap";
 import { MapBoundary } from "../components/MapView";
 import { NoticeBell } from "../components/NoticeBell";
+import { StartingTerrain } from "../components/StartingTerrain";
+import {
+  MAP_REGION_ID,
+  TerrainStrip,
+  viewFromSearch,
+  withView,
+  type ListingView,
+} from "../components/TerrainStrip";
 import type { ApiOps, OpClient } from "../data/api";
 import type { NoticesSource } from "../data/notices";
 import {
   firestoreListSource,
   type ApiceSource,
-  type ListedApice,
   type ListSource,
 } from "../data/apices";
 import {
@@ -64,12 +76,9 @@ export function Dashboard({
   usePageTitle({ contentTitle: "Mi tablero" });
   const session = useSession();
   const signOut = useSignOut();
-  const [items, setItems] = useState<readonly ListedApice[]>([]);
   const [notice, setNotice] = useState<AmendmentNoticeData>(NO_NOTICE);
-  const [patches, setPatches] = useState<Record<string, Partial<ListedApice>>>(
-    {},
-  );
   const [editing, setEditing] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -119,7 +128,7 @@ export function Dashboard({
           />
           <Link
             href="/apices/nuevo"
-            className={`block dashboard-new ${editing ? "action-secondary" : "action-primary"}`}
+            className={`block dashboard-new ${editing || starting ? "action-secondary" : "action-primary"}`}
           >
             <PlusGlyph />
             Nuevo ápice
@@ -132,44 +141,13 @@ export function Dashboard({
       />
       <section className="dashboard__apices" aria-labelledby="dashboard-apices">
         <h2 id="dashboard-apices">Mis ápices</h2>
-        <ApiceLotSection
-          items={items}
-          {...(apiceSource === undefined ? {} : { source: apiceSource })}
-          {...(client === undefined ? {} : { client })}
-          onSaved={(id, fields) =>
-            setPatches((current) => ({
-              ...current,
-              [id]: { ...current[id], ...fields },
-            }))
-          }
-          onEditingChange={setEditing}
-        />
-        <MapBoundary>
-          <ApiceMap
-            apices={items.map((a) => ({
-              id: a.id,
-              name: a.name,
-              axes: a.axes,
-              location: a.location ?? null,
-            }))}
-            onSelect={(id) => navigate(`/apices/${id}`)}
-          />
-        </MapBoundary>
-        <ApiceList
-          onItems={setItems}
-          patches={patches}
-          audience="mine"
-          filters={NO_FILTERS}
+        <MyApices
           uid={session.uid}
           source={source}
-          empty={() => (
-            <div className="block block-empty">
-              <p>Todavía no tienes ápices. Crea el primero y aparecerá aquí.</p>
-              <Link href="/apices/nuevo" className="block action-secondary">
-                Crear el primero
-              </Link>
-            </div>
-          )}
+          {...(apiceSource === undefined ? {} : { apiceSource })}
+          {...(client === undefined ? {} : { client })}
+          onEditingChange={setEditing}
+          onStartingChange={setStarting}
         />
       </section>
       <div className="dashboard-actions">
@@ -186,5 +164,79 @@ export function Dashboard({
         </button>
       </div>
     </div>
+  );
+}
+
+/** Los ápices propios: terreno o lista, con la franja, el mapa y el terreno de partida (RF-6 (019), RF-7 (019), RF-10 (019) y RF-19 (019)). */
+function MyApices({
+  uid,
+  source,
+  apiceSource,
+  client,
+  onEditingChange,
+  onStartingChange,
+}: {
+  uid: string;
+  source: ListSource;
+  apiceSource?: ApiceSource;
+  client?: OpClient<ApiOps>;
+  onEditingChange(editing: boolean): void;
+  onStartingChange(starting: boolean): void;
+}) {
+  const listing = useApiceListing({ audience: "mine", filters: NO_FILTERS, uid, source });
+  const [view, setView] = useState<ListingView>(() => viewFromSearch(window.location.search));
+  const [mapOpen, setMapOpen] = useState(false);
+  const starting = listing.empty === "no-apices";
+  // Antes de pintar, para que «Nuevo ápice» nunca se vea azul junto al terreno de partida (RF-19 (019) · 19.4).
+  useLayoutEffect(() => onStartingChange(starting), [starting]);
+
+  if (starting) {
+    return (
+      <StartingTerrain
+        phrase="Todavía no tienes ápices en el terreno."
+        action={{ label: "Propón tu primer ápice", href: "/apices/nuevo" }}
+      />
+    );
+  }
+  const switchView = (next: ListingView) => {
+    setView(next);
+    navigate(`/tablero${withView("", next)}`, { replace: true });
+  };
+  const terrain = view === "terreno" && listing.status !== "error" && listing.empty === null;
+  return (
+    <>
+      <TerrainStrip
+        listing={listing}
+        view={view}
+        onView={switchView}
+        map={{ open: mapOpen, onToggle: () => setMapOpen(!mapOpen) }}
+      />
+      {terrain ? (
+        <ApiceLotSection
+          items={listing.items}
+          {...(apiceSource === undefined ? {} : { source: apiceSource })}
+          {...(client === undefined ? {} : { client })}
+          onSaved={listing.patch}
+          onEditingChange={onEditingChange}
+        />
+      ) : (
+        <ApiceList listing={listing} empty={() => null} />
+      )}
+      <div id={MAP_REGION_ID} className="terrain-map">
+        {mapOpen && (
+          <MapBoundary>
+            <ApiceMap
+              apices={listing.items.map((a) => ({
+                id: a.id,
+                name: a.name,
+                axes: a.axes,
+                location: a.location ?? null,
+              }))}
+              onSelect={(id) => navigate(`/apices/${id}`)}
+            />
+          </MapBoundary>
+        )}
+      </div>
+    </>
   );
 }

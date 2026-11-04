@@ -1,8 +1,11 @@
-// RF-21 (001), RF-6 (002) · 6.5, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1 · Vista «Archivados»: la autora ve los suyos y la facilitadora todos. Visitantes y cuentas
-// suspendidas no la ven; las reglas de Firestore lo vuelven a exigir (RNF-4 (001)).
+// RF-21 (001), RF-6 (002) · 6.5, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1,
+// RF-18 (019) · 18.1, D-T12 (019) · Vista «Archivados»: la autora ve los suyos y la facilitadora todos. Visitantes y cuentas
+// suspendidas no la ven; las reglas de Firestore lo vuelven a exigir (RNF-4 (001)). El título de la página es h1.
+// D-T17 (019): la lista recibe el listado de `useApiceListing`.
 import { NO_FILTERS } from '../../shared/domain/discovery';
 import { Link } from '../app/router';
-import { useSession } from '../app/session';
+import { useSession, type SessionState } from '../app/session';
+import { useApiceListing } from '../app/useApiceListing';
 import { usePageTitle } from '../app/usePageTitle';
 import { ApiceList } from '../components/ApiceList';
 import { firestoreListSource, type ListSource } from '../data/apices';
@@ -14,22 +17,25 @@ export function ArchivedApices({ source = firestoreListSource }: { source?: List
   if (session.status !== 'person') {
     return (
       <section>
-        <h2>Archivados</h2>
+        <h1>Archivados</h1>
         <p>Los ápices archivados son solo para cuentas con sesión activa.</p>
         <Link href="/entrar">Entrar</Link>
       </section>
     );
   }
+  return <Archived session={session} source={source} />;
+}
+
+function Archived({ session, source }: { session: Extract<SessionState, { status: 'person' }>; source: ListSource }) {
   const all = session.role === 'facilitator';
+  const listing = useApiceListing({ audience: all ? 'archived-all' : 'archived-own', filters: NO_FILTERS, uid: session.uid, source });
   return (
     <section>
-      <h2>Archivados</h2>
+      <h1>Archivados</h1>
       <div className="lot">
+        {listing.status === 'loading' ? <p>Cargando…</p> : null}
         <ApiceList
-          audience={all ? 'archived-all' : 'archived-own'}
-          filters={NO_FILTERS}
-          uid={session.uid}
-          source={source}
+          listing={listing}
           empty={() => <p className="block block-empty">{all ? 'No hay ápices archivados.' : 'No tienes ápices archivados.'}</p>}
         />
       </div>

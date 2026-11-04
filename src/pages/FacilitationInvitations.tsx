@@ -1,4 +1,6 @@
-// RF-1 (001), RF-8 (016) · 8.1, RF-6 (002) · 6.1, 6.3, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1 · Invitaciones: invitar un correo, ver y copiar el enlace de las pendientes, renovar y anular.
+// RF-1 (001), RF-8 (016) · 8.1, RF-6 (002) · 6.1, 6.3, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1,
+// RF-13 (019) · 13.1, 13.2, D-T7 (019) · Invitaciones: invitar un correo, ver y copiar el enlace de las pendientes,
+// renovar y anular, con filas como bloques sin viñeta y enlace abreviado.
 import { useMemo, useState, type FormEvent } from 'react';
 import {
   compareInvitations,
@@ -90,7 +92,7 @@ function Invitations({ source, client, now }: Required<Props>) {
           {sorted.length === 0 ? (
             <p className="block block-empty">Aún no hay invitaciones.</p>
           ) : (
-            <ul>
+            <ul className="facilitation-list">
               {sorted.map((invitation) => (
                 <InvitationItem
                   key={invitation.email}
@@ -123,8 +125,10 @@ function InvitationItem({
   onCancel: () => void;
 }) {
   return (
-    <li className="block">
-      {invitation.email} <strong>{INVITATION_STATE_LABELS[state]}</strong>{' '}
+    <li className="block facilitation-row">
+      <span className="facilitation-row__primary">
+        {invitation.email} <strong>{INVITATION_STATE_LABELS[state]}</strong>
+      </span>{' '}
       {state === 'pending' ? (
         invitation.token !== undefined ? (
           <LinkBox path={`/registro/${invitation.token}`} />
@@ -132,16 +136,18 @@ function InvitationItem({
           <span>Para compartir de nuevo el enlace, renueva la invitación.</span>
         )
       ) : null}{' '}
-      {state !== 'accepted' ? (
-        <button type="button" className="block action-secondary" disabled={busy} onClick={onRenew}>
-          Renovar
-        </button>
-      ) : null}
-      {state === 'pending' || state === 'expired' ? (
-        <button type="button" className="block action-secondary" disabled={busy} onClick={onCancel}>
-          Anular
-        </button>
-      ) : null}
+      <span className="facilitation-row__actions">
+        {state !== 'accepted' ? (
+          <button type="button" className="block action-secondary" disabled={busy} onClick={onRenew}>
+            Renovar
+          </button>
+        ) : null}
+        {state === 'pending' || state === 'expired' ? (
+          <button type="button" className="block action-secondary" disabled={busy} onClick={onCancel}>
+            Anular
+          </button>
+        ) : null}
+      </span>
     </li>
   );
 }

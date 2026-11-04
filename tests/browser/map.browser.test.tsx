@@ -4,6 +4,9 @@
 // (RF-2 (002) · 2.1, D-T20 (002)); los pines se alcanzan con Tab en el orden de la lista y su foco usa `focus` y
 // sube de `z-index` (8.5); con colores forzados no hay tintado y el pin usa los colores del sistema; sin ápices no
 // hay errores, y en el inicio la lista sigue junto al mapa (8.7).
+// RF-10 (019) · 10.3, 10.4, 10.5, D-T25 (019): el mapa de Prototipado se abre con «Ver en el mapa»; la rueda sin Ctrl ni ⌘
+// desplaza la página y no cambia el zoom; con Ctrl o ⌘ acerca y aleja; el mapa no se aleja más allá de donde el mundo
+// cubre su ancho, así que no se repite a los lados.
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { cdp, commands, page, userEvent } from 'vitest/browser';
 import { act } from 'react';
@@ -292,8 +295,8 @@ describe('inicio con mapa y lista', () => {
   it.each(THEMES)('RF-8 (002) · 8.7: en el tema %s la lista de ápices sigue presente junto al mapa', async (theme) => {
     document.documentElement.dataset['theme'] = theme;
     if (app === undefined) {
-      // El mapa y la lista viven en /prototipado (RF-18 (003), D-19 (003)).
-      history.replaceState(null, '', '/prototipado');
+      // El mapa y la lista viven en /prototipado (RF-18 (003), D-19 (003)); la lista es la vista `?vista=lista` (RF-6 (019) · 6.2).
+      history.replaceState(null, '', '/prototipado?vista=lista');
       appHost = document.createElement('div');
       document.body.append(appHost);
       const created = createRoot(appHost);
@@ -305,9 +308,186 @@ describe('inicio con mapa y lista', () => {
           </SessionProvider>,
         ),
       );
+      // El mapa se pide con «Ver en el mapa» (RF-10 (019) · 10.5).
+      const toggle = await waitFor(() => [...appHost!.querySelectorAll('button')].find((button) => button.textContent === 'Ver en el mapa'));
+      await actNow(() => toggle.click());
     }
     await waitFor(() => appHost!.querySelector('section[aria-label="Mapa de ápices"] .leaflet-container'));
     const listed = await waitFor(() => [...appHost!.querySelectorAll('main h3')].find((heading) => heading.textContent === LONG_NAME));
     expect(listed.closest('section[aria-label="Mapa de ápices"]')).toBeNull();
+  });
+});
+
+/** Centro de un elemento en la ventana. */
+function center(element: Element): { x: number; y: number } {
+  const box = element.getBoundingClientRect();
+  return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+}
+
+/** Distancia horizontal entre los dos pines: crece al acercar y baja al alejar. */
+function pinSpan(container: HTMLElement): number {
+  const pins = [...container.querySelectorAll('.leaflet-marker-icon')];
+  expect(pins).toHaveLength(2);
+  return Math.abs(center(pins[0]!).x - center(pins[1]!).x);
+}
+
+const pause = (ms: number) => new Promise((done) => setTimeout(done, ms));
+
+describe('mapa a pedido · RF-10 (019)', () => {
+  /** Dos pines lejanos en longitud, para medir el zoom por su distancia. */
+  const FAR = [apice('a', 'Bogotá', 4.6, -74, ['agua']), apice('b', 'Atlántico', 4.6, -40, ['energía'])];
+  let spacer: HTMLDivElement | undefined;
+
+  // La rueda llega al punto central del mapa: la ventana debe contenerlo (el marco de pruebas mide 414 px).
+  beforeAll(async () => {
+    await page.viewport(1280, 800);
+  });
+
+  afterEach(async () => {
+    spacer?.remove();
+    spacer = undefined;
+    await userEvent.keyboard('{/Control}');
+    scrollTo(0, 0);
+    // Leaflet 1.9.4 falla si el mapa se desmonta a mitad de una animación de zoom (su temporizador es de 250 ms): antes
+    // del desmontaje común se espera a que ninguna quede en curso.
+    for (let quiet = 0, tries = 0; quiet < 4 && tries < 30; tries++) {
+      await pause(100);
+      quiet = document.querySelector('.leaflet-zoom-anim') === null ? quiet + 1 : 0;
+    }
+  });
+
+  /** Espera a que el mapa termine el encuadre inicial: una rueda en plena animación se pierde. Corta a los 5 s. */
+  async function settled(container: HTMLElement): Promise<void> {
+    let last = -1;
+    for (let stable = 0, tries = 0; stable < 3 && tries < 25; tries++) {
+      await pause(200);
+      const span = container.classList.contains('leaflet-zoom-anim') ? -2 : pinSpan(container);
+      stable = span >= 0 && span === last ? stable + 1 : 0;
+      last = span;
+    }
+  }
+
+  /** El mapa sobre una página más alta que la ventana, para que la rueda pueda desplazarla. */
+  async function mountScrollable(): Promise<HTMLElement> {
+    const container = await mount(FAR);
+    spacer = document.createElement('div');
+    spacer.style.height = '3000px';
+    document.body.append(spacer);
+    scrollTo(0, 0);
+    await settled(container);
+    return container;
+  }
+
+  it('RF-10 (019) · 10.3, D-T25 (019): con el puntero sobre el mapa, la rueda sin teclas desplaza la página y no cambia el zoom', async () => {
+    const container = await mountScrollable();
+    const before = pinSpan(container);
+    await userEvent.wheel(container, { delta: { y: 300 }, times: 3 });
+    await waitFor(() => scrollY > 0);
+    await pause(400);
+    expect(pinSpan(container)).toBeCloseTo(before, 0);
+  });
+
+  it('RF-10 (019) · 10.3, D-T25 (019): con Ctrl y la rueda, el mapa acerca y aleja sin desplazar la página', async () => {
+    const container = await mountScrollable();
+    const before = pinSpan(container);
+    await userEvent.keyboard('{Control>}');
+    await userEvent.wheel(container, { delta: { y: -100 } });
+    await waitFor(() => pinSpan(container) > before * 1.5);
+    // Leaflet descarta la rueda que llega en plena animación: se espera a que el zoom termine.
+    await settled(container);
+    const closer = pinSpan(container);
+    await userEvent.wheel(container, { delta: { y: 100 } });
+    await waitFor(() => pinSpan(container) < closer / 1.5);
+    await userEvent.keyboard('{/Control}');
+    expect(scrollY).toBe(0);
+  });
+
+  it('RF-10 (019) · 10.4, D-T25 (019): a 1100 px el mapa no se aleja más allá de donde el mundo cubre su ancho, sin copias a los lados', async () => {
+    host = document.createElement('div');
+    host.style.width = '1100px';
+    document.body.append(host);
+    const created = createRoot(host);
+    root = created;
+    await actNow(() => created.render(<ApiceMap apices={FAR} />));
+    const container = await waitFor(() => host!.querySelector<HTMLElement>('.leaflet-container'));
+    await waitFor(() => container.querySelectorAll('img.leaflet-tile').length > 0);
+    // Al cargar, el mapa encuadra los pines; desde ahí, «−» aleja hasta el mínimo y se desactiva.
+    const zoomOut = container.querySelector<HTMLElement>('.leaflet-control-zoom-out')!;
+    for (let clicks = 0; clicks < 20 && !zoomOut.classList.contains('leaflet-disabled'); clicks++) {
+      await userEvent.click(zoomOut);
+      await pause(300);
+    }
+    expect(zoomOut.classList.contains('leaflet-disabled')).toBe(true);
+    // Ni Ctrl con la rueda lo aleja más.
+    await userEvent.keyboard('{Control>}');
+    await userEvent.wheel(container, { delta: { y: 100 }, times: 3 });
+    await userEvent.keyboard('{/Control}');
+    await pause(400);
+    // Zoom 3 (2048 px de mundo) es el mínimo para 1100 px: cada columna de teselas es única y caben en 8 columnas.
+    const tiles = [...container.querySelectorAll<HTMLImageElement>('img.leaflet-tile-loaded, img.leaflet-tile')];
+    const columns = [...new Set(tiles.map((tile) => Math.round(tile.getBoundingClientRect().left)))];
+    expect(columns.length).toBeGreaterThan(0);
+    expect(columns.length).toBeLessThanOrEqual(8);
+    expect(Math.max(...columns) - Math.min(...columns) + 256).toBeLessThanOrEqual(2048);
+    // El zoom mínimo es 3: los dos pines, a 34° de longitud, quedan a 2048 · 34 / 360 ≈ 193 px (a zoom 0 serían 24 px y el
+    // mundo, de 256 px, se repetiría a lo ancho de los 1100 px).
+    expect(pinSpan(container)).toBeGreaterThanOrEqual((2048 * 34) / 360 - 2);
+    // El mundo cubre todo el ancho del mapa: ninguna franja vacía a los lados.
+    const box = container.getBoundingClientRect();
+    expect(Math.min(...columns)).toBeLessThanOrEqual(box.left + 1);
+    expect(Math.max(...columns) + 256).toBeGreaterThanOrEqual(box.right - 1);
+  });
+
+  it('RF-10 (019) · 10.4, D-T25 (019): si la ventana se ensancha con el mapa abierto, el zoom mínimo sube con ella', async () => {
+    await page.viewport(400, 800);
+    host = document.createElement('div');
+    host.style.width = '100%';
+    document.body.append(host);
+    const created = createRoot(host);
+    root = created;
+    await actNow(() => created.render(<ApiceMap apices={FAR} />));
+    const container = await waitFor(() => host!.querySelector<HTMLElement>('.leaflet-container'));
+    await waitFor(() => container.querySelectorAll('.leaflet-marker-icon').length === 2);
+    await settled(container);
+    await page.viewport(1280, 800);
+    await waitFor(() => container.clientWidth > 1000);
+    await pause(400);
+    // Con más de 1024 px, el mínimo es 3: «−» se desactiva allí y los pines quedan a unos 193 px (a zoom 1, a 48 px).
+    const zoomOut = container.querySelector<HTMLElement>('.leaflet-control-zoom-out')!;
+    for (let clicks = 0; clicks < 20 && !zoomOut.classList.contains('leaflet-disabled'); clicks++) {
+      await userEvent.click(zoomOut);
+      await pause(300);
+    }
+    expect(zoomOut.classList.contains('leaflet-disabled')).toBe(true);
+    expect(pinSpan(container)).toBeGreaterThanOrEqual((2048 * 34) / 360 - 2);
+  });
+
+  it('RF-10 (019) · 10.1, 10.5, D-T25 (019): en Prototipado el mapa no está hasta pulsar «Ver en el mapa», y va después del terreno', async () => {
+    const previous = location.pathname + location.search;
+    history.replaceState(null, '', '/prototipado');
+    host = document.createElement('div');
+    document.body.append(host);
+    const created = createRoot(host);
+    root = created;
+    try {
+      await actNow(() =>
+        created.render(
+          <SessionProvider source={firebaseSessionSource}>
+            <App />
+          </SessionProvider>,
+        ),
+      );
+      const toggle = await waitFor(() => [...host!.querySelectorAll('button')].find((button) => button.textContent === 'Ver en el mapa'));
+      const building = await waitFor(() => host!.querySelector('.apice-lot__building'));
+      expect(host.querySelector('.leaflet-container')).toBeNull();
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+      await actNow(() => toggle.click());
+      const map = await waitFor(() => host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"] .leaflet-container'));
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      expect(document.getElementById(toggle.getAttribute('aria-controls')!)!.contains(map)).toBe(true);
+      expect(building.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    } finally {
+      history.replaceState(null, '', previous);
+    }
   });
 });

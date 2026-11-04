@@ -1,6 +1,7 @@
-// RF-8 (003) · 8.1, 8.4, RF-16 (003) · 16.2, RF-3 (015), RNF-1 (015) · 1.2–1.3, RNF-2 (015) · Pie en Chromium real:
-// fondo `footer-bg`, «Apoyado por» en `on-charcoal-muted`, logo de 28 px centrado con su zona libre y sin
-// desplazamiento horizontal.
+// RF-8 (003) · 8.1, 8.4, RF-16 (003) · 16.2, RF-3 (015), RNF-1 (015) · 1.2–1.3, RNF-2 (015),
+// RF-22 (019) · 22.1, D-T15 (019) · Pie en Chromium real:
+// fondo `footer-bg`, «Apoyado por» en `on-charcoal-muted`, logo de 28 px centrado con su zona libre,
+// sin desplazamiento horizontal y al fondo de la ventana cuando el contenido es más bajo.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { act } from 'react';
@@ -10,6 +11,8 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import { App } from '../../src/App';
+import { SessionProvider } from '../../src/app/session';
 import { SiteFooter } from '../../src/components/SiteFooter';
 
 let host: HTMLDivElement;
@@ -114,4 +117,28 @@ describe.each([360, 768, 1280])('apoyo del pie a %i px (015)', (width) => {
     const { link } = await show();
     expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
   });
+});
+
+describe('RF-22 (019) · pie al fondo', () => {
+  it.each([
+    { path: '/ruta-que-no-existe', width: 1100, height: 875 },
+    { path: '/foro', width: 360, height: 780 },
+  ])(
+    'RF-22 (019) · 22.1, D-T15 (019): en $path a $width × $height el borde inferior del pie coincide con el de la ventana',
+    async ({ path, width, height }) => {
+      host.id = 'root';
+      await page.viewport(width, height);
+      history.replaceState(null, '', path);
+      dispatchEvent(new PopStateEvent('popstate'));
+      await mount(
+        <SessionProvider initial={{ status: 'visitor' }}>
+          <App />
+        </SessionProvider>,
+      );
+      await expect.poll(() => host.querySelector('footer')).not.toBeNull();
+      const footer = host.querySelector<HTMLElement>('footer')!;
+      expect(Math.abs(footer.getBoundingClientRect().bottom - height)).toBeLessThanOrEqual(1);
+      history.replaceState(null, '', '/');
+    },
+  );
 });

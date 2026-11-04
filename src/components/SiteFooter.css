@@ -23,7 +23,7 @@
   gap: 4px;
   margin: 0;
   color: var(--on-charcoal-muted);
-  font-size: 16px; /* RF-5.5 (002): un párrafo mide al menos 16 px. */
+  font-size: var(--type-body-size); /* RF-5 (002) · 5.5, RF-2 (019), D-T3 (019): cuerpo de la escala. */
 }
 
 .site-footer__support-link {

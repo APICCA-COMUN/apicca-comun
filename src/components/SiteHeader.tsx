@@ -1,6 +1,6 @@
-// RF-1 (002) · 1.1, RF-10 (002) · 10.1, RF-7 (003) · 7.1–7.7, 7.10 (D-27 (003)) y RF-4 (008) · 4.1–4.6 (D-T4 (008) y D-T5 (008)): cabecera única del sitio, fuera de
+// RF-1 (002) · 1.1, RF-10 (002) · 10.1, RF-7 (003) · 7.1–7.7, 7.10 (D-27 (003)), RF-4 (008) · 4.1–4.6 (D-T4 (008) y D-T5 (008)) y RF-21 (019) (D-T14 (019)): cabecera única del sitio, fuera de
 // `<main>` (D-T16 (002)), con el logo, el menú principal, el conmutador de tema y, después, la entrada de la sesión
-// (RF-3 (005)). Sin sombra ni recuadro; se ajusta en varias líneas a 360 px y al 200 %.
+// (RF-3 (005)). Sin sombra ni recuadro; cabe en una fila desde 360 px (con «Menú» bajo 1024 px) y se ajusta al 200 %.
 import { Link } from '../app/router';
 import { useSession } from '../app/session';
 import { Logo } from './Logo';

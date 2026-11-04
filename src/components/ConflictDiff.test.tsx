@@ -17,7 +17,7 @@ describe('ConflictDiff', () => {
     expect(description.textContent).toContain('Vigente');
     expect(description.textContent).toContain('Mía');
     expect(screen.getByRole('group', { name: 'Ejes' }).textContent).toMatch(/Agregas.*Energía/);
-    expect(screen.getByRole('group', { name: 'Estado' }).textContent).toMatch(/idea.*prototipo/);
+    expect(screen.getByRole('group', { name: 'Etapa' }).textContent).toMatch(/Idea.*Prototipo/);
     expect(screen.queryByRole('group', { name: 'Nombre' })).toBeNull();
   });
 
@@ -74,5 +74,11 @@ describe('ConflictDiff · bloques (002)', () => {
     expect(fixedSizes(container)).toEqual([]);
     expect(container.querySelectorAll('[style]')).toHaveLength(0);
     expect(screen.getByRole('group', { name: 'Descripción' }).textContent).toMatch(/Vigente: Vigente.*Tuyo: Mía/);
+  });
+
+  it('RF-17 (019) · 17.1, 17.2, D-T11 (019): la comparación nombra la «Etapa» y sus valores con mayúscula inicial', () => {
+    render(<ConflictDiff mine={mine} current={current} onKeepMine={vi.fn()} onDiscard={vi.fn()} />);
+    expect(screen.getByRole('group', { name: 'Etapa' }).textContent).toMatch(/Idea.*Prototipo/);
+    expect(screen.queryByRole('group', { name: 'Estado' })).toBeNull();
   });
 });

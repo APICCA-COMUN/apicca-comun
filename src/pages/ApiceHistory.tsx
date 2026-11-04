@@ -1,5 +1,7 @@
-// RF-12 (001), RF-6 (002) · 6.1, 6.3; RF-4 (003) · 4.6; RF-12 (003) · 12.1, 12.5; RF-3 (003) · 3.3 · Historial de un ápice: versiones de la más reciente a la más antigua con quién y cuándo, y
+// RF-12 (001), RF-6 (002) · 6.1, 6.3; RF-4 (003) · 4.6; RF-12 (003) · 12.1, 12.5; RF-3 (003) · 3.3,
+// RF-18 (019) · 18.1, D-T12 (019) · Historial de un ápice: versiones de la más reciente a la más antigua con quién y cuándo, y
 // restaurar una versión anterior como versión nueva (con manejo de conflicto y de ápice archivado; «Restaurar» es secundaria).
+// El título de la página es h1 en todos los estados.
 import { useEffect, useMemo, useState } from 'react';
 import { canEdit, canSeeHistory, type ApiceViewer } from '../../shared/domain/access';
 import { Link } from '../app/router';
@@ -28,7 +30,7 @@ export function ApiceHistory({ id, source = firestoreHistorySource, client = api
   if (session.status !== 'person') {
     return (
       <section>
-        <h2>Historial</h2>
+        <h1>Historial</h1>
         <p>El historial es solo para cuentas con sesión activa.</p>
         <Link href="/entrar">Entrar</Link>
       </section>
@@ -50,7 +52,7 @@ function History({ id, source, client, session }: Required<Props> & { session: P
   if (!allowed) {
     return (
       <section>
-        <h2>Historial</h2>
+        <h1>Historial</h1>
         <p>No se encontró el ápice.</p>
       </section>
     );
@@ -86,7 +88,7 @@ function Versions({ id, head, source, client, canRestore }: { id: string; head: 
 
   return (
     <section className="lot">
-      <h2>Historial</h2>
+      <h1>Historial</h1>
       {head.isArchived ? <p>Este ápice está archivado: no se pueden restaurar versiones.</p> : null}
       {notice === null ? null : <p role="status" className="block">{notice}</p>}
       {error === null ? null : <p role="alert" className="block">{error}</p>}

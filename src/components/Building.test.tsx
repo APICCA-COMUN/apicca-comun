@@ -55,4 +55,62 @@ describe('Building', () => {
     expect(screen.queryByRole('img', { name: image.altText })).toBeNull();
     expect(icons(container)).toHaveLength(1);
   });
+  it('RF-7 (002) · 7.2, RF-4 (019) · 4.2: con etapa, la estructura suma al lado de 64·n el marco de 2 px del cuerpo, y n sale del ancho sin ese marco', () => {
+    // 132 px: sin restar el marco darían dos celdas (128 px) y la estructura de 132 px no cabría.
+    withWidth(132);
+    const { container } = render(<Building image={image} axes={['agua']} stage="prototipo" max={4} />);
+    expect(screen.getByRole('img', { name: image.altText }).style.width).toBe('128px');
+    expect((container.querySelector('.building__structure') as HTMLElement).style.width).toBe('132px');
+  });
+
+  it('RF-4 (019) · 4.1, D-T19 (019): una idea es solo la base y no muestra la imagen aunque la tenga', () => {
+    const { container } = render(<Building image={image} axes={['energía', 'agua']} stage="idea" max={2} />);
+    const building = container.querySelector('.building')!;
+    expect(building.getAttribute('data-stage')).toBe('idea');
+    expect(container.querySelector('.building__base')).not.toBeNull();
+    expect(container.querySelector('.building__body')).toBeNull();
+    expect(container.querySelector('.building__roof')).toBeNull();
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('.building__stage')!.textContent).toBe('Idea');
+  });
+
+  it('RF-4 (019) · 4.2, D-T19 (019): un prototipo suma el cuerpo con la imagen pixelada, o el marcador sin imagen', () => {
+    const { container, rerender } = render(<Building image={image} axes={['agua']} stage="prototipo" max={2} />);
+    expect(container.querySelector('.building__roof')).toBeNull();
+    expect(container.querySelector('.building__body img.pixel-image')).not.toBeNull();
+    expect(container.querySelector('.building__stage')!.textContent).toBe('Prototipo');
+    rerender(<Building image={null} axes={['agua']} stage="prototipo" max={2} />);
+    expect(container.querySelector('.building__body .pixel-image--empty')).not.toBeNull();
+  });
+
+  it('RF-4 (019) · 4.3, D-T19 (019): en marcha suma el techo; las partes van en el orden techo, cuerpo, base', () => {
+    const { container } = render(<Building image={image} axes={['agua']} stage="en marcha" max={2} />);
+    const parts = Array.from(container.querySelectorAll('.building__roof, .building__body, .building__base')).map((el) => el.className);
+    expect(parts).toEqual(['building__roof', 'building__body', 'building__base']);
+    expect(container.querySelector('.building__stage')!.textContent).toBe('En marcha');
+  });
+
+  it('RF-4 (019) · 4.1, caso límite §6: la base toma el primer eje canónico y los cinco íconos siguen visibles', () => {
+    const { container } = render(
+      <Building image={null} axes={['comunicación', 'cobijo', 'energía', 'alimento', 'agua']} stage="idea" max={2} />,
+    );
+    expect(container.querySelector('.building')!.classList.contains('building--axis-agua')).toBe(true);
+    expect(icons(container)).toHaveLength(5);
+  });
+
+  it('RF-9 (019) · 9.1, 9.3, D-T21 (019): el pin solo aparece con necesidades, es decorativo y no lleva texto', () => {
+    const { container, rerender } = render(<Building image={null} axes={['agua']} stage="idea" max={2} />);
+    expect(container.querySelector('.building__pin')).toBeNull();
+    rerender(<Building image={null} axes={['agua']} stage="idea" needs max={2} />);
+    const pin = container.querySelector('.building__pin')!;
+    expect(pin.getAttribute('aria-hidden')).toBe('true');
+    expect(pin.textContent).toBe('');
+  });
+
+  it('RF-7 (002) · 7.4, RF-4 (019): sin etapa el edificio es el de siempre, sin partes ni pin', () => {
+    const { container } = render(<Building image={image} axes={['agua']} max={2} />);
+    expect(container.querySelector('.building__base, .building__body, .building__roof, .building__stage, .building__pin')).toBeNull();
+    expect(container.querySelector('.building')!.hasAttribute('data-stage')).toBe(false);
+    expect(container.querySelector('img')).not.toBeNull();
+  });
 });

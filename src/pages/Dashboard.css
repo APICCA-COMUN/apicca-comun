@@ -25,9 +25,10 @@
   gap: 16px;
 }
 
+/* RF-2 (019), D-T3 (019): saludo en tamaño display. */
 .dashboard__greeting h1 {
   margin: 0;
-  font-size: clamp(30px, 5vw, 44px);
+  font-size: var(--type-display-size);
   line-height: 1.15;
   font-weight: 800;
 }
@@ -38,9 +39,10 @@
   gap: 24px;
 }
 
+/* RF-2 (019), D-T3 (019): títulos de sección en tamaño heading. */
 .dashboard h2 {
   margin: 0;
-  font-size: clamp(24px, 3.5vw, 30px);
+  font-size: var(--type-heading-size);
   line-height: 1.2;
   font-weight: 800;
 }

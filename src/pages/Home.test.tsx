@@ -18,7 +18,7 @@ vi.mock('./homeContent', () => ({
     },
     steps: [
       { title: 'Título uno', text: 'Paso de prueba uno' },
-      { title: 'Título dos', text: 'Paso de prueba dos' },
+      { title: 'Título dos', text: 'Paso de prueba dos', soon: true },
       { title: 'Título tres', text: 'Paso de prueba tres' },
     ],
   },
@@ -80,9 +80,9 @@ describe('Home · estructura (RF-10 (003))', () => {
     expect(link.className).toBe('');
   });
 
-  it('RF-6 (008) · 6.8, D-10 (008): el cierre lleva «Leer los 7 principios» hacia la Constitución', () => {
+  it('RF-6 (008) · 6.8, RF-16 (019) · 16.3, D-16 (019), D-T10 (019): el cierre lleva «Leer la Constitución de APICCA COMÚN» hacia la Constitución', () => {
     setup({ status: 'visitor' });
-    expect(screen.getByRole('link', { name: 'Leer los 7 principios' }).getAttribute('href')).toBe('/constitucion');
+    expect(screen.getByRole('link', { name: 'Leer la Constitución de APICCA COMÚN' }).getAttribute('href')).toBe('/constitucion');
   });
 
   it('RF-6 (008) · 6.6, RF-4 (003) · 4.2: sin sesión, «Pide tu inscripción» es la única acción azul', () => {
@@ -117,11 +117,20 @@ describe('Home · estructura (RF-10 (003))', () => {
     const steps = [...list.querySelectorAll(':scope > li')];
     expect(steps).toHaveLength(3);
     steps.forEach((step, index) => {
-      expect(step.querySelector('h3')?.textContent).toBe(['Título uno', 'Título dos', 'Título tres'][index]);
+      expect(step.querySelector('h3')?.textContent).toBe(['Título uno', 'Título dos Pronto', 'Título tres'][index]);
       expect(step.textContent).toContain(['Paso de prueba uno', 'Paso de prueba dos', 'Paso de prueba tres'][index]);
       expect(step.querySelector('[data-testid="node"]')).not.toBeNull();
     });
     expect(list.querySelector('[data-testid="road"]')).not.toBeNull();
+  });
+
+  it('RF-16 (019) · 16.1, D-7 (019), D-T10 (019): muestra la marca «Pronto» en texto visible junto al título del paso que lleva soon', () => {
+    const { container } = setup({ status: 'visitor' });
+    const badges = container.querySelectorAll('.home__step-soon');
+    expect(badges).toHaveLength(1);
+    expect(badges[0]!.textContent).toBe('Pronto');
+    const stepTwo = container.querySelectorAll('.home__step')[1];
+    expect(stepTwo!.querySelector('h3')?.textContent).toBe('Título dos Pronto');
   });
 
   it('RF-9 (003) · 9.4: quitar caminos y nodos no cambia el texto del inicio', () => {
@@ -138,6 +147,20 @@ describe('Home · estructura (RF-10 (003))', () => {
     const list = container.querySelector('ol') as HTMLElement;
     expect(list.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it('RF-16 (019) · 16.2, D-6 (019), D-T10 (019): el mapa ilustrado lleva el rótulo visible «Así se verá el terreno», fuera de la imagen', () => {
+    setup({ status: 'visitor' });
+    const label = screen.getByText('Así se verá el terreno');
+    expect(label.closest('[role="img"], [aria-hidden="true"], .visually-hidden')).toBeNull();
+    const map = screen.getByRole('img', { name: /^Mapa de ejemplo/ });
+    expect(label.parentElement?.contains(map) || map.parentElement?.contains(label)).toBe(true);
+  });
+
+  it('RF-16 (019) · 16.3, D-16 (019), D-T10 (019): el enlace del cierre nombra lo que muestra la Constitución', () => {
+    setup({ status: 'visitor' });
+    expect(screen.getByRole('link', { name: 'Leer la Constitución de APICCA COMÚN' }).getAttribute('href')).toBe('/constitucion');
+    expect(screen.queryByRole('link', { name: 'Leer los 7 principios' })).toBeNull();
+  });
 });
 
 describe('Home · sin ápices (RF-10 (003) · 10.8, RNF-5 (003), D-T11 (003))', () => {
@@ -145,7 +168,7 @@ describe('Home · sin ápices (RF-10 (003) · 10.8, RNF-5 (003), D-T11 (003))', 
     setup(person);
     expect(screen.queryAllByRole('article')).toHaveLength(0);
     expect(screen.queryByRole('checkbox')).toBeNull();
-    expect(screen.queryByRole('combobox', { name: 'Estado' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Etapa' })).toBeNull();
   });
 
   it('RNF-5 (003): el inicio no consulta la colección de ápices', async () => {

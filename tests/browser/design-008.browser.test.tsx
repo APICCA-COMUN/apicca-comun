@@ -20,6 +20,7 @@ import { Prototyping } from '../../src/pages/Prototyping';
 import { Documentation } from '../../src/pages/Documentation';
 import { ConstitutionPage } from '../../src/pages/ConstitutionPage';
 import { NO_NOTICE } from '../../src/data/constitution/notice';
+import { fakeListSource } from '../../src/testing/listDoubles';
 
 let bench: HTMLDivElement | undefined;
 
@@ -137,6 +138,12 @@ describe.each([360, 1280])('cabecera y pie a %i px', (width) => {
   it('RF-4 (008) · 4.2, 4.3: enlaces de 16/700 y 44 px de alto; el vigente en 800 con subrayado de 3 px a 8 px', async () => {
     await page.viewport(width, 800);
     const box = await showChrome(VISITOR, '/prototipado');
+    // RF-21 (019) · 21.2, D-T14 (019): por debajo de 1024 px los destinos van tras «Menú»; se abre para medirlos.
+    const toggle = [...box.querySelectorAll<HTMLButtonElement>('header nav button')].find((button) => button.textContent?.trim() === 'Menú');
+    if (toggle !== undefined && getComputedStyle(toggle).display !== 'none' && toggle.getAttribute('aria-expanded') !== 'true') {
+      toggle.click();
+      await new Promise((done) => setTimeout(done, 50));
+    }
     const links = [...box.querySelectorAll<HTMLElement>('header nav a')];
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) {
@@ -162,18 +169,19 @@ describe.each([360, 1280])('cabecera y pie a %i px', (width) => {
     expect(enter.getBoundingClientRect().height).toBe(44);
   });
 
-  it('RF-4 (008) · 4.5: la inicial es un círculo de 44 px, de axis-alimento-fill, con letra charcoal de 18/800', async () => {
+  // RF-15 (019) · 15.1, D-T9 (019) afina el color: la inicial pasa a `charcoal` con letra `on-charcoal` (antes, `axis-alimento-fill` y `charcoal`).
+  it('RF-4 (008) · 4.5, RF-15 (019) · 15.1: la inicial es un círculo de 44 px, de charcoal, con letra on-charcoal de 18/800', async () => {
     await page.viewport(width, 800);
     const box = await showChrome(PERSON);
     const probe = document.createElement('i');
-    probe.style.cssText = 'background-color:var(--axis-alimento-fill);color:var(--charcoal)';
+    probe.style.cssText = 'background-color:var(--charcoal);color:var(--on-charcoal)';
     box.append(probe);
     const expected = getComputedStyle(probe);
     const avatar = box.querySelector<HTMLElement>('header a.account-initial')!;
     const rect = avatar.getBoundingClientRect();
     const style = getComputedStyle(avatar);
     expect([rect.width, rect.height]).toEqual([44, 44]);
-    expect(style.borderTopLeftRadius).toBe('50%');
+    expect(style.borderTopLeftRadius).toMatch(/^(50%|999px)$/); // RF-3 (019) · 3.3: `radius-pill`
     expect(style.backgroundColor).toBe(expected.backgroundColor);
     expect(style.color).toBe(expected.color);
     expect(style.fontSize).toBe('18px');
@@ -238,11 +246,11 @@ describe.each([360, 1280])('inicio a %i px', (width) => {
     for (const el of sections) expect(getComputedStyle(el).marginBottom, el.className).toBe(expected);
   });
 
-  it('RF-6 (008) · 6.2: el título principal usa clamp(36px, 5vw, 64px), línea 1,05 y peso 800; la entrada es lead, text-muted y de 28em como máximo', async () => {
+  it('RF-6 (008) · 6.2, RF-2 (019): el título principal usa clamp(32px, 5vw, 48px), línea 1,05 y peso 800; la entrada es lead, text-muted y de 28em como máximo', async () => {
     await page.viewport(width, 800);
     const box = await showHome(VISITOR);
     const h1 = getComputedStyle(box.querySelector('h1')!);
-    const size = clampPx(36, 5, 64, width);
+    const size = clampPx(32, 5, 48, width); // RF-2 (019): display-size
     expect(parseFloat(h1.fontSize)).toBeCloseTo(size, 1);
     expect(parseFloat(h1.lineHeight)).toBeCloseTo(size * 1.05, 1);
     expect(h1.fontWeight).toBe('800');
@@ -255,10 +263,10 @@ describe.each([360, 1280])('inicio a %i px', (width) => {
     expect(parseFloat(lead.maxWidth)).toBeCloseTo(28 * 18, 1);
   });
 
-  it('RF-6 (008) · 6.3: los títulos de sección usan clamp(28px, 3.6vw, 44px), línea 1,12 y peso 800', async () => {
+  it('RF-6 (008) · 6.3, RF-2 (019): los títulos de sección usan clamp(28px, 3.6vw, 40px), línea 1,12 y peso 800', async () => {
     await page.viewport(width, 800);
     const box = await showHome(VISITOR);
-    const size = clampPx(28, 3.6, 44, width);
+    const size = clampPx(28, 3.6, 40, width); // RF-2 (019): heading-size
     const titles = box.querySelectorAll('.home__section h2');
     expect(titles).toHaveLength(2);
     for (const h2 of titles) {
@@ -301,11 +309,11 @@ describe.each([360, 1280])('inicio a %i px', (width) => {
 });
 
 describe.each([360, 1280])('inicio, cierre a %i px', (width) => {
-  it('RF-6 (008) · 6.10: el título de cierre usa clamp(32px, 5vw, 64px), línea 1,08, peso 800, centrado y de 14em como máximo', async () => {
+  it('RF-6 (008) · 6.10, RF-2 (019): el título de cierre usa clamp(32px, 5vw, 48px), línea 1,08, peso 800, centrado y de 14em como máximo', async () => {
     await page.viewport(width, 800);
     const box = await showHome(VISITOR);
     const h2 = getComputedStyle(box.querySelector('.home__closing h2')!);
-    const size = clampPx(32, 5, 64, width);
+    const size = clampPx(32, 5, 48, width); // RF-2 (019): display-size
     expect(parseFloat(h2.fontSize)).toBeCloseTo(size, 1);
     expect(parseFloat(h2.lineHeight)).toBeCloseTo(size * 1.08, 1);
     expect(h2.fontWeight).toBe('800');
@@ -353,11 +361,11 @@ describe.each([360, 1280])('entrar a %i px', (width) => {
     expect(style.marginBottom).toBe(expected);
   });
 
-  it('RF-7 (008) · 7.2: el título mide clamp(28px, 4vw, 34px) en peso 800 y las etiquetas, 14 px en peso 700', async () => {
+  it('RF-7 (008) · 7.2, RF-2 (019): el título mide clamp(32px, 5vw, 48px) en peso 800 y las etiquetas, 14 px en peso 700', async () => {
     await page.viewport(width, 800);
     const box = await showLogin();
     const probe = document.createElement('i');
-    probe.style.fontSize = 'clamp(28px, 4vw, 34px)';
+    probe.style.fontSize = 'var(--type-display-size)'; // RF-2 (019)
     box.append(probe);
     const h1 = getComputedStyle(box.querySelector('h1')!);
     expect(h1.fontSize).toBe(getComputedStyle(probe).fontSize);
@@ -449,16 +457,16 @@ describe.each([
     expect(getComputedStyle(box.querySelector('.dashboard')!).marginBottom).toBe(resolve(box, 'marginTop', 'clamp(64px, 10vw, 140px)'));
   });
 
-  it('RF-8 (008) · 8.2: el saludo usa clamp(30px, 5vw, 44px), línea 1,15 y peso 800; los títulos de sección, clamp(24px, 3.5vw, 30px), línea 1,2 y peso 800', async () => {
+  it('RF-8 (008) · 8.2, RF-2 (019): el saludo usa display, línea 1,15 y peso 800; los títulos de sección, heading, línea 1,2 y peso 800', async () => {
     const box = await showDashboard();
     const h1 = getComputedStyle(box.querySelector('h1')!);
-    const size = resolve(box, 'fontSize', 'clamp(30px, 5vw, 44px)');
+    const size = resolve(box, 'fontSize', 'var(--type-display-size)'); // RF-2 (019)
     expect(h1.fontSize).toBe(size);
     expect(parseFloat(h1.lineHeight)).toBeCloseTo(parseFloat(size) * 1.15, 1);
     expect(h1.fontWeight).toBe('800');
     const titles = [...box.querySelectorAll<HTMLElement>('.dashboard h2')];
     expect(titles.length).toBeGreaterThan(0);
-    const small = resolve(box, 'fontSize', 'clamp(24px, 3.5vw, 30px)');
+    const small = resolve(box, 'fontSize', 'var(--type-heading-size)'); // RF-2 (019)
     for (const h2 of titles) {
       const style = getComputedStyle(h2);
       expect(style.fontSize).toBe(small);
@@ -503,7 +511,8 @@ describe.each([360, 1280])('Prototipado a %i px', (width) => {
         root.render(
           <SessionProvider initial={PERSON}>
             <main>
-              <Prototyping source={{ fetchPage: async () => ({ items: [], cursor: null }) }} />
+              {/* Con ápices: sin ellos, la página es solo el terreno de partida (RF-19 (019)). */}
+              <Prototyping source={fakeListSource(2).source} />
             </main>
           </SessionProvider>,
         );
@@ -512,6 +521,10 @@ describe.each([360, 1280])('Prototipado a %i px', (width) => {
       scope.IS_REACT_ACT_ENVIRONMENT = false;
     }
     await new Promise((done) => setTimeout(done, 50));
+    // Espera a que lleguen los ápices del doble y se pinte el terreno con su panel.
+    for (let attempt = 0; attempt < 40 && bench.querySelector('.apice-panel h2') === null; attempt += 1) {
+      await new Promise((done) => setTimeout(done, 50));
+    }
     return bench;
   }
 
@@ -532,25 +545,27 @@ describe.each([360, 1280])('Prototipado a %i px', (width) => {
     expect(getComputedStyle(root).rowGap).toBe('24px');
   });
 
-  it('RF-9 (008) · 9.2: el título usa clamp(28px, 5vw, 40px), línea 1,1 y peso 800; el contador, 16 px y peso 800', async () => {
+  it('RF-9 (008) · 9.2, RF-2 (019): el título usa display, línea 1,1 y peso 800; el contador, 16 px y peso 800', async () => {
     const box = await showPrototyping();
     const h1 = getComputedStyle(box.querySelector('h1')!);
-    const size = resolve(box, 'fontSize', 'clamp(28px, 5vw, 40px)');
+    const size = resolve(box, 'fontSize', 'var(--type-display-size)'); // RF-2 (019)
     expect(h1.fontSize).toBe(size);
     expect(parseFloat(h1.lineHeight)).toBeCloseTo(parseFloat(size) * 1.1, 1);
     expect(h1.fontWeight).toBe('800');
-    const count = getComputedStyle(box.querySelector('[role="status"]')!);
+    // RF-7 (019) · 7.1: el contador está en la franja del terreno.
+    const count = getComputedStyle(box.querySelector('.apice-lot-section__strip [role="status"]')!);
     expect(count.fontSize).toBe('16px');
     expect(count.fontWeight).toBe('800');
   });
 
-  it('RF-9 (008) · 9.3: «Nuevo ápice» y «Archivados» van en la misma fila que el título', async () => {
+  it('RF-9 (008) · 9.3, RF-7 (019) · 7.1: «Nuevo ápice» y «Archivados» van en la misma fila que el título; el contador, en la franja', async () => {
     const box = await showPrototyping();
     const head = box.querySelector<HTMLElement>('.prototyping__head')!;
     const links = [...head.querySelectorAll<HTMLElement>('a')];
     expect(links.map((a) => a.textContent)).toEqual(['Nuevo ápice', 'Archivados']);
     expect(head.querySelector('h1')).not.toBeNull();
-    expect(head.querySelector('[role="status"]')).not.toBeNull();
+    expect(head.querySelector('[role="status"]')).toBeNull();
+    expect(box.querySelector('.apice-lot-section__strip [role="status"]')).not.toBeNull();
   });
 
   it('RF-9 (008) · 9.5: el panel lleva radio de 14 px, shadow-block y 24 px de relleno', async () => {
@@ -648,11 +663,11 @@ describe.each([360, 1280])('Documentación a %i px', (width) => {
     expect(getComputedStyle(article).rowGap).toBe('36px');
   });
 
-  it('RF-10 (008) · 10.5: migas de 18 px; título clamp(34px, 5vw, 48px)/1,15; primer párrafo lead; subtítulos doc-heading', async () => {
+  it('RF-10 (008) · 10.5, RF-2 (019): migas de 18 px; título display/1,15; primer párrafo lead; subtítulos doc-heading', async () => {
     const box = await showDocs();
     expect(getComputedStyle(box.querySelector('.documentation__crumb')!).fontSize).toBe('18px');
     const h1 = getComputedStyle(box.querySelector('.documentation__article h1')!);
-    const size = resolve(box, 'fontSize', 'clamp(34px, 5vw, 48px)');
+    const size = resolve(box, 'fontSize', 'var(--type-display-size)'); // RF-2 (019)
     expect(h1.fontSize).toBe(size);
     expect(parseFloat(h1.lineHeight)).toBeCloseTo(parseFloat(size) * 1.15, 1);
     const lead = getComputedStyle(box.querySelector('.documentation__article h1 ~ p')!);
@@ -740,10 +755,10 @@ describe.each([360, 1280])('Constitución a %i px', (width) => {
     expect(style.rowGap).toBe('40px');
   });
 
-  it('RF-11 (008) · 11.2: el título usa clamp(32px, 5vw, 44px) con línea 1,15; la entrada, lead en text-muted', async () => {
+  it('RF-11 (008) · 11.2, RF-2 (019): el título usa display con línea 1,15; la entrada, lead en text-muted', async () => {
     const box = await showConstitution();
     const h1 = getComputedStyle(box.querySelector('h1')!);
-    const size = resolve(box, 'fontSize', 'clamp(32px, 5vw, 44px)');
+    const size = resolve(box, 'fontSize', 'var(--type-display-size)'); // RF-2 (019)
     expect(h1.fontSize).toBe(size);
     expect(parseFloat(h1.lineHeight)).toBeCloseTo(parseFloat(size) * 1.15, 1);
     const lead = box.querySelector<HTMLElement>('.constitution__lead')!;

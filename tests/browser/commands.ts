@@ -167,7 +167,8 @@ function auditPage(): TextAudit {
   const fields = [...document.querySelectorAll('#root p, #root input, #root textarea, #root select')].filter(visible);
   const controls = [
     ...document.querySelectorAll('#root a[href], #root button, #root input:not([type="hidden"]), #root select, #root textarea, #root [tabindex]'),
-  ].filter((element) => getComputedStyle(element).display !== 'none');
+    // Fuera quedan los que no se muestran, también por un ancestro: los destinos tras «Menú» cerrado (RF-21 (019) · 21.2).
+  ].filter((element) => element.checkVisibility());
   const scroll = document.documentElement;
   return {
     texts: withText.length,

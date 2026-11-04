@@ -21,11 +21,11 @@
   padding: 1rem;
 }
 
-/* Campos (RF-5 (003) · 5.1): sobre `background`, sin borde salvo uno inferior de 2 px; 16 px (RF-5 (002) · 5.5). */
+/* Campos (RF-5 (003) · 5.1): sobre `background`, sin borde salvo uno inferior de 2 px; cuerpo (RF-5 (002) · 5.5, RF-2 (019), D-T3 (019)). */
 :is(input, select, textarea).block {
   min-height: var(--size-control);
   padding: 0.5rem 0.75rem;
-  font-size: 1rem;
+  font-size: var(--type-body-size);
   border-bottom: 2px solid var(--field-border);
   border-radius: var(--radius-building) var(--radius-building) 0 0;
   background-color: var(--background);
@@ -56,7 +56,7 @@ label:has(> :is(input:not([type='checkbox'], [type='radio']), select, textarea).
   margin-block-end: 1rem;
 }
 
-/* Acciones (RF-4 (003) · 4.1, RF-2 (008) · 2.1, RF-6.3 (002), D-T18 (002)): píldora de al menos 48 px; la forma y el peso las
+/* Acciones (RF-4 (003) · 4.1, RF-2 (008) · 2.1, RF-6 (002) · 6.3, D-T18 (002)): píldora de al menos 48 px; la forma y el peso las
    distinguen, además del color. */
 button.block,
 a.block {
@@ -65,8 +65,8 @@ a.block {
   justify-content: center;
   min-height: var(--size-control);
   padding: 0.5rem 1.25rem;
-  border-radius: 999px;
-  font-size: 1rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--type-body-size);
   line-height: 1.25;
   text-decoration: none;
   cursor: pointer;
@@ -92,7 +92,7 @@ a.block {
   font-weight: 700;
 }
 
-/* Botón de ícono (RF-4 (003) · 4.5, RF-2 (008) · 2.2): redondo, de 44 por 44 px, con o sin `.block`. */
+/* Botón de ícono (RF-4 (003) · 4.5, RF-2 (008) · 2.2, RF-3 (019), D-T4 (019)): redondo, de 44 por 44 px con radio píldora, con o sin `.block`. */
 .icon-button,
 button.icon-button,
 a.icon-button {
@@ -105,7 +105,7 @@ a.icon-button {
   min-height: var(--size-icon-control);
   padding: 0;
   border: 0 solid transparent;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   background-color: var(--surface);
   box-shadow: var(--shadow-block);
   color: var(--text);
@@ -214,18 +214,22 @@ body:has([role='dialog']) .action-primary:not([role='dialog'] .action-primary) {
   }
 }
 
-/* RF-4 (008) · 4.5, D-T5 (008): la inicial de la cuenta en la cabecera, un círculo de 44 px del color del eje alimento. */
+/* RF-4 (008) · 4.5, D-T5 (008), RF-2 (019), RF-3 (019), D-T3 (019), D-T4 (019): la inicial de la cuenta en la cabecera, un círculo de 44 px con radio píldora y tamaño lead.
+   RF-15 (019) · 15.1, D-T9 (019): sobre `charcoal`, sin colores de eje, con la letra en `on-charcoal` y un aro de 2 px en `node-ring`
+   (el aro va por dentro de los 44 px). */
 a.account-initial {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   inline-size: var(--size-icon-control);
   block-size: var(--size-icon-control);
-  border-radius: 50%;
-  background-color: var(--axis-alimento-fill);
-  color: var(--charcoal);
+  border: 2px solid var(--node-ring);
+  border-radius: var(--radius-pill);
+  background-color: var(--charcoal);
+  color: var(--on-charcoal);
   box-shadow: var(--shadow-block);
-  font-size: 18px;
+  font-size: var(--type-lead-size);
   font-weight: 800;
   text-decoration: none;
 }

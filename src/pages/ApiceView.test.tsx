@@ -70,14 +70,16 @@ describe('ApiceView', () => {
     const lot = container.querySelector('.lot')!;
     expect(lot).not.toBeNull();
     expect(lot.matches('article')).toBe(true);
-    expect(container.querySelectorAll('.lot').length).toBe(1);
+    expect(container.querySelectorAll('article.lot').length).toBe(1);
     // La ficha ya no es un bloque: solo lo son sus paneles internos y el edificio.
     expect(lot.classList.contains('block')).toBe(false);
-    const heading = lot.querySelector('h2')!;
+    const heading = lot.querySelector('h1')!; // RF-18 (019) · 18.1, D-T12 (019)
     const building = lot.querySelector('.block.building')!;
     expect(heading.textContent).toBe('Cosecha de lluvia');
     expect(building).not.toBeNull();
     expect(building.parentElement).toBe(heading.parentElement);
+    // RF-11 (019) · 11.1: el edificio va primero y el h1 después, en el mismo encabezado.
+    expect(building.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(heading.parentElement).not.toBe(lot);
     expectBlocks(container, { nesting: true });
   });
@@ -90,10 +92,10 @@ describe('ApiceView', () => {
     expect(screen.getByText('Cobijo')).toBeTruthy();
     expect(screen.getByText('Canaletas y tanques')).toBeTruthy();
     expect(screen.getByText('Mano de obra')).toBeTruthy();
-    expect(screen.getByText('prototipo')).toBeTruthy();
+    expect(screen.getByText('Prototipo')).toBeTruthy(); // RF-17 (019) · 17.2
     expect(screen.getByText(/Creado por ana/)).toBeTruthy();
     expect(screen.getByText(/beto/)).toBeTruthy();
-    expect(screen.getByText(/\b3\b.*2026/)).toBeTruthy();
+    expect(screen.getByText(/3 de septiembre de 2026/)).toBeTruthy(); // RF-11 (019) · 11.4
   });
 
   it('RF-22 (001): lo que falta (ubicación, imagen, necesidades) se muestra como marcador vacío', () => {
@@ -275,6 +277,7 @@ describe('ApiceView · identidad (002)', () => {
     setup(apice({ axes: ['agua', 'cobijo'] }), { status: 'visitor' });
     const list = screen.getByRole('list', { name: 'Ejes' });
     expect(list.textContent).toBe('AguaCobijo');
+    expect(list.querySelectorAll('.axis-badge').length).toBe(2); // RF-11 (019) · 11.3
     expect(list.querySelector('.axis-icon--agua')).toBeTruthy();
     expect(list.querySelector('.axis-icon--cobijo')).toBeTruthy();
   });
@@ -310,9 +313,58 @@ describe('ApiceView · identidad (002)', () => {
       ).container;
     const tag = (container: HTMLElement, condition: string) => container.querySelector(`.tag[data-condition="${condition}"]`)?.textContent;
     const active = show(apice());
-    expect(tag(active, 'status')).toBe('prototipo');
+    expect(screen.getByText('Prototipo')).toBeTruthy(); // RF-17 (019) · 17.2, RF-11 (019) · 11.1: la etapa la dice el edificio
     expect(tag(active, 'visibility')).toBe('público');
     cleanup();
     expect(tag(show(apice({ isArchived: true })), 'archived')).toBe('archivado');
+  });
+});
+
+describe('ApiceView · taller (019)', () => {
+  const show = (doc: ApiceDoc) =>
+    render(
+      <SessionProvider initial={{ status: 'visitor' }}>
+        <ApiceView id="a1" source={fakeSource(doc).source} client={fakeClient({}).client} />
+      </SessionProvider>,
+    ).container;
+
+  it('RF-11 (019) · 11.2, D-T23 (019): Necesidades y Aportes son dos lotes contiguos con h2, antes de Ubicación', () => {
+    const container = show(apice());
+    const workshop = container.querySelector('.apice-view__workshop')!;
+    const lots = workshop.querySelectorAll(':scope > section.lot');
+    expect(lots.length).toBe(2);
+    expect(lots[0]!.querySelector('h2')!.textContent).toBe('Necesidades');
+    expect(lots[1]!.querySelector('h2')!.textContent).toBe('Aportes');
+    expect(lots[0]!.nextElementSibling).toBe(lots[1]);
+    const h2s = Array.from(container.querySelectorAll('h2')).map((h) => h.textContent);
+    expect(h2s.indexOf('Aportes')).toBeLessThan(h2s.indexOf('Ubicación'));
+    expect(workshop.compareDocumentPosition(screen.getByRole('heading', { name: 'Ubicación' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(workshop.querySelector('h3')).toBeNull();
+  });
+
+  it('RF-11 (019) · 11.3, D-T23 (019): los ejes van sin viñetas, con insignias', () => {
+    const list = show(apice()).querySelector('ul.apice-view__axes')!;
+    expect(list.getAttribute('aria-label')).toBe('Ejes');
+    expect(list.querySelectorAll('.axis-badge').length).toBe(2);
+  });
+
+  it('RF-4 (019) · 4.5, D-T23 (019): una idea con imagen la muestra en un bloque propio, fuera del edificio', () => {
+    const container = show(apice({ status: 'idea', image: { altText: 'Una huerta', png: new Uint8Array([1]) } }));
+    const figure = container.querySelector('figure.block.apice-view__image')!;
+    expect(figure).not.toBeNull();
+    expect(figure.querySelector('img[alt="Una huerta"]')).toBeTruthy();
+    expect(figure.closest('.building')).toBeNull();
+    expect(container.querySelector('.building img')).toBeNull();
+    expectBlocks(container, { nesting: true });
+  });
+
+  it('RF-4 (019) · 4.5: un prototipo con imagen no repite la imagen en un bloque propio', () => {
+    const container = show(apice({ status: 'prototipo', image: { altText: 'Una huerta', png: new Uint8Array([1]) } }));
+    expect(container.querySelector('figure.apice-view__image')).toBeNull();
+  });
+
+  it('RF-11 (019) · 11.4: la fecha de la última edición es larga, en hora de Bogotá', () => {
+    show(apice({ updatedAt: { seconds: Date.parse('2026-11-03T04:00:00Z') / 1000, nanoseconds: 0 } }));
+    expect(screen.getByText(/Última edición el 2 de noviembre de 2026/)).toBeTruthy();
   });
 });

@@ -7,9 +7,10 @@
   gap: 18px;
 }
 
+/* RF-2 (019), D-T3 (019): etiquetas en tamaño meta. */
 .sign-in-form label {
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--type-meta-size);
   font-weight: 700;
 }
 
@@ -56,6 +57,6 @@
   background: transparent;
   box-shadow: none;
   color: var(--brand-red);
-  font-size: 14px;
+  font-size: var(--type-meta-size);
   font-weight: 700;
 }

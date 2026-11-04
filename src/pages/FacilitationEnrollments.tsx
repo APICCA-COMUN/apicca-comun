@@ -1,4 +1,6 @@
-// RF-8 (016) · 8.3, RF-4 (001), RF-6 (002) · 6.1, 6.3; RF-4 (003) · 4.6, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1 · Solicitudes de inscripción: pendientes y resueltas, aceptar (secundaria, crea la invitación) y descartar con motivo.
+// RF-8 (016) · 8.3, RF-4 (001), RF-6 (002) · 6.1, 6.3; RF-4 (003) · 4.6, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1,
+// RF-13 (019) · 13.1, 13.2, D-T7 (019) · Solicitudes de inscripción: pendientes y resueltas, aceptar (secundaria, crea la invitación)
+// y descartar con motivo, con filas como bloques sin viñeta y enlace abreviado.
 import { useMemo, useState } from 'react';
 import { splitEnrollmentLists, validateDiscardReason } from '../../shared/domain/enrollment';
 import { messageFor } from '../../shared/domain/messages';
@@ -68,7 +70,7 @@ function Enrollments({ source, client }: Required<Props>) {
           empty="No hay solicitudes pendientes."
           renderActions={(request) =>
             discarding === request.id ? (
-              <span>
+              <span className="facilitation-row__actions">
                 <label>
                   Motivo
                   <textarea className="block" value={reason} onChange={(event) => setReason(event.target.value)} />
@@ -78,7 +80,7 @@ function Enrollments({ source, client }: Required<Props>) {
                 </button>
               </span>
             ) : (
-              <span>
+              <span className="facilitation-row__actions">
                 <button type="button" className="block action-secondary" disabled={busy} onClick={() => void run({ id: request.id, decision: 'accept' })}>
                   Aceptar
                 </button>
@@ -96,7 +98,7 @@ function Enrollments({ source, client }: Required<Props>) {
           rows={lists.resolved}
           empty="Aún no hay solicitudes resueltas."
           renderActions={(request) => (
-            <span>
+            <span className="facilitation-row__actions">
               {request.status === 'accepted' ? 'Aceptada' : 'Descartada'}
               {request.reason ? ` · Motivo: ${request.reason}` : ''}
             </span>
@@ -118,9 +120,9 @@ function RequestList({
 }) {
   if (rows.length === 0) return <p className="block block-empty">{empty}</p>;
   return (
-    <ul>
+    <ul className="facilitation-list">
       {rows.map((request) => (
-        <li key={request.id} className="block">
+        <li key={request.id} className="block facilitation-row">
           <strong>{request.name}</strong> ({request.email})
           <p>{request.message}</p>
           {renderActions(request)}

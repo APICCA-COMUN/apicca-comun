@@ -10,6 +10,18 @@ export type Axis = (typeof AXES)[number];
 export const APICE_STATUSES = ['idea', 'prototipo', 'en marcha'] as const;
 export type ApiceStatus = (typeof APICE_STATUSES)[number];
 
+/** RF-17 (019), D-T11 (019): nombre de cada etapa como se muestra; el valor guardado no cambia. */
+export const APICE_STAGE_LABEL: Record<ApiceStatus, string> = {
+  idea: 'Idea',
+  prototipo: 'Prototipo',
+  'en marcha': 'En marcha',
+};
+
+/** RF-9 (019) · 9.1, D-T18 (019): un ápice tiene necesidades si el campo tiene texto además de espacios. */
+export function hasNeeds(needs: string | undefined): boolean {
+  return (needs ?? '').trim() !== '';
+}
+
 /** Todo ápice nace como idea. */
 export const INITIAL_APICE_STATUS: ApiceStatus = 'idea';
 

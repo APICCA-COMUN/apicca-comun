@@ -45,7 +45,16 @@ const visitedPath = (path: string, who: string): string =>
  * (RF-7 (005) · 7.12), el panel está siempre a la vista con el primer ápice: «Ver ficha» y, para quien puede editar,
  * su edición rápida; los botones de eje del panel repiten los nombres de los filtros.
  */
-const BUILDING: AccessibleName = { role: 'button', name: 'Huerta del barrio' };
+/**
+ * Con la 019, el edificio suma la etapa a su nombre (D-T19 (019)), la franja suma «Ver como lista» (RF-6 (019) · 6.2) y
+ * la lista ya no se ve junto al terreno, así que sale el enlace de su tarjeta (RF-6 (019) · 6.3). El mapa queda detrás de
+ * «Ver en el mapa» (RF-10 (019) · 10.5): sale su pin y entra el control.
+ */
+const BUILDING: AccessibleName = { role: 'button', name: 'Huerta del barrio, Idea' };
+const VIEW_TOGGLE: AccessibleName = { role: 'button', name: 'Ver como lista' };
+const LIST_CARD: AccessibleName = { role: 'link', name: 'Huerta del barrio' };
+const MAP_TOGGLE: AccessibleName = { role: 'button', name: 'Ver en el mapa' };
+const MAP_PIN: AccessibleName = { role: 'button', name: 'Huerta del barrio: agua, alimento' };
 const PANEL_VIEW: AccessibleName[] = [{ role: 'link', name: 'Ver ficha' }];
 const PANEL_EDIT: AccessibleName[] = [
   { role: 'button', name: 'Guardar cambios' },
@@ -58,18 +67,23 @@ const PANEL_EDIT: AccessibleName[] = [
   { role: 'textbox', name: 'Nombre' },
 ];
 const ADDED: Record<string, AccessibleName[]> = {
-  '/prototipado · facilitador': [{ role: 'link', name: 'Nuevo ápice' }, BUILDING, ...PANEL_VIEW, ...PANEL_EDIT],
-  '/prototipado · visitante': [BUILDING, ...PANEL_VIEW],
+  '/prototipado · facilitador': [{ role: 'link', name: 'Nuevo ápice' }, BUILDING, VIEW_TOGGLE, MAP_TOGGLE, ...PANEL_VIEW, ...PANEL_EDIT],
+  '/prototipado · visitante': [BUILDING, VIEW_TOGGLE, MAP_TOGGLE, ...PANEL_VIEW],
   '/entrar · visitante': [{ role: 'link', name: 'Pide tu inscripción' }, { role: 'button', name: 'Mostrar contraseña' }],
 };
 /** Nombres que la 008 sustituye por los del lienzo en `/entrar` (RF-7 (008) · 7.5, 7.6, D-10 (008)). */
 const RENAMED: Record<string, string> = { 'Correo electrónico': 'Correo', '¿Olvidaste tu contraseña?': 'Olvidé mi contraseña' };
+/** RF-17 (019) · 17.1, 17.2, D-T11 (019): en toda ruta, «Estado» se llama «Etapa» y las etapas van con mayúscula inicial. */
+const STAGE_RENAMED: Record<string, string> = { Estado: 'Etapa', idea: 'Idea', prototipo: 'Prototipo', 'en marcha': 'En marcha' };
 const withRenames = (names: AccessibleName[], visited: string): AccessibleName[] =>
-  visited !== '/entrar' ? names : names.map((entry) => ({ ...entry, name: RENAMED[entry.name] ?? entry.name }));
-/** Única excepción de rol (RF-17 (003) · 17.1, D-23 (003)): en Prototipado los filtros de eje pasan de casilla a botón. */
+  names.map((entry) => {
+    const name = visited === '/entrar' ? (RENAMED[entry.name] ?? entry.name) : entry.name;
+    return { ...entry, name: STAGE_RENAMED[name] ?? name };
+  });
+/** Única excepción de rol (RF-17 (003) · 17.1, D-23 (003)): en Prototipado los filtros de eje pasan de casilla a botón; RF-12 (019) · 12.2: lo mismo con el selector de ejes del formulario. */
 const AXIS_FILTERS = new Set(['Agua', 'Alimento', 'Cobijo', 'Comunicación', 'Energía']);
 const withAxisButtons = (names: AccessibleName[], visited: string): AccessibleName[] =>
-  visited !== '/prototipado'
+  !['/prototipado', '/apices/nuevo', '/apices/ejemplo/editar'].includes(visited)
     ? names
     : names.map((entry) => (entry.role === 'checkbox' && AXIS_FILTERS.has(entry.name) ? { ...entry, role: 'button' } : entry));
 
@@ -78,7 +92,9 @@ const expectedNames = (path: string, who: string): AccessibleName[] | undefined 
   if (base === undefined) return base;
   const visited = visitedPath(path, who);
   const added = ADDED[`${visited} · ${who}`] ?? [];
-  return [...withRenames(withAxisButtons(base, visited), visited), ...added].sort((a, b) => a.role.localeCompare(b.role, 'es') || a.name.localeCompare(b.name, 'es'));
+  const hidden = [LIST_CARD, MAP_PIN];
+  const shown = visited === '/prototipado' ? base.filter((entry) => !hidden.some((gone) => entry.role === gone.role && entry.name === gone.name)) : base;
+  return withRenames([...withAxisButtons(shown, visited), ...added], visited).sort((a, b) => a.role.localeCompare(b.role, 'es') || a.name.localeCompare(b.name, 'es'));
 };
 
 /** Algunas piezas (el mapa tras una redirección) se pintan tarde: espera a que el conjunto no cambie. */
