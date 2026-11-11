@@ -27,7 +27,6 @@
 .tag[data-condition='visibility'] .tag-dot { background-color: var(--text-muted); }
 .tag[data-condition='archived'] .tag-dot { background-color: var(--field-border); }
 .tag[data-condition='status'] .tag-dot { background-color: var(--text-muted); }
-.tag[data-condition='reference'] .tag-dot { background-color: var(--text-muted); }
 
 @media (forced-colors: active) {
   .tag {

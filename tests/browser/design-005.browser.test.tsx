@@ -1,5 +1,6 @@
-// Medidas de la spec 005 en Chromium real (RF-1 (005), RF-2 (005), RF-4 (005), RF-10 (005) y RF-11 (005)): columna de la página, piel de los
-// lotes, encabezado y pasos del inicio, documentación sin lote y tarjetas de la constitución, a 360 y 1280 px.
+// Medidas de la spec 005 en Chromium real (RF-1 (005), RF-2 (005), RF-10 (005) y RF-11 (005)): columna de la página, piel
+// de los lotes, documentación sin lote y tarjetas de la constitución, a 360 y 1280 px. El inicio (RF-4 (005)) y el lote de
+// Prototipado (RF-6 (005) a RF-8 (005)) dieron paso al mapa (RF-11 (021)): sus medidas salieron con ellos.
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { commands, page } from 'vitest/browser';
 import { act } from 'react';
@@ -84,7 +85,7 @@ function contentBox(main: HTMLElement) {
 describe('columna de la página', () => {
   it('RF-1 (005) · 1.1, 1.2: a 1280 px el contenido mide 1200 px como máximo, centrado, con 16 a 48 px a cada lado', async () => {
     await page.viewport(1280, 800);
-    await open('/prototipado');
+    await open('/foro');
     const main = await waitFor(() => host!.querySelector<HTMLElement>('main'));
     const content = contentBox(main);
     expect(content.width).toBeLessThanOrEqual(1200.5);
@@ -97,7 +98,7 @@ describe('columna de la página', () => {
 
   it('RF-1 (005) · 1.2: a 360 px el margen a cada lado es de 16 px y no hay desplazamiento horizontal', async () => {
     await page.viewport(360, 800);
-    await open('/prototipado');
+    await open('/foro');
     const main = await waitFor(() => host!.querySelector<HTMLElement>('main'));
     const content = contentBox(main);
     expect(Math.abs(content.left - 16)).toBeLessThanOrEqual(0.5);
@@ -123,61 +124,6 @@ describe.each(['light', 'dark'] as const)('lotes en tema %s', (theme) => {
     expect(style.borderTopWidth).toBe('1px');
     expect(style.borderTopLeftRadius).toBe('18px');
     expect(style.boxShadow).toBe('none');
-  });
-});
-
-describe('inicio', () => {
-  it('RF-4 (005) · 4.1, 4.2: a 1280 px el texto y el mapa cuadrado van en dos columnas', async () => {
-    await page.viewport(1280, 800);
-    await open('/');
-    const map = await waitFor(() => host!.querySelector<HTMLElement>('.map-illustration'));
-    const text = host!.querySelector<HTMLElement>('.home__hero-text')!;
-    const mapBox = map.getBoundingClientRect();
-    expect(mapBox.left).toBeGreaterThanOrEqual(text.getBoundingClientRect().right - 0.5);
-    expect(Math.abs(mapBox.width - mapBox.height)).toBeLessThanOrEqual(1);
-    expect(mapBox.width).toBeGreaterThan(200);
-  });
-
-  it('RF-4 (005) · 4.1: a 360 px el mapa va debajo del texto, sin desbordar', async () => {
-    await page.viewport(360, 800);
-    await open('/');
-    const map = await waitFor(() => host!.querySelector<HTMLElement>('.map-illustration'));
-    const text = host!.querySelector<HTMLElement>('.home__hero-text')!;
-    expect(map.getBoundingClientRect().top).toBeGreaterThanOrEqual(text.getBoundingClientRect().bottom - 0.5);
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
-  });
-
-  it('RF-4 (005) · 4.3: las hebras se pintan al 55 % de opacidad', async () => {
-    await open('/');
-    const strands = await waitFor(() => {
-      const found = [...host!.querySelectorAll<SVGPathElement>('.map-illustration__strand')];
-      return found.length === 2 && found;
-    });
-    for (const strand of strands) expect(getComputedStyle(strand).strokeOpacity).toBe('0.55');
-  });
-
-  it('RF-4 (005) · 4.4: a 1280 px los pasos van en una fila y a 360 px en una columna', async () => {
-    for (const [width, row] of [[1280, true], [360, false]] as const) {
-      await page.viewport(width, 800);
-      await open('/');
-      const steps = await waitFor(() => {
-        const found = [...host!.querySelectorAll<HTMLElement>('.home__step')];
-        return found.length === 3 && found;
-      });
-      const tops = steps.map((step) => step.getBoundingClientRect().top);
-      if (row) expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
-      else expect(tops[1]! > tops[0]! && tops[2]! > tops[1]!).toBe(true);
-      const mounted = root!;
-      await actNow(() => mounted.unmount());
-      host!.remove();
-      root = undefined;
-    }
-  });
-
-  it('RF-4 (005) · 4.5: el cierre del inicio va centrado', async () => {
-    await open('/');
-    const closing = await waitFor(() => host!.querySelector<HTMLElement>('.home__closing'));
-    expect(getComputedStyle(closing).textAlign).toBe('center');
   });
 });
 
@@ -220,74 +166,3 @@ describe('documentación y constitución', () => {
     });
   });
 });
-
-describe('Prototipado de escritorio', () => {
-  // Con un solo ápice el recorrido no dibuja caminos ni nodos: se necesita la siembra completa.
-  beforeAll(async () => {
-    await commands.seedFull();
-  });
-
-  it('RF-7 (005) · 7.12, RF-8 (005) · 8.5: a 1280 px el panel mide 320 px o más, a la derecha del lote, separado 32 px', async () => {
-    await page.viewport(1280, 800);
-    await open('/prototipado');
-    const stage = await waitFor(() => host!.querySelector<HTMLElement>('.apice-lot-section__stage'));
-    const panel = await waitFor(() => host!.querySelector<HTMLElement>('aside[aria-label="Ápice elegido"]'));
-    const panelBox = panel.getBoundingClientRect();
-    const stageBox = stage.getBoundingClientRect();
-    expect(panelBox.width).toBeGreaterThanOrEqual(319.5);
-    expect(panelBox.left).toBeGreaterThanOrEqual(stageBox.right + 31.5);
-    expect(Math.abs(panelBox.left - stageBox.right - 32)).toBeLessThanOrEqual(1);
-    expect(stageBox.height).toBeGreaterThanOrEqual(559.5);
-    expect(getComputedStyle(panel).borderTopLeftRadius).toBe('14px');
-    expect(getComputedStyle(panel).backgroundColor).toBe(resolved('backgroundColor', 'var(--surface)'));
-  });
-
-  // RF-6 (005) · 6.10 y 6.11 se retiraron en la fase 1 de la 019 y volvieron con D-9 (019) revisada (RF-8 (019) · 8.3, D-T26 (019)).
-  it('RF-8 (019) · 8.3, RF-6 (005) · 6.10, 6.11, D-T26 (019): a 1280 px el lote va en zigzag, con caminos de 14 px en surface, nodos de 18 px, el elegido con anillo doble y sin edificios encimados', async () => {
-    await page.viewport(1280, 800);
-    await open('/prototipado');
-    const lot = await waitFor(() => host!.querySelector<HTMLElement>('.apice-lot--trail'));
-    const road = lot.querySelector('.apice-lot__roads line');
-    expect(road).not.toBeNull();
-    const roadStyle = getComputedStyle(road!);
-    expect(roadStyle.strokeWidth).toBe('14px');
-    expect(roadStyle.stroke).toBe(resolved('color', 'var(--surface)'));
-    const node = lot.querySelector<HTMLElement>('.node')!;
-    expect(node).not.toBeNull();
-    expect(node.getBoundingClientRect().width).toBeCloseTo(18, 0);
-    expect(getComputedStyle(node).borderTopWidth).toBe('4px');
-    const chosen = await waitFor(() => lot.querySelector<HTMLElement>('.apice-lot__building[aria-pressed="true"]'));
-    const chosenStyle = getComputedStyle(chosen);
-    expect(chosenStyle.position).toBe('absolute');
-    // Anillo doble (fondo y foco) más la sombra elevada: tres sombras.
-    expect(chosenStyle.boxShadow.split(/,\s*(?=rgb)/)).toHaveLength(3);
-    const boxes = [...lot.querySelectorAll<HTMLElement>('.apice-lot__building')].map((b) => b.getBoundingClientRect());
-    for (const [i, a] of boxes.entries())
-      for (const b of boxes.slice(i + 1)) {
-        const apart = a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
-        expect(apart, `${JSON.stringify(a)} / ${JSON.stringify(b)}`).toBe(true);
-      }
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
-  });
-
-  it('RF-8 (019) · 8.1, D-T26 (019): a 360 px Prototipado usa la retícula, sin caminos', async () => {
-    await page.viewport(360, 780);
-    await open('/prototipado');
-    const lot = await waitFor(() => host!.querySelector<HTMLElement>('.apice-lot'));
-    expect(lot.classList.contains('apice-lot--trail')).toBe(false);
-    expect(lot.querySelector('.apice-lot__roads, .node')).toBeNull();
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
-  });
-
-  // RF-8 (005) · 8.3 lo afina RF-7 (019) · 7.1: el contador deja la fila del título y va en la franja, sobre el terreno.
-  it('RF-8 (005) · 8.3, RF-7 (019) · 7.1: el contador va en la franja, entre el título y el terreno', async () => {
-    await page.viewport(1280, 800);
-    await open('/prototipado');
-    const status = await waitFor(() => host!.querySelector<HTMLElement>('.apice-lot-section__strip [role="status"]'));
-    const heading = host!.querySelector<HTMLElement>('.prototyping__head h1')!;
-    const stage = await waitFor(() => host!.querySelector<HTMLElement>('.apice-lot-section__stage'));
-    expect(status.getBoundingClientRect().top).toBeGreaterThan(heading.getBoundingClientRect().bottom);
-    expect(status.getBoundingClientRect().bottom).toBeLessThanOrEqual(stage.getBoundingClientRect().top);
-  });
-});
-

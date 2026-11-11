@@ -1,7 +1,8 @@
 // RF-4 (003) · 4.2, 4.6, 4.10; RF-17 (003) · 17.3; RF-10 (003) · 10.2; RF-18 (003) · 18.2, 18.3; D-T5 (003): tabla de acciones por pantalla. Monta la `App` real
 // en cada pantalla existente de §4.9 con su sesión, con dobles en memoria, y afirma el único botón azul (o su
 // ausencia) con `expectOnePrimary` y la clase de cada acción nombrada. La tabla es el oráculo: las filas dicen lo
-// que pide la spec, no lo que hoy pintan los componentes. T-4.23 suma Inicio, Prototipado y Mi tablero.
+// que pide la spec, no lo que hoy pintan los componentes. T-4.23 sumó Inicio, Prototipado y Mi tablero; RF-11 (021) los
+// cambia por el mapa.
 import './testing/appDoubles';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
@@ -57,12 +58,9 @@ export const SCREENS: Screen[] = [
     path: '/apices/ejemplo',
     session: FACILITATOR,
     blue: null,
-    actions: [
-      ['Generar imagen', 'action-secondary'],
-      ['Subir referencia', 'action-secondary'],
-      ['Archivar', 'action-secondary'],
-    ],
-    ready: /Generar imagen/,
+    // RF-27 (021) · 27.1: salieron «Generar imagen» y «Subir referencia».
+    actions: [['Archivar', 'action-secondary']],
+    ready: /Archivar/,
   },
   {
     screen: 'Historial del ápice',
@@ -93,28 +91,28 @@ export const SCREENS: Screen[] = [
     actions: [['Suspender', 'action-secondary']],
     ready: /Suspender/,
   },
-  // T-4.23: pantallas nuevas de §4.9. El Inicio ya no es el mapa (D-19 (003)): el mapa vive en Prototipado.
-  { screen: 'Inicio sin sesión', path: '/', session: VISITOR, blue: 'Pide tu inscripción', actions: [], ready: /Pide tu inscripción/ },
-  { screen: 'Inicio con sesión', path: '/', session: FACILITATOR, blue: 'Nuevo ápice', actions: [], ready: /Nuevo ápice/ },
-  // Con el panel siempre a la vista (RF-7 (005) · 7.12), la edición rápida está abierta: «Guardar cambios» es el azul
-  // y «Nuevo ápice» pasa a secundario (RF-7 (005) · 7.11).
+  // RF-11 (021), RF-12 (021) · 12.1, D-T22 (021): el Inicio, Prototipado y Mi tablero dieron paso al mapa. Sin sesión el azul
+  // es «Unirme»; con sesión, «Construir ápice», también en «Lo mío».
   {
-    screen: 'Prototipado con sesión',
-    path: '/prototipado',
-    session: FACILITATOR,
-    blue: 'Guardar cambios',
-    actions: [['Nuevo ápice', 'action-secondary']],
-    ready: /Guardar cambios/,
+    screen: 'Mapa sin sesión',
+    path: '/',
+    session: VISITOR,
+    blue: 'Unirme',
+    actions: [['Ver como lista', 'action-secondary']],
+    ready: /Unirme/,
   },
-  { screen: 'Prototipado sin sesión', path: '/prototipado', session: VISITOR, blue: null, actions: [], ready: /Prototipado de ápices/ },
   {
-    screen: 'Mi tablero',
-    path: '/tablero',
+    screen: 'Mapa con sesión',
+    path: '/',
     session: FACILITATOR,
-    blue: 'Nuevo ápice',
-    actions: [['Cerrar sesión', 'action-secondary']],
-    ready: /Cerrar sesión/,
+    blue: 'Construir ápice',
+    actions: [
+      ['Lo mío', 'action-secondary'],
+      ['Ver como lista', 'action-secondary'],
+    ],
+    ready: /Construir ápice/,
   },
+  { screen: 'Lo mío', path: '/?mio=1', session: FACILITATOR, blue: 'Construir ápice', actions: [['Lo mío', 'action-secondary']], ready: /Construir ápice/ },
 ];
 
 function Frame({ session, children }: { session: SessionState; children: ReactNode }) {

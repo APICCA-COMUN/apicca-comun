@@ -1,14 +1,16 @@
 // Callable `api`: registro de las ops ligeras (D-T2 (001)). Cada op nueva se registra aquí.
 import type { Ctx } from './context';
 import { dispatch, type OpHandler } from './dispatch';
-import { handleAcceptProposal } from './ops/acceptProposal';
 import { handleArchiveApice } from './ops/archiveApice';
 import { handleArchiveDocument } from './ops/archiveDocument';
 import { handleCancelInvitation } from './ops/cancelInvitation';
 import { handleCreateApice } from './ops/createApice';
-import { handleDiscardProposal } from './ops/discardProposal';
 import { handleEditApice } from './ops/editApice';
-import { handleGenerationStatus } from './ops/generationStatus';
+import { handleEditCommonAction } from './ops/editCommonAction';
+import { handleJoinCommonAction } from './ops/joinCommonAction';
+import { handleLeaveCommonAction } from './ops/leaveCommonAction';
+import { handleProposeCommonAction } from './ops/proposeCommonAction';
+import { handleSetCommonActionStatus } from './ops/setCommonActionStatus';
 import { handleInspectInvitation } from './ops/inspectInvitation';
 import { handleInvite } from './ops/invite';
 import { handleOpenConstitution } from './ops/openConstitution';
@@ -28,7 +30,6 @@ import { handleObjectAmendment } from './ops/objectAmendment';
 import { handleResolveObjection } from './ops/resolveObjection';
 import { handleWithdrawObjection } from './ops/withdrawObjection';
 import { handleRestoreVersion } from './ops/restoreVersion';
-import { handleReserveUpload } from './ops/reserveUpload';
 import { handleMarkNoticesSeen } from './ops/markNoticesSeen';
 import { handleOpenThread } from './ops/openThread';
 import { handleReplyThread } from './ops/replyThread';
@@ -36,11 +37,9 @@ import { handleEditMessage } from './ops/editMessage';
 import { handleArchiveThread } from './ops/archiveThread';
 import { handleArchiveMessage } from './ops/archiveMessage';
 import { handleReactivateAccount } from './ops/reactivateAccount';
-import { handleRemoveReference } from './ops/removeReference';
 import { handleRemoveSection } from './ops/removeSection';
 import { handleReorderSections } from './ops/reorderSections';
 import { handleResolveEnrollment } from './ops/resolveEnrollment';
-import { handleRetractImage } from './ops/retractImage';
 import { handleSaveDocument } from './ops/saveDocument';
 import { handleSaveSection } from './ops/saveSection';
 import { handleSetVisibility } from './ops/setVisibility';
@@ -53,7 +52,6 @@ export const API_OPS: Record<string, OpHandler> = {
   inspectInvitation: handleInspectInvitation,
   requestEnrollment: handleRequestEnrollment,
   register: handleRegister,
-  reserveUpload: handleReserveUpload,
   createApice: handleCreateApice,
   editApice: handleEditApice,
   restoreVersion: handleRestoreVersion,
@@ -70,11 +68,6 @@ export const API_OPS: Record<string, OpHandler> = {
   editMessage: handleEditMessage,
   archiveThread: handleArchiveThread,
   archiveMessage: handleArchiveMessage,
-  removeReference: handleRemoveReference,
-  retractImage: handleRetractImage,
-  generationStatus: handleGenerationStatus,
-  acceptProposal: handleAcceptProposal,
-  discardProposal: handleDiscardProposal,
   // Constitución común (004): secciones y apertura (T-4.8), documentos (T-5.5).
   saveSection: handleSaveSection,
   removeSection: handleRemoveSection,
@@ -97,6 +90,12 @@ export const API_OPS: Record<string, OpHandler> = {
   withdrawObjection: handleWithdrawObjection,
   // Constitución común (004): reflejo del vencimiento al abrir una página (T-7.6).
   settleAmendments: handleSettleAmendments,
+  // Acciones Comunes (010): proponer, sumarse, retirarse, editar y cambiar el estado (D-T3 (010)).
+  proposeCommonAction: handleProposeCommonAction,
+  joinCommonAction: handleJoinCommonAction,
+  leaveCommonAction: handleLeaveCommonAction,
+  editCommonAction: handleEditCommonAction,
+  setCommonActionStatus: handleSetCommonActionStatus,
 };
 
 export function handleApi(ctx: Ctx, data: unknown, uid: string | null): Promise<unknown> {

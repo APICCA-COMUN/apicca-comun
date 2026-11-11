@@ -2,8 +2,8 @@ import { act, render, renderHook, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SessionProvider } from './session';
-import { SiteNav } from '../components/SiteNav';
-import { Link, matchPattern, matchRoute, navigate, normalizePath, useRoute } from './router';
+import { GameMenu } from '../components/GameMenu';
+import { Link, isMapPage, matchPattern, matchRoute, navigate, normalizePath, useRoute } from './router';
 
 afterEach(() => {
   window.history.replaceState(null, '', '/');
@@ -71,6 +71,47 @@ describe('router: useRoute y navigate', () => {
     await userEvent.click(screen.getByRole('link', { name: 'ir' }));
     expect(window.location.pathname).toBe('/destino');
   });
+
+  it('RF-14 (021) · 14.8, D-T21 (021): sin opciones, el cambio de ruta lleva el foco al contenido; con keepFocus, el foco se queda donde estaba', () => {
+    function Page() {
+      useRoute();
+      return (
+        <>
+          <main tabIndex={-1}>contenido</main>
+          <button type="button">panel</button>
+        </>
+      );
+    }
+    render(<Page />);
+    const button = screen.getByRole('button', { name: 'panel' });
+    button.focus();
+    act(() => navigate('/apices/a', { keepFocus: true }));
+    expect(document.activeElement).toBe(button);
+    act(() => navigate('/foro'));
+    expect(document.activeElement).toBe(screen.getByRole('main'));
+  });
+});
+
+describe('router: páginas del mapa (021)', () => {
+  it('RF-11 (021) · 11.1, RF-14 (021) · 14.5, D-T21 (021): el inicio y los tres paneles del ápice son páginas del mapa; las demás no', () => {
+    for (const path of ['/', '/apices/a', '/apices/nuevo', '/apices/a/editar']) expect(isMapPage(matchRoute(path).page), path).toBe(true);
+    for (const path of ['/apices/a/historial', '/foro', '/documentacion', '/constitucion', '/archivados', '/entrar', '/prototipado', '/tablero', '/nada'])
+      expect(isMapPage(matchRoute(path).page), path).toBe(false);
+  });
+});
+
+describe('router: caminos (021, fase 4)', () => {
+  it('RF-23 (021) · 23.1, D-T39 (021): /boceto es una página del mapa', () => {
+    expect(matchRoute('/boceto').page).toBe('sketch');
+    expect(isMapPage('sketch')).toBe(true);
+  });
+
+  it('RF-20 (021) · 20.5, D-T29 (021): /acciones, /acciones/nueva y /acciones/:id son páginas del mapa; la fija gana a :id', () => {
+    expect(matchRoute('/acciones').page).toBe('actions');
+    expect(matchRoute('/acciones/nueva').page).toBe('actionNew');
+    expect(matchRoute('/acciones/c1')).toEqual({ page: 'actionView', params: { id: 'c1' }, path: '/acciones/c1' });
+    for (const path of ['/acciones', '/acciones/nueva', '/acciones/c1']) expect(isMapPage(matchRoute(path).page), path).toBe(true);
+  });
 });
 
 describe('router: rutas de la constitución común (004)', () => {
@@ -97,13 +138,14 @@ describe('router: rutas de la constitución común (004)', () => {
     '/constitucion/documentos/d1',
     '/constitucion/propuestas',
     '/constitucion/propuestas/a1',
-  ])('RF-7 (004) · 7.4: el menú marca «Constitución» como actual en %s', (path) => {
+  ])('RF-7 (004) · 7.4, RF-13 (021) · 13.1: el menú marca «Reglas» (la constitución) como actual en %s', async (path) => {
     window.history.replaceState(null, '', path);
     render(
       <SessionProvider initial={{ status: 'visitor' }}>
-        <SiteNav />
+        <GameMenu />
       </SessionProvider>,
     );
-    expect(screen.getByRole('link', { name: 'Constitución' }).getAttribute('aria-current')).toBe('page');
+    await userEvent.click(screen.getByRole('button', { name: 'Menú' }));
+    expect(screen.getByRole('link', { name: 'Reglas' }).getAttribute('aria-current')).toBe('page');
   });
 });

@@ -22,7 +22,6 @@ async function seed(): Promise<void> {
         isArchived: i === 5,
         authorUid: i < 10 ? 'u-ana' : 'u-beto',
         updatedAt: Timestamp.fromMillis(Date.parse('2026-09-01T00:00:00Z') + i * 60_000),
-        image: null,
         version: 1,
         ...(i === 0 ? { needs: 'Manos para cavar.' } : i === 1 ? {} : { needs: '' }),
       });

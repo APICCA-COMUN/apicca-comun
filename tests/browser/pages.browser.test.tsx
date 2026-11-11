@@ -1,5 +1,5 @@
 // Capturas de página (T-8.2, RNF-5 (002); RNF-2 (003), D-T22 (003), T-7.5 (003)): con la siembra completa, cada ruta del inventario en los dos temas
-// y a 360 y 1280 px. Cubren el logo en la cabecera (RF-1 (002) · 1.1), los colores de los temas (RF-3 (002) ·
+// y a 360 y 1280 px; el mapa (`/`), a 360, 1100 y 1280 px (RNF-7 (021), RF-11 (021)). Cubren el logo en la cabecera (RF-1 (002) · 1.1), los colores de los temas (RF-3 (002) ·
 // 3.1, 3.2) y la pantalla angosta (RF-6 (002) · 6.6). Las referencias viven en `__screenshots__/` con sufijo
 // de plataforma y se versionan solo cuando la persona las aprueba (T-8.4). La tolerancia es la de
 // `vitest.config.ts` (D-T12 (002)).
@@ -19,14 +19,13 @@ import { SessionProvider } from '../../src/app/session';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
 import { THEME_KEY } from '../../src/app/theme';
 import { signInAs, signOutNow } from './session';
-import { APICE_IDS, AUTHOR, CONSTITUTION_IDS, FACILITATOR } from './seed-data';
+import { ACTION, APICE_IDS, AUTHOR, CONSTITUTION_IDS, FACILITATOR } from './seed-data';
 
 type Account = typeof AUTHOR | typeof FACILITATOR;
 
 /** Las páginas de T-8.2, con un nombre estable para la referencia y la cuenta que piden. */
 /** `ready`: un texto (o varios) que la página solo pinta ya cargada, cuando no muestra «Cargando» mientras lee. */
 const SCREENS: { name: string; path: string; as?: Account; ready?: string | string[] }[] = [
-  { name: 'inicio', path: '/' },
   { name: 'apice-con-imagen', path: `/apices/${APICE_IDS.withImage}` },
   { name: 'apice-cinco-ejes', path: `/apices/${APICE_IDS.allAxes}` },
   { name: 'apice-con-etiquetas', path: `/apices/${APICE_IDS.private}`, as: AUTHOR },
@@ -34,10 +33,17 @@ const SCREENS: { name: string; path: string; as?: Account; ready?: string | stri
   { name: 'entrar', path: '/entrar' },
   { name: 'invitaciones', path: '/facilitacion/invitaciones', as: FACILITATOR },
   { name: 'no-existe', path: '/ruta-que-no-existe' },
-  // Las rutas nuevas de la 003 (RNF-2 (003), T-7.5 (003)).
-  { name: 'tablero', path: '/tablero', as: AUTHOR },
-  { name: 'prototipado', path: '/prototipado' },
+  // Lo mío y la lista del mapa (RF-15 (021), RF-10 (021)); la documentación, de la 003 (RNF-2 (003), T-7.5 (003)).
+  { name: 'lo-mio', path: '/?mio=1', as: AUTHOR },
+  { name: 'lista', path: '/?vista=lista' },
   { name: 'documentacion', path: '/documentacion' },
+  // Los caminos (RF-18 (021), RF-19 (021), RF-20 (021)): el panel de la Acción Común sembrada, la lista y el trazo.
+  { name: 'camino', path: `/acciones/${ACTION.id}`, ready: ['Agua lluvia del barrio', 'Participantes (1)'] },
+  { name: 'caminos', path: '/acciones', ready: 'Agua lluvia del barrio' },
+  { name: 'trazar-camino', path: '/acciones/nueva', as: AUTHOR, ready: 'Faltan 3 ápices.' },
+  // El primer contacto (RF-21 (021), RF-23 (021), RNF-7 (021)): la invitación sobre el mapa y el panel del boceto.
+  { name: 'bienvenida', path: '/?bienvenida=1', ready: 'Te damos la bienvenida a APICCA' },
+  { name: 'boceto', path: '/boceto', ready: 'Haz un boceto' },
   // La constitución común sembrada (T-11.1, T-11.2, RNF-4 (004)): las seis rutas con ids fijos.
   { name: 'constitucion', path: '/constitucion', ready: ['Agua compartida', 'Escuchar primero'] },
   { name: 'constitucion-historial', path: '/constitucion/historial', as: AUTHOR, ready: 'Cuidado mutuo ampliado' },
@@ -178,14 +184,35 @@ describe.each(THEMES)('páginas en el tema %s', (theme) => {
       await fitHeight(width);
       await parkPointer();
       await expect.element(page.elementLocator(host!)).toMatchScreenshot(`${name}-${theme}-${width}`);
+      // La invitación se queda abierta mientras el mapa siga montado: se cierra para las capturas que siguen.
+      if (name === 'bienvenida') await actNow(() => [...host!.querySelectorAll<HTMLButtonElement>('[aria-label="Bienvenida"] button')].find((button) => button.textContent === 'Cerrar')?.click());
     });
+  });
+});
+
+/**
+ * RNF-7 (021), D-T19 (021), RF-11 (021) · 11.2: el mapa, que es el inicio, en los dos temas y a 360, 1100 y 1280 px, con la
+ * barra de juego encima. Con la siembra completa abre alejado, con sus grupos y el terreno de los que no tienen ubicación.
+ */
+const MAP_WIDTHS = [360, 1100, 1280] as const;
+
+describe.each(THEMES)('mapa en el tema %s', (theme) => {
+  it.each(MAP_WIDTHS)('RNF-7 (021), RF-11 (021) · 11.1, 11.2, RF-12 (021) · 12.1, RF-4 (021) · 4.1: el mapa a %i px coincide con su referencia', async (width) => {
+    await chooseTheme(theme);
+    await page.viewport(width, 800);
+    await useAccount(undefined);
+    await show('/');
+    await waitFor(() => host!.querySelector('section[aria-label="Mapa de ápices"] .game-map__world'));
+    await fitHeight(width);
+    await parkPointer();
+    await expect.element(page.elementLocator(host!)).toMatchScreenshot(`mapa-${theme}-${width}`);
   });
 });
 
 /** Las rutas nuevas y las de acceso que no deben desplazarse a los lados a 360 px (T-5.19, T-6.24, T-7.3). */
 const NARROW_ROUTES: { path: string; as?: Account }[] = [
   { path: '/' },
-  { path: '/prototipado' },
+  { path: '/?vista=lista' },
   { path: '/entrar' },
   { path: '/olvide' },
   { path: '/registro' },
@@ -197,7 +224,11 @@ const NARROW_ROUTES: { path: string; as?: Account }[] = [
   { path: `/constitucion/documentos/${CONSTITUTION_IDS.document}` },
   { path: '/constitucion/propuestas', as: AUTHOR },
   { path: `/constitucion/propuestas/${CONSTITUTION_IDS.amendments.openChange}`, as: AUTHOR },
-  { path: '/tablero', as: AUTHOR },
+  { path: '/?mio=1', as: AUTHOR },
+  { path: `/acciones/${ACTION.id}` },
+  { path: '/acciones' },
+  { path: '/acciones/nueva', as: AUTHOR },
+  { path: '/boceto' },
 ];
 
 /** El borde derecho visible de un elemento: lo que un antepasado recorta no desplaza la página. */
@@ -216,7 +247,7 @@ describe.each(THEMES)('pantalla angosta en el tema %s', (theme) => {
     await useAccount(as);
     await show(path);
     // Con cuenta, la ruta se monta sin redirigir ni caer en la pantalla de acceso.
-    if (as !== undefined) expect(location.pathname).toBe(path);
+    if (as !== undefined) expect(location.pathname + location.search).toBe(path);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
     const wide = [...host!.querySelectorAll<HTMLElement>('*')]
       .filter((el) => visibleRight(el) > innerWidth + 0.5)

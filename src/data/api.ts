@@ -1,5 +1,6 @@
-// RNF-1 (001) · Cliente tipado de las callables `api` y `media` (D-T2 (001)). Los errores tipificados
+// RNF-1 (001) · Cliente tipado de la callable `api` (D-T2 (001)). Los errores tipificados
 // del servidor llegan como `ApiClientError` con su mensaje en español (RNF-5 (001)).
+// RF-27 (021) · 27.1, D-T5 (021): salieron la callable `media` y las operaciones de imagen, propuestas y referencias.
 import { httpsCallable } from 'firebase/functions';
 import type { ApiceContent, ApiceStatus, Axis, Visibility } from '../../shared/domain/apice';
 import type { AmendmentKind } from '../../shared/domain/constitution';
@@ -115,28 +116,6 @@ export interface ApiOps extends OpMap {
   archiveThread: { in: { threadId: string }; out: Record<string, never> };
   archiveMessage: { in: { threadId: string; messageId: string }; out: Record<string, never> };
   restoreApice: { in: { id: string }; out: Record<string, never> };
-  /** Quita una referencia sin borrarla; registra quién y cuándo (RF-16 (001)). */
-  removeReference: { in: { id: string; refId: string }; out: Record<string, never> };
-  /** Retiro por la facilitación, con motivo, en cualquier ápice (RF-16 (001)). */
-  retractImage: {
-    in: { id: string; refId: string; reason: string };
-    out: Record<string, never>;
-  };
-  /** Cuánto le queda hoy a la persona, cuándo se reinicia y si está bloqueada (RF-19 (001), RF-20 (001)). Fechas en ISO 8601. */
-  generationStatus: {
-    in: Record<string, never>;
-    out: { remaining: number; limit: number; resetAt: string; blockedUntil: string | null };
-  };
-  /**
-   * Acepta la propuesta propia como imagen del ápice (RF-18 (001)). Si el ápice cambió desde que se generó, responde
-   * `ok: false` con los avisos y no hace nada; la persona decide y repite con `confirm: true`.
-   */
-  acceptProposal: {
-    in: { id: string; altText: string; confirm?: boolean };
-    out: { ok: true } | { ok: false; warnings: ProposalWarning[] };
-  };
-  /** Elimina la propuesta propia y conserva la imagen del ápice (RF-18 (001)). */
-  discardProposal: { in: { id: string }; out: Record<string, never> };
   requestEnrollment: {
     in: { email: string; name: string; message: string; accepted: boolean; website: string };
     out: { received: true };
@@ -147,8 +126,6 @@ export interface ApiOps extends OpMap {
   saveSection: { in: { id?: string; title: string; text: string }; out: { id: string } };
   removeSection: { in: { id: string }; out: Record<string, never> };
   reorderSections: { in: { order: string[] }; out: Record<string, never> };
-  /** Reserva una subida a `uploads/{uid}/{uploadId}`: una hora y 30 por día (RF-7 (016) · 7.3). */
-  reserveUpload: { in: Record<string, never>; out: { uploadId: string } };
   openConstitution: { in: Record<string, never>; out: Record<string, never> };
   /** Sin `id` crea (versión 1); con `id` edita con `baseVersion` y el conflicto trae lo vigente. */
   saveDocument: {
@@ -183,6 +160,12 @@ export interface ApiOps extends OpMap {
   withdrawObjection: { in: { amendmentId: string; objectionId: string }; out: Record<string, never> };
   /** Aplica el vencimiento antes de leer (D-T7 (004)); `id` limita a una propuesta. */
   settleAmendments: { in: { id?: string }; out: Record<string, never> };
+  // Acciones Comunes (010, D-T3 (010)).
+  proposeCommonAction: { in: { title: string; description: string; axis: Axis | null; apiceIds: string[] }; out: { id: string } };
+  joinCommonAction: { in: { actionId: string }; out: { participantCount: number } };
+  leaveCommonAction: { in: { actionId: string }; out: { participantCount: number } };
+  editCommonAction: { in: { actionId: string; title: string; description: string; axis: Axis | null; apiceIds?: string[] }; out: { version: number } };
+  setCommonActionStatus: { in: { actionId: string; status: 'abierta' | 'cerrada' | 'archivada' }; out: Record<string, never> };
 }
 
 /** Lo vigente de un documento cuando la edición chocó (RF-17 (004) · 17.2). */
@@ -200,20 +183,4 @@ export interface AmendmentCurrent {
   motive: string;
 }
 
-/** Por qué una propuesta ya no refleja el ápice: cambió el contenido, cambió la imagen o usó una referencia quitada. */
-export type ProposalWarning = 'content-changed' | 'image-changed' | 'reference-removed';
-
-/** Ops de la callable `media` (sharp y modelo de imágenes). */
-export interface MediaOps extends OpMap {
-  /** `uploadId` es el temporal que el cliente ya subió a `uploads/{uid}/{uploadId}` (D-T9 (001)). */
-  addReference: { in: { id: string; uploadId: string; altText: string }; out: { refId: string } };
-  /** Genera una propuesta de imagen; la propuesta llega por `ProposalSource`, no en la respuesta (RF-17 (001)). */
-  generateImage: { in: { id: string }; out: Record<string, never> };
-  /** La imagen de una referencia, con sus bytes en base64 (D-T2 (007)). */
-  readReference: { in: { id: string; refId: string }; out: { contentType: string; data: string } };
-}
-
-const named = (name: 'api' | 'media'): Callable => httpsCallable(firebase().functions, name) as Callable;
-
-export const api = createOpClient<ApiOps>(() => named('api'));
-export const media = createOpClient<MediaOps>(() => named('media'));
+export const api = createOpClient<ApiOps>(() => httpsCallable(firebase().functions, 'api') as Callable);

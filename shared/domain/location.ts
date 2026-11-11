@@ -1,6 +1,6 @@
-// Ubicación de un ápice (RF-9 (001)): validación de coordenadas, zona aproximada y agrupación.
-// Puro, sin DOM: la zona es una cuadrícula fija de 0,01° (≈ 1,1 km) que da siempre el mismo
-// resultado para el mismo punto (D-T4 (001)).
+// Ubicación de un ápice (RF-9 (001), RF-5 (021)): validación de coordenadas, precisión y zona publicada.
+// Puro, sin DOM. La zona es una celda H3 que calcula el servidor (D-T13 (021)); aquí solo viven su forma y su lectura,
+// porque el dominio compartido llega al navegador y no carga la biblioteca de celdas (D-5 (021)).
 import { invalid, valid, type Validation } from './result';
 
 export type Precision = 'approximate' | 'exact';
@@ -11,22 +11,25 @@ export interface Point {
   lng: number;
 }
 
-/** Ubicación **de pantalla**: el punto exacto o el centro de su zona, según la precisión. */
+/** Zona de un ápice: su celda H3 y el centro de esa celda (RF-5 (021)). */
+export interface Zone extends Point {
+  cell: string;
+}
+
+/**
+ * Ubicación **de pantalla**: el punto exacto o el centro de su zona, según la precisión. `zone` falta en los ápices que
+ * aún no pasaron por el recálculo (RF-5 (021) · 5.4).
+ */
 export interface Location extends Point {
   precision: Precision;
+  zone?: Zone;
 }
 
 /** Al indicar una ubicación es aproximada y quien edita la cambia (RF-9 (001)). */
 export const DEFAULT_PRECISION: Precision = 'approximate';
 
-/** Lado de la celda de la zona aproximada, en grados (RF-9 (001)). */
-export const APPROXIMATE_GRID = 0.01;
-
-const CELLS_PER_DEGREE = 100;
-// Absorbe el error de flotante en los límites de celda (4,35 × 100 = 434,99999999999994).
-const CELL_EPSILON = 1e-7;
-const MAX_LAT_CELL = 90 * CELLS_PER_DEGREE - 1;
-const MAX_LNG_CELL = 180 * CELLS_PER_DEGREE - 1;
+/** Resolución H3 de la zona: celdas de unos 5 km² (D-6 (021)). */
+export const ZONE_RESOLUTION = 7;
 
 const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
@@ -38,27 +41,26 @@ export function validateCoordinates(lat: unknown, lng: unknown): Validation<Poin
   return valid({ lat: lat + 0, lng: lng + 0 });
 }
 
-const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+const CELL_PATTERN = /^[0-9a-f]{15}$/;
 
-function cellOf(degrees: number, max: number): number {
-  return clamp(Math.floor(degrees * CELLS_PER_DEGREE + CELL_EPSILON), -max - 1, max);
+/** La zona guardada, si tiene una celda H3 y un centro válidos; si no, `null` (RF-5 (021) · 5.2). */
+export function readZone(raw: unknown): Zone | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const { cell, lat, lng } = raw as Record<string, unknown>;
+  if (typeof cell !== 'string' || !CELL_PATTERN.test(cell)) return null;
+  const center = validateCoordinates(lat, lng);
+  return center.ok ? { cell, ...center.value } : null;
 }
 
-/** Centro de una celda, redondeado a tres decimales para no arrastrar ruido de flotante. */
-const centerOf = (cell: number): number => Math.round((cell + 0.5) * 10) / 1000;
-
-/** Zona aproximada: el centro de la celda de 0,01° que contiene el punto (RF-9 (001)). */
-export function approximateZone(point: Point): Point {
-  return {
-    lat: centerOf(cellOf(point.lat, MAX_LAT_CELL)),
-    lng: centerOf(cellOf(point.lng, MAX_LNG_CELL)),
-  };
-}
-
-/** Ubicación que se guarda y se muestra a todas las personas (RF-9 (001), D-T4 (001)). */
-export function displayLocation(point: Point, precision: Precision = DEFAULT_PRECISION): Location {
-  if (precision === 'exact') return { lat: point.lat, lng: point.lng, precision };
-  return { ...approximateZone(point), precision };
+/** La ubicación de pantalla guardada en un ápice, o `null` si falta o no es válida (RF-9 (001), RF-5 (021) · 5.2). */
+export function readLocation(raw: unknown): Location | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const { lat, lng, precision, zone } = raw as Record<string, unknown>;
+  const point = validateCoordinates(lat, lng);
+  if (!point.ok) return null;
+  const location: Location = { ...point.value, precision: precision === 'exact' ? 'exact' : DEFAULT_PRECISION };
+  const readable = readZone(zone);
+  return readable ? { ...location, zone: readable } : location;
 }
 
 /** Lo que pide un cambio de ubicación, en lo que importa para el permiso (RF-1 (016)). */
@@ -76,43 +78,4 @@ export function raisesLocation(current: Precision | null, change: LocationReques
   if (change.mode === 'set') return true;
   if (change.mode === 'precision') return change.precision === 'exact' && current !== 'exact';
   return false;
-}
-
-/** Clave de la celda de un punto: dos puntos de la misma zona comparten clave (RF-9 (001)). */
-export function zoneKey(point: Point): string {
-  return `${cellOf(point.lat, MAX_LAT_CELL)}:${cellOf(point.lng, MAX_LNG_CELL)}`;
-}
-
-/** Ápices que comparten ubicación en el mapa. */
-export interface LocationGroup<T> extends Point {
-  key: string;
-  precision: Precision;
-  items: T[];
-}
-
-const groupKey = (location: Location): string =>
-  location.precision === 'exact' ? `exact:${location.lat},${location.lng}` : `zone:${zoneKey(location)}`;
-
-/**
- * Agrupa por «misma ubicación» (RF-9 (001)): la zona para los aproximados y el punto para los
- * exactos. Los ápices sin ubicación no van al mapa (RF-9 (001)); se devuelven aparte.
- * Conserva el orden de primera aparición.
- */
-export function groupByLocation<T extends { location: Location | null }>(
-  items: readonly T[],
-): { groups: LocationGroup<T>[]; withoutLocation: T[] } {
-  const byKey = new Map<string, LocationGroup<T>>();
-  const withoutLocation: T[] = [];
-  for (const item of items) {
-    const { location } = item;
-    if (!location) {
-      withoutLocation.push(item);
-      continue;
-    }
-    const key = groupKey(location);
-    const group = byKey.get(key);
-    if (group) group.items.push(item);
-    else byKey.set(key, { key, lat: location.lat, lng: location.lng, precision: location.precision, items: [item] });
-  }
-  return { groups: [...byKey.values()], withoutLocation };
 }

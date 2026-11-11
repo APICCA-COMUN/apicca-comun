@@ -12,7 +12,6 @@ La palabra evoca el punto más alto, el lugar desde donde se ven los caminos. En
 - **Aportes**: lo que ofrece a otras personas.
 - Un **estado**: *idea*, *prototipo* o *en marcha*.
 - Una **ubicación** opcional en el mapa.
-- Una **imagen pixelada** que lo representa, opcional.
 
 Todo esto se reúne en su [ficha](/documentacion/ficha-del-apice).
 
@@ -26,4 +25,4 @@ Un ápice nace privado. Su autora o la facilitación pueden hacerlo público, y 
 
 ## Dónde encontrarlos
 
-En [Prototipado](/prototipado) hay un mapa y una lista de ápices, que se pueden filtrar por eje y por estado. Para crear el tuyo, mira [Tu primer ápice](/documentacion/tu-primer-apice).
+El [mapa](/) muestra cada ápice como un edificio, y «Ver como lista» los muestra en una lista; los dos se pueden filtrar por eje y por etapa. Para crear el tuyo, mira [Tu primer ápice](/documentacion/tu-primer-apice).

@@ -1,7 +1,8 @@
 // RF-4 (001) · Límite de envíos del formulario público (D-T16 (001)): 5 por hora desde un mismo
 // origen y 200 al día en total. El origen se guarda como HMAC de la IP, nunca en claro, y cada
 // documento lleva `expiresAt` para que la política TTL de Firestore lo retire sola.
-// RF-5 (016), RF-7 (016): también cobra las cuotas diarias por persona y las lecturas anónimas por hora.
+// RF-7 (016): también cobra las cuotas diarias por persona. El cupo de subidas y el tope de lecturas anónimas de
+// referencias se retiraron con la imagen (RF-27 (021), D-T6 (021)).
 // RF-2 (018), D-2 (018), D-T6 (018): cuota diaria de ediciones (`edit`), compartida entre cinco acciones.
 // RF-3 (017), D-T3 (017): las cuotas de escritura se cobran dentro de la transacción que escribe.
 import { createHmac } from 'node:crypto';
@@ -84,8 +85,9 @@ export function takeThreadSlot(ctx: Ctx, tx: Transaction, uid: string): Promise<
   return takeSlotInTx(ctx, tx, { key: `forum-thread-${uid}`, limit: FORUM_LIMITS.threadsPerDay, windowMs: DAY_MS });
 }
 
-/** RF-7 (016) · 7.1, D-5 (016), D-7 (016): topes por persona y por día de cada tipo de escritura. */
-export const DAILY_QUOTAS = { reply: 50, comment: 50, apice: 10, upload: 30, edit: 100 } as const;
+/** RF-7 (016) · 7.1, D-5 (016): topes por persona y por día de cada tipo de escritura. */
+/** D-T3 (010): `action` cuenta las Acciones Comunes propuestas; sumarse, retirarse y cambiarlas cuentan como `edit`. */
+export const DAILY_QUOTAS = { reply: 50, comment: 50, apice: 10, edit: 100, action: 10 } as const;
 
 const dailyRule = (kind: keyof typeof DAILY_QUOTAS, uid: string): Rule => ({ key: `daily-${kind}-${uid}`, limit: DAILY_QUOTAS[kind], windowMs: DAY_MS });
 
@@ -97,12 +99,4 @@ export async function consumeDailySlot(ctx: Ctx, kind: keyof typeof DAILY_QUOTAS
 /** RF-3 (017), D-T3 (017): el mismo cupo diario, leído dentro de `tx` y cobrado con la escritura de la op. */
 export function takeDailySlot(ctx: Ctx, tx: Transaction, kind: keyof typeof DAILY_QUOTAS, uid: string): Promise<SlotCharge> {
   return takeSlotInTx(ctx, tx, dailyRule(kind, uid));
-}
-
-/** RF-5 (016): tope de lecturas de referencias sin sesión, por origen y por hora. */
-export const ANONYMOUS_READS_PER_HOUR = 100;
-
-/** RF-5 (016), D-T8 (016): toma un cupo de lectura anónima del origen de quien llama (ventana de 1 hora). */
-export async function consumeAnonymousReadSlot(ctx: Ctx): Promise<void> {
-  await consume(ctx, [{ key: `reference-ip-${originOf(ctx)}`, limit: ANONYMOUS_READS_PER_HOUR, windowMs: HOUR_MS }]);
 }

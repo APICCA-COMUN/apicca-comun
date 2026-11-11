@@ -1,7 +1,8 @@
-/* RF-21 (019), D-T14 (019): por debajo de 1024 px la fila lleva logo, «Menú», tema y sesión con separaciones de 8 px
-   (351 px a 360 px); la lista del menú pasa a su propia línea (SiteNav.css). Desde 1024 px, separaciones de 16 px.
-   RF-1 (002) · 1.1, RF-7 (003) · 7.1, 7.8, RF-4 (008) · 4.1, 4.4: la cabecera va sobre el fondo, sin sombra ni recuadro,
-   en una columna de `content-max`; se parte en líneas antes que desbordar (D-T16 (002), D-T4 (008)). */
+/* RF-1 (002) · 1.1, RF-7 (003) · 7.1, 7.8, RF-4 (008) · 4.1, 4.4, RF-16 (021) · 16.2, D-T24 (021): la cabecera delgada va
+   sobre el fondo, sin sombra ni recuadro, en una columna de `content-max`, y se parte en líneas antes que desbordar
+   (D-T16 (002), D-T4 (008)). Por debajo de 640 px «Volver al mapa» queda como flecha (el texto sigue nombrando el
+   enlace) para que logo, flecha, tema, cuenta y «Menú» quepan en una fila a 360 px. Desde 1024 px, separaciones de
+   16 px. */
 .site-header__inner {
   box-sizing: content-box;
   display: flex;
@@ -27,9 +28,75 @@
   margin-inline-start: auto;
 }
 
-/* D-1 (008): «Entrar» mide 44 px, como en el lienzo. */
-.site-header__actions a.block {
+/* D-1 (008): «Entrar» y «Volver al mapa» miden 44 px, como en el lienzo. */
+.site-header__inner a.block {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-height: var(--size-icon-control);
-  padding-inline: 22px;
+  padding-inline: 18px;
   font-weight: 800;
+}
+
+@media (max-width: 639.98px) {
+  /* A 360 px quedan 328 px: logo (87), flecha y tema (44 cada uno), «Entrar» o la cuenta y «Menú», con separaciones de
+     4 px y relleno de 10 px en los botones de texto. Sin sesión suman unos 321 px. */
+  .site-header__inner,
+  .site-header__actions {
+    column-gap: 4px;
+  }
+
+  .site-header__inner a.block:not(.icon-button),
+  .site-header__inner button.game-menu__toggle {
+    padding-inline: 10px;
+  }
+
+  .site-header__inner a.site-header__back {
+    justify-content: center;
+    inline-size: var(--size-icon-control);
+    padding-inline: 0;
+  }
+
+  .site-header__back-text {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* RF-15 (021) · 15.3: la cuenta muestra la inicial y, desde 1024 px, el nombre de usuario y el rol a su lado. */
+a.account-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.account-entry__text {
+  display: none;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.account-entry__name {
+  font-weight: 800;
+}
+
+.account-entry__role {
+  color: var(--text-muted);
+  font-size: var(--type-meta-size);
+}
+
+a.account-entry:hover .account-entry__name {
+  text-decoration: underline;
+}
+
+@media (min-width: 1024px) {
+  .account-entry__text {
+    display: flex;
+  }
 }

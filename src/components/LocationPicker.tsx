@@ -4,10 +4,11 @@
 // RF-6 (002) · 6.1, 6.3: campos y avisos como bloques, radios con «choice» y botones como acciones secundarias.
 // RF-1 (016), RNF-1 (016), D-T5 (016): sin `mayRaise` no se fija un punto ni se vuelve exacta; quitar y «Aproximada» siguen.
 // RF-12 (019) · 12.1, D-T6 (019): latitud y longitud usan el campo del formulario, con la etiqueta encima.
+// RF-5 (021) · 5.2, D-T14 (021): la zona la calcula el servidor; la vista previa de una aproximada no adelanta su centro.
 import { Component, lazy, Suspense, useId, useState, type ComponentType, type ReactNode } from 'react';
-import { DEFAULT_PRECISION, displayLocation, validateCoordinates, type Location, type Point, type Precision } from '../../shared/domain/location';
+import { DEFAULT_PRECISION, validateCoordinates, type Location, type Point, type Precision } from '../../shared/domain/location';
 import { KEEP_LOCATION, resolveLocationDraft, typeCoordinates, type LocationDraft } from './locationDraft';
-import { describeLocation, formatDegrees } from './locationText';
+import { describeLocation, formatDegrees, ZONE_SIZE_TEXT } from './locationText';
 
 /** Lo que el selector le pide a un mapa: pintar el punto actual y avisar dónde se hizo clic. */
 export interface PointMapProps {
@@ -50,7 +51,7 @@ class MapBoundary extends Component<{ children: ReactNode }, { failed: boolean }
 }
 
 const PRECISION_OPTIONS: { value: Precision; label: string }[] = [
-  { value: 'approximate', label: 'Aproximada (zona de ≈ 1 km)' },
+  { value: 'approximate', label: `Aproximada (${ZONE_SIZE_TEXT})` },
   { value: 'exact', label: 'Exacta (el punto marcado)' },
 ];
 
@@ -68,7 +69,13 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
 
   const typed = value.mode === 'set' ? resolveLocationDraft(value) : null;
   const typedPoint = typed?.ok && typed.value.mode === 'set' ? { lat: typed.value.lat, lng: typed.value.lng } : null;
-  const preview = typedPoint && value.mode === 'set' ? displayLocation(typedPoint, value.precision) : null;
+  // Lo que verán las demás personas: el punto si es exacta; si no, la zona, que solo el servidor sabe calcular.
+  const preview =
+    typedPoint && value.mode === 'set'
+      ? value.precision === 'exact'
+        ? describeLocation({ ...typedPoint, precision: 'exact' })
+        : `la ${ZONE_SIZE_TEXT} que contiene ese punto`
+      : null;
 
   const choosePrecision = (next: Precision): void => {
     if (value.mode === 'set') onChange({ ...value, precision: next });
@@ -93,7 +100,7 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
       {value.mode === 'remove' ? (
         <p>Se quitará la ubicación al guardar.</p>
       ) : preview ? (
-        <p>{`Se mostrará: ${describeLocation(preview)}`}</p>
+        <p>{`Se mostrará: ${preview}`}</p>
       ) : (
         <p>{describeLocation(stored)}</p>
       )}

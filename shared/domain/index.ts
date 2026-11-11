@@ -12,8 +12,6 @@ export * from './dates';
 export * from './discovery';
 export * from './enrollment';
 export * from './forum';
-export * from './generation';
-export * from './images';
 export * from './indexes';
 export * from './invitations';
 export * from './limits';

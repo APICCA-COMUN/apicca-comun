@@ -12,7 +12,7 @@ Desde el menú de Facilitación (solo visible para quien tiene el rol) hay tres 
 
 ## Sobre los ápices
 
-La facilitación puede cambiar la visibilidad, archivar y restaurar cualquier ápice, y retirar imágenes por moderación. Ve todos los archivados.
+La facilitación puede cambiar la visibilidad, archivar y restaurar cualquier ápice. Ve todos los archivados.
 
 ## En la constitución
 

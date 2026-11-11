@@ -34,7 +34,6 @@ vi.mock('./data/apices', async (importActual) => {
     axes: ['agua', 'alimento'] as const,
     status: 'idea' as const,
     updatedAt: stamp,
-    image: null,
     location: { lat: 4.6, lng: -74.08, precision: 'zone' as const },
   };
   const apice = {
@@ -52,7 +51,6 @@ vi.mock('./data/apices', async (importActual) => {
     authorUsername: 'fabi',
     lastEditedByUsername: 'fabi',
     updatedAt: stamp,
-    image: null,
     location: { lat: 4.6, lng: -74.08, precision: 'zone' as const },
   };
   return {
@@ -133,28 +131,6 @@ vi.mock('./data/forum', async (importActual) => {
   };
 });
 
-vi.mock('./data/references', async (importActual) => ({
-  ...(await importActual<typeof import('./data/references')>()),
-  firestoreReferenceSource: {
-    onReferences: (_id: string, _options: unknown, callback: (rows: unknown[]) => void) => {
-      callback([]);
-      return () => {};
-    },
-    readImage: async () => 'blob:ejemplo',
-  },
-  storageReferenceUploader: { upload: async () => 'upload-ejemplo' },
-}));
-
-vi.mock('./data/proposals', async (importActual) => ({
-  ...(await importActual<typeof import('./data/proposals')>()),
-  firestoreProposalSource: {
-    onProposal: (_id: string, _uid: string, callback: (row: unknown) => void) => {
-      callback(null);
-      return () => {};
-    },
-  },
-}));
-
 // Las operaciones nunca se llaman al pintar; si alguna página las llama sola, falla en voz alta.
 // Constitución común (spec 004): fuentes en memoria.
 vi.mock('./data/constitution/sections', async (importActual) => ({
@@ -184,7 +160,7 @@ vi.mock('./data/api', async (importActual) => {
       throw new Error(`El inventario no debe llamar a la op ${op}.`);
     },
   };
-  return { ...actual, api: refuse, media: refuse };
+  return { ...actual, api: refuse };
 });
 
 /** Cada patrón con parámetros de ejemplo, más la ruta desconocida. */

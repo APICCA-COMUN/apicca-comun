@@ -69,6 +69,7 @@ export default defineConfig({
           // Las mismas variables con las que `test:browser` compila `dist-browser/`.
           env: { VITE_USE_EMULATORS: 'true', VITE_TILE_URL: '/test-tiles/tile.png', VITE_EMULATOR_LANE: process.env['VITE_EMULATOR_LANE'] ?? '' },
           globalSetup: ['tests/browser/global-setup.ts'],
+          setupFiles: ['tests/browser/setup.ts'],
           fileParallelism: false,
           browser: {
             enabled: true,

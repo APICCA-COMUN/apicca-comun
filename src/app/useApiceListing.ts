@@ -10,6 +10,8 @@ export interface ApiceListingRequest {
   filters: ListFilters;
   uid?: string;
   source: ListSource;
+  /** Cambiarlo vuelve a pedir la lista desde el principio: el mapa lo usa al crear o guardar un ápice (D-T23 (021)). */
+  refresh?: number;
 }
 
 export interface ApiceListing {
@@ -25,7 +27,7 @@ export interface ApiceListing {
   patch(id: string, fields: Partial<ListedApice>): void;
 }
 
-export function useApiceListing({ audience, filters, uid, source }: ApiceListingRequest): ApiceListing {
+export function useApiceListing({ audience, filters, uid, source, refresh = 0 }: ApiceListingRequest): ApiceListing {
   const [items, setItems] = useState<ListedApice[]>([]);
   const [cursor, setCursor] = useState<ListCursor | null>(null);
   const [status, setStatus] = useState<ApiceListing['status']>('loading');
@@ -33,7 +35,7 @@ export function useApiceListing({ audience, filters, uid, source }: ApiceListing
   const [patches, setPatches] = useState<Readonly<Record<string, Partial<ListedApice>>>>({});
   // Descarta lo que llega de una consulta que ya no es la vigente (cambió un filtro).
   const generation = useRef(0);
-  const filtersKey = `${audience}|${uid ?? ''}|${filters.axes.join(',')}|${filters.status ?? ''}`;
+  const filtersKey = `${audience}|${uid ?? ''}|${filters.axes.join(',')}|${filters.status ?? ''}|${refresh}`;
 
   const load = useCallback(
     (from: ListCursor | null) => {
@@ -54,7 +56,7 @@ export function useApiceListing({ audience, filters, uid, source }: ApiceListing
           setLoadingMore(false);
         });
     },
-    // `filtersKey` resume audience, uid y filters.
+    // `filtersKey` resume audience, uid, filters y refresh.
     [source, filtersKey],
   );
 

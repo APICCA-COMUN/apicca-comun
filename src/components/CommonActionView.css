@@ -1,0 +1,45 @@
+/* RF-20 (021) · 20.1, D-T32 (021): el panel de una Acción Común. Solo tokens. */
+.common-action__head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.common-action__head h1,
+.common-action__head p {
+  margin: 0;
+}
+
+/* RF-18 (021) · 18.6: el estado se dice en texto, no solo con el color. */
+.common-action__status {
+  font-weight: 800;
+}
+
+.common-action__people,
+.common-action__apices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.common-action__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 16px;
+}
+
+.common-action__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-block: 16px;
+}
+
+.common-action__form label {
+  font-weight: 700;
+}

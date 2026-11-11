@@ -2,7 +2,7 @@
 // (sin `globals: true`, Testing Library no registra su `afterEach(cleanup)` sola) y
 // dobla lo que jsdom no implementa.
 import { cleanup } from '@testing-library/react';
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 
 // jsdom no implementa `scrollIntoView` ni `scrollTo`: dobles que las pruebas pueden observar.
 Element.prototype.scrollIntoView = vi.fn();
@@ -24,4 +24,9 @@ window.matchMedia = ((consulta: string) => ({
 afterEach(() => {
   cleanup();
   vi.mocked(Element.prototype.scrollIntoView).mockClear();
+});
+
+// RF-21 (021), D-T42 (021): la invitación a jugar se da por vista; las pruebas que la miden borran la marca.
+beforeEach(() => {
+  window.localStorage.setItem('apicca:bienvenida', '1');
 });

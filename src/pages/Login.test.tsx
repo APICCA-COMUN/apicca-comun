@@ -64,12 +64,12 @@ describe('/entrar', () => {
     expect(screen.queryByLabelText('Contraseña')).toBeNull();
   });
 
-  it('RF-3 (004) · 3.4, D-T19 (004): quien ya tiene sesión y no trae ruta guardada ni ?volver= va a Mi tablero', () => {
+  it('RF-3 (004) · 3.4, D-T19 (004): quien ya tiene sesión y no trae ruta guardada ni ?volver= va a Lo mío (RF-17 (021) · 17.2)', () => {
     renderLogin(fakeAuth(), { status: 'person', uid: 'u1', role: 'member', username: 'ana' });
-    expect(window.location.pathname).toBe('/tablero');
+    expect(window.location.pathname + window.location.search).toBe('/?mio=1');
   });
 
-  it('RF-11 (003) · 11.8: quien ya tiene sesión y llegó con ?volver=/tablero va a /tablero', () => {
+  it('RF-11 (003) · 11.8: quien ya tiene sesión y llegó con ?volver=/tablero va a /tablero, que lleva a Lo mío (RF-17 (021) · 17.2)', () => {
     window.history.replaceState(null, '', '/entrar?volver=%2Ftablero');
     render(
       <AuthServiceContext.Provider value={fakeAuth()}>
@@ -78,10 +78,10 @@ describe('/entrar', () => {
         </SessionProvider>
       </AuthServiceContext.Provider>,
     );
-    expect(window.location.pathname).toBe('/tablero');
+    expect(window.location.pathname + window.location.search).toBe('/?mio=1');
   });
 
-  it('RF-11 (003) · 11.8, RF-17 (003) · 17.1, D-T19 (004): un destino no permitido en ?volver= se ignora y va a Mi tablero', () => {
+  it('RF-11 (003) · 11.8, RF-17 (003) · 17.1, D-T19 (004): un destino no permitido en ?volver= se ignora y va a Lo mío', () => {
     window.history.replaceState(null, '', '/entrar?volver=https%3A%2F%2Fotro.sitio');
     render(
       <AuthServiceContext.Provider value={fakeAuth()}>
@@ -90,7 +90,7 @@ describe('/entrar', () => {
         </SessionProvider>
       </AuthServiceContext.Provider>,
     );
-    expect(window.location.pathname).toBe('/tablero');
+    expect(window.location.pathname + window.location.search).toBe('/?mio=1');
   });
 
   it('RF-3 (001): enlaza a restablecer la contraseña', () => {
@@ -149,16 +149,16 @@ describe('/entrar · regreso tras entrar (004)', () => {
     expect(window.sessionStorage.getItem('apicca:returnTo')).toBeNull();
   });
 
-  it('RF-3 (004) · 3.4: una ruta guardada que empieza por «//» lleva a Mi tablero', () => {
+  it('RF-3 (004) · 3.4: una ruta guardada que empieza por «//» lleva a Lo mío', () => {
     window.sessionStorage.setItem('apicca:returnTo', '//otro.sitio/x');
     renderLogin(fakeAuth(), member);
-    expect(window.location.pathname).toBe('/tablero');
+    expect(window.location.pathname + window.location.search).toBe('/?mio=1');
   });
 
-  it('RF-3 (004) · 3.4: una ruta guardada que no es interna lleva a Mi tablero', () => {
+  it('RF-3 (004) · 3.4: una ruta guardada que no es interna lleva a Lo mío', () => {
     window.sessionStorage.setItem('apicca:returnTo', 'https://otro.sitio');
     renderLogin(fakeAuth(), member);
-    expect(window.location.pathname).toBe('/tablero');
+    expect(window.location.pathname + window.location.search).toBe('/?mio=1');
   });
 
   it('RF-2 (017): la página fija su propio título de documento, también al cargarla directamente', async () => {

@@ -20,24 +20,20 @@ import type { ApiceAccessState } from '../../shared/domain/access';
 import type { ApiceStatus } from '../../shared/domain/apice';
 import { listQueryShape, type ListAudience, type ListFilters } from '../../shared/domain/discovery';
 import type { TimestampLike } from '../../shared/domain/order';
-import { DEFAULT_PRECISION, validateCoordinates, type Location, type Point } from '../../shared/domain/location';
+import { readLocation, validateCoordinates, type Location, type Point } from '../../shared/domain/location';
 import type { EditableFields } from '../../shared/domain/versions';
 import { firebase } from './firebase';
 
-/** Imagen aceptada de un ápice: PNG de paleta guardado en el propio documento (D-T6 (001)). */
-export interface ApiceImage {
-  altText: string;
-  png: Uint8Array;
-}
-
-/** Lo que la edición y la ficha necesitan del ápice: contenido, versión, acceso y los datos de pantalla. */
+/**
+ * Lo que la edición y la ficha necesitan del ápice: contenido, versión, acceso y los datos de pantalla.
+ * RF-27 (021) · 27.4, D-T5 (021): el campo `image` sigue en Firestore y el cliente no lo lee.
+ */
 export interface ApiceDoc extends EditableFields, ApiceAccessState {
   id: string;
   version: number;
   authorUsername?: string | undefined;
   lastEditedByUsername?: string | undefined;
   updatedAt?: TimestampLike | undefined;
-  image?: ApiceImage | null;
   /** Ubicación de pantalla (zona o punto, según la precisión); `null` o ausente se muestra como marcador vacío. */
   location?: Location | null;
 }
@@ -52,20 +48,6 @@ export interface ApiceSource {
    * a la facilitación (RF-9 (001)); `null` si no hay o no se puede leer.
    */
   readExact?(id: string, version: number): Promise<Point | null>;
-}
-
-function readLocation(raw: unknown): Location | null {
-  if (typeof raw !== 'object' || raw === null) return null;
-  const { lat, lng, precision } = raw as Record<string, unknown>;
-  const point = validateCoordinates(lat, lng);
-  if (!point.ok) return null;
-  return { ...point.value, precision: precision === 'exact' ? 'exact' : DEFAULT_PRECISION };
-}
-
-function readImage(raw: unknown): ApiceImage | null {
-  if (raw === null || raw === undefined) return null;
-  const image = raw as { altText: string; png: { toUint8Array(): Uint8Array } };
-  return { altText: image.altText, png: image.png.toUint8Array() };
 }
 
 /** Fuente real: escucha el ápice con Firestore. */
@@ -93,7 +75,6 @@ export const firestoreApiceSource: ApiceSource = {
                 authorUsername: data['authorUsername'] as string | undefined,
                 lastEditedByUsername: data['lastEditedByUsername'] as string | undefined,
                 updatedAt: data['updatedAt'] as TimestampLike | undefined,
-                image: readImage(data['image']),
                 location: readLocation(data['location']),
               },
         );
@@ -120,7 +101,6 @@ export interface ListedApice {
   axes: Axis[];
   status: ApiceStatus;
   updatedAt: TimestampLike;
-  image: ApiceImage | null;
   /** Necesidades del ápice; vacío si faltan (RF-9 (019) · 9.1, D-T18 (019)). */
   needs: string;
   /** Ubicación de pantalla para el mapa del inicio; `null` o ausente: no aparece en el mapa. */
@@ -169,7 +149,6 @@ export function createListSource(db: Firestore): ListSource {
             axes: data['axes'] as Axis[],
             status: data['status'] as ApiceStatus,
             updatedAt: data['updatedAt'] as TimestampLike,
-            image: readImage(data['image']),
             needs: typeof data['needs'] === 'string' ? data['needs'] : '',
             location: readLocation(data['location']),
           };

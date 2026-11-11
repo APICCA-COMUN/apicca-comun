@@ -1,4 +1,4 @@
-// RNF-5 (012), D-T11 (012) · El panel de avisos de Mi tablero se ve entero y legible en Chromium real: queda dentro
+// RNF-5 (012), D-T11 (012), RF-12 (021) · 12.5 · El panel de avisos de la barra del mapa (antes, de Mi tablero) se ve entero y legible en Chromium real: queda dentro
 // de la ventana y mide 360 px, o el ancho de la ventana menos 32 px si es menor.
 import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
@@ -10,7 +10,7 @@ import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
 import { SessionProvider, type SessionState } from '../../src/app/session';
-import { Dashboard } from '../../src/pages/Dashboard';
+import { Play } from '../../src/pages/Play';
 import { NO_NOTICE } from '../../src/data/constitution/notice';
 
 const PERSON: SessionState = { status: 'person', uid: 'u1', role: 'member', username: 'ana' };
@@ -23,9 +23,10 @@ afterEach(async () => {
   await page.viewport(1280, 800);
 });
 
-/** Monta Mi tablero sin avisos, como en la revisión del 15 de octubre de 2026, y abre la campana. */
+/** Monta el mapa sin avisos, como en la revisión del 15 de octubre de 2026, y abre la campana. */
 async function openPanel(width: number): Promise<DOMRect> {
   await page.viewport(width, 800);
+  history.replaceState(null, '', '/');
   bench = document.createElement('div');
   document.body.append(bench);
   const root = createRoot(bench);
@@ -36,7 +37,7 @@ async function openPanel(width: number): Promise<DOMRect> {
       root.render(
         <SessionProvider initial={PERSON}>
           <main>
-            <Dashboard
+            <Play
               source={{ fetchPage: async () => ({ items: [], cursor: null }) }}
               noticeSource={{ fetchNotice: async () => NO_NOTICE }}
               noticesSource={{ fetchNotices: async () => ({ notices: [], seenAt: null }) }}

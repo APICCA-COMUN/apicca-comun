@@ -43,33 +43,8 @@ export const MESSAGES = {
   'axis-unknown': 'Uno de los ejes elegidos no existe.',
   // Ubicación (RF-9 (001)).
   'coordinates-invalid': 'Las coordenadas no existen o están fuera de rango: la latitud va de −90 a 90 y la longitud de −180 a 180.',
-  // Referencias (RF-15 (001), RF-16 (001)).
-  'image-too-large': 'La imagen supera los 5 MB o está vacía.',
-  'image-type-unsupported': 'La imagen debe ser JPG, PNG o WebP.',
-  'image-dimensions-exceeded': 'La imagen excede los 4096 × 4096 píxeles.',
-  'image-unreadable': 'No se pudo leer el archivo como imagen estática.',
-  'references-full': 'El ápice ya tiene el máximo de 5 referencias.',
-  'alt-text-required': 'Escribe un texto alternativo que describa la imagen.',
-  'alt-text-too-long': 'El texto alternativo admite hasta 200 caracteres.',
-  'image-missing': 'Elige una imagen para subir.',
-  'reference-not-found': 'La referencia no existe.',
-  'retract-reason-required': 'Escribe el motivo del retiro.',
   // Edición (RF-10 (001), RF-14 (001)).
   'apice-archived': 'El ápice está archivado y no se puede modificar.',
-  'image-animated': 'La imagen es animada: sube una imagen estática.',
-  // Generación de imagen (RF-17 (001), RF-18 (001), RF-19 (001), RF-20 (001)).
-  'generation-in-progress': 'Ya tienes una generación en curso. Espera a que termine.',
-  'generation-limit-reached': 'Ya usaste tus 3 generaciones de hoy.',
-  'generation-global-limit': 'Hoy se alcanzó el máximo de generaciones del espacio. Vuelve a intentarlo mañana.',
-  'generation-blocked': 'Hubo varias fallas seguidas. Espera unos minutos para volver a intentarlo.',
-  'generation-failed': 'No se pudo generar la imagen. Puedes reintentar; esta petición no cuenta.',
-  'generation-timeout': 'El modelo tardó demasiado en responder. Puedes reintentar; esta petición no cuenta.',
-  'generation-empty': 'El modelo no devolvió una imagen utilizable. Puedes reintentar; esta petición no cuenta.',
-  'generation-rejected': 'El modelo rechazó la descripción o las referencias. Ajusta el texto o las imágenes y reintenta.',
-  'generation-unavailable': 'La generación de imágenes no está disponible por ahora. Lo demás sigue funcionando.',
-  'proposal-not-found': 'No hay una propuesta pendiente.',
-  'proposal-expired': 'La propuesta caducó. Genera una nueva.',
-  'proposal-stale': 'El ápice cambió desde que se generó la propuesta. Confirma si quieres aceptarla de todos modos.',
   // Constitución y propuestas de cambio (RF-1 (004), RF-4 (004), RF-6 (004), RF-8 (004), RF-10 (004), RF-11 (004),
   // RF-12 (004), RF-16 (004)).
   'constitution-open': 'La constitución ya está abierta: sus secciones solo cambian por una propuesta aprobada.',
@@ -92,6 +67,15 @@ export const MESSAGES = {
   'thread-archived': 'Ese hilo está archivado: ya no admite respuestas.',
   'message-not-found': 'Ese mensaje no existe.',
   'text-empty': 'Falta un texto obligatorio: no puede quedar vacío ni con solo espacios.',
+  // Acciones Comunes (RF-1 (010) a RF-4 (010), RF-7 (010)); textos propuestos en §4 del plan de la 021.
+  'action-not-found': 'Esa Acción Común no existe.',
+  'action-closed': 'Esa Acción Común está cerrada o archivada: no admite nuevas participaciones.',
+  'action-apices-min': 'Un camino une al menos 3 ápices que puedas ver.',
+  'action-apices-max': 'Un camino une como máximo 10 ápices.',
+  'action-limit': 'Ya tienes 20 caminos abiertos. Cierra o archiva alguno para proponer otro.',
+  'author-cannot-leave': 'Quien propuso el camino no puede retirarse mientras esté abierto: puede cerrarlo o archivarlo.',
+  'not-action-author': 'Solo quien propuso el camino puede cambiarlo.',
+  'action-archived': 'La Acción Común está archivada y no se puede modificar.',
 } as const;
 
 export type ErrorCode = keyof typeof MESSAGES;

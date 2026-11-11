@@ -8,6 +8,10 @@
           "archivo": "01-que-es-apicca.md"
         },
         {
+          "slug": "como-se-juega",
+          "archivo": "13-como-se-juega.md"
+        },
+        {
           "slug": "como-entrar",
           "archivo": "02-como-entrar.md"
         },
@@ -40,10 +44,6 @@
         {
           "slug": "ficha-del-apice",
           "archivo": "07-ficha-del-apice.md"
-        },
-        {
-          "slug": "imagen-pixelada",
-          "archivo": "08-imagen-pixelada.md"
         },
         {
           "slug": "historial",

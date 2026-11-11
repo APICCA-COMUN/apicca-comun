@@ -8,7 +8,6 @@ import {
   canArchive,
   canChangeVisibility,
   canEdit,
-  canReadReference,
   canSeeHistory,
   canSetLocation,
   canSuspend,
@@ -82,23 +81,6 @@ describe('shared/domain/access · ápices', () => {
     expect(canView(null, apice)).toBe(true);
     expect(canEdit(APICE_ACTORS.member.viewer, apice)).toBe(true);
     expect(canEdit(APICE_ACTORS.suspendedAuthor.viewer, apice)).toBe(false);
-  });
-});
-
-describe('shared/domain/access · referencias (spec 007)', () => {
-  it('RF-1 (007): una referencia vigente la recibe quien puede ver el ápice, y nadie más', () => {
-    for (const r of APICE_ACCESS_TABLE) {
-      const { viewer } = APICE_ACTORS[r.actor];
-      expect(canReadReference(viewer, apiceFor(r.state, r.actor), false), `${r.actor} · ${r.state}`).toBe(r.view);
-    }
-  });
-
-  it('RF-2 (007): una referencia quitada solo la recibe un facilitador activo que puede ver el ápice', () => {
-    for (const r of APICE_ACCESS_TABLE) {
-      const { viewer } = APICE_ACTORS[r.actor];
-      const expected = r.view && r.actor === 'facilitator';
-      expect(canReadReference(viewer, apiceFor(r.state, r.actor), true), `${r.actor} · ${r.state}`).toBe(expected);
-    }
   });
 });
 

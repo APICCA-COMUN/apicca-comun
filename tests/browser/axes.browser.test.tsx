@@ -19,7 +19,6 @@ const CONDITIONS: Array<[Condition, string]> = [
   ['visibility', 'Privado'],
   ['archived', 'Archivado'],
   ['status', 'prototipo'],
-  ['reference', 'Retirada'],
 ];
 
 let host: HTMLDivElement;

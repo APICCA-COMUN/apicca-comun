@@ -80,7 +80,7 @@ describe('sin colores literales en las hojas', () => {
   it('RF-2 (002) · 2.1: hay hojas que revisar y ninguna escribe un color a mano', () => {
     expect(SHEETS).toContain('src/styles/base.css');
     expect(SHEETS).toContain('src/styles/blocks.css');
-    expect(SHEETS).toContain('src/components/PixelImage.css');
+    expect(SHEETS).toContain('src/components/Building.css');
     expect(SHEETS).toContain('src/map/pin.css');
     for (const sheet of SHEETS) expect(literalColors(readFileSync(resolve(root, sheet), 'utf8')), sheet).toEqual([]);
   });

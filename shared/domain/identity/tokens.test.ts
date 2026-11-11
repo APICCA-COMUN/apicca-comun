@@ -1,9 +1,10 @@
 // RNF-4 (002), RF-2 (002): los tokens de §4.0 viven en un solo módulo, con valor en los dos temas.
 // RF-1 (003) · 1.1, 1.2, RF-2 (003) · 2.2, 2.3, D-T2 (003): los valores de §4.0 (003) sustituyen a los de la 002.
-// RF-1 (019) · 1.1, D-T24 (019): la paleta del terreno sale de los tokens.
+// RF-1 (021) · 1.3, D-T7 (021): el contrato ya no define la paleta del terreno.
 import { describe, expect, it } from 'vitest';
 import { contrastRatio } from './color';
-import { MAP_TINT, TERRAIN_PALETTE, THEMES, TOKENS, TOKEN_NAMES, TYPE_SCALE } from './tokens';
+import * as tokens from './tokens';
+import { MAP_TINT, THEMES, TOKENS, TOKEN_NAMES, TYPE_SCALE } from './tokens';
 
 const ms = (value: string): number => {
   const match = /^(\d+(?:\.\d+)?)(ms|s)$/.exec(value);
@@ -163,40 +164,10 @@ describe('tokens', () => {
     expect(TOKENS.light.veil).toBe('rgb(20 33 61 / .45)');
     expect(TOKENS.dark.veil).toBe('rgb(0 0 0 / .6)');
   });
+});
 
-  it('RF-1 (019) · 1.1, D-T24 (019): la paleta del terreno son 16 referencias a tokens de eje, charcoal, surface, line y background, con 16 colores distintos', () => {
-    const allowed = /^(axis-(agua|alimento|cobijo|energia|comunicacion)-(fill|stroke)|charcoal|surface|line|background)$/;
-    expect(TERRAIN_PALETTE).toHaveLength(16);
-    for (const { theme, token } of TERRAIN_PALETTE) {
-      expect(THEMES).toContain(theme);
-      expect(token).toMatch(allowed);
-    }
-    const hexes = TERRAIN_PALETTE.map(({ theme, token }) => TOKENS[theme][token].toUpperCase());
-    expect(new Set(hexes).size).toBe(16);
-    for (const hex of hexes) expect(hex).toMatch(/^#[0-9A-F]{6}$/);
-  });
-
-  it('RF-1 (019) · 1.1, D-T24 (019): toma los 5 rellenos claros, 4 trazos claros sin comunicación, charcoal y fondo, superficie y línea de los dos temas', () => {
-    const key = ({ theme, token }: { theme: string; token: string }) => `${theme}:${token}`;
-    expect(TERRAIN_PALETTE.map(key).sort()).toEqual(
-      [
-        'light:axis-agua-fill',
-        'light:axis-alimento-fill',
-        'light:axis-cobijo-fill',
-        'light:axis-energia-fill',
-        'light:axis-comunicacion-fill',
-        'light:axis-agua-stroke',
-        'light:axis-alimento-stroke',
-        'light:axis-cobijo-stroke',
-        'light:axis-energia-stroke',
-        'light:charcoal',
-        'dark:background',
-        'dark:surface',
-        'dark:line',
-        'light:background',
-        'light:line',
-        'light:surface',
-      ].sort(),
-    );
+describe('RF-1 (021) · 1.3: sin paleta del terreno', () => {
+  it('RF-1 (021) · 1.3, D-T7 (021): el contrato de tokens ya no exporta la paleta del terreno de RF-1 (019)', () => {
+    expect(Object.keys(tokens).filter((name) => /terrain/i.test(name))).toEqual([]);
   });
 });

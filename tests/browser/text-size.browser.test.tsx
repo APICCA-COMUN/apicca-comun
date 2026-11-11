@@ -1,5 +1,5 @@
 // Tamaños de letra y ampliación al 200 % en el build real (RF-5 (002) · 5.5 a 5.7, plan §9.4), también en las rutas
-// de la 003 (RF-16 (003) · 16.2, 16.3; RF-17 (003) · 17.2). `/tablero` no entra: estas páginas se abren sobre el
+// de la 003 (RF-16 (003) · 16.2, 16.3; RF-17 (003) · 17.2) y la lista del mapa (RF-11 (021)). `/tablero` no entra: estas páginas se abren sobre el
 // build de `dist-browser`, que nunca usa los emuladores (`shouldUseEmulators` exige DEV), así que no hay sesión.
 import { describe, expect, it } from 'vitest';
 import { commands } from 'vitest/browser';
@@ -7,7 +7,7 @@ import { commands } from 'vitest/browser';
 const PAGES: { path: string }[] = [
   { path: '/' },
   { path: '/entrar' },
-  { path: '/prototipado' },
+  { path: '/?vista=lista' },
   { path: '/documentacion' },
   { path: '/constitucion' },
 ];

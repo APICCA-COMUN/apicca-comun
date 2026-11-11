@@ -1,27 +1,21 @@
-// T-7.4 · Prueba transversal de no destrucción (RNF-7 (001), RNF-6 (001)): tras quitar, retirar, archivar, restaurar, aceptar y
-// restaurar versión, todo lo anterior sigue existiendo. Se cuentan documentos y archivos del ápice después de cada
-// paso; solo pueden desaparecer las propuestas (fuera del ápice) y los temporales de `uploads/`.
+// T-7.4 (001) · Prueba transversal de no destrucción (RNF-7 (001), RNF-6 (001)): tras editar, restaurar versión, archivar
+// y restaurar, todo lo anterior sigue existiendo. Se cuentan documentos y archivos del ápice después de cada paso.
+// RF-27 (021) · 27.4, D-T6 (021): la imagen aceptada y las referencias que existían antes del retiro se conservan,
+// aunque ya ninguna operación las cree ni ninguna pantalla las muestre.
 import type { DocumentReference } from 'firebase-admin/firestore';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createFakeImageModel } from './model/imageModel';
-import { handleAcceptProposal } from './ops/acceptProposal';
-import { handleAddReference } from './ops/addReference';
 import { handleArchiveApice } from './ops/archiveApice';
 import { handleCreateApice } from './ops/createApice';
 import { handleEditApice } from './ops/editApice';
-import { handleGenerateImage } from './ops/generateImage';
-import { handleRemoveReference } from './ops/removeReference';
 import { handleRestoreApice } from './ops/restoreApice';
 import { handleRestoreVersion } from './ops/restoreVersion';
-import { handleRetractImage } from './ops/retractImage';
+import { handleSetVisibility } from './ops/setVisibility';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from './testing';
 import { VALID } from './testing/apiceKit';
-import { sampleImage, withModel } from './testing/generationKit';
-import { clearBucket, listPaths, png, putUpload } from './testing/mediaKit';
+import { PNG_BYTES, clearBucket, listPaths, putFile } from './testing/storageKit';
 
 let ctx: TestCtx;
 let ana: string;
-let fabi: string;
 let id: string;
 
 interface Snapshot {
@@ -44,8 +38,8 @@ async function snapshot(): Promise<Snapshot> {
   return { docs, files: await listPaths(ctx, `apices/${id}/`) };
 }
 
-/** Lo que nunca se reescribe: versiones (y su punto exacto) y eventos. */
-const IMMUTABLE = /^apices\/[^/]+\/(versions|events)\//;
+/** Lo que nunca se reescribe: versiones (y su punto exacto), eventos y, desde la 021, imágenes y referencias. */
+const IMMUTABLE = /^apices\/[^/]+\/(versions|events|images|references)\//;
 
 async function step(name: string, action: () => Promise<unknown>, before: Snapshot): Promise<Snapshot> {
   await action();
@@ -57,55 +51,68 @@ async function step(name: string, action: () => Promise<unknown>, before: Snapsh
 }
 
 const content = (patch: Record<string, unknown> = {}) => ({ ...VALID, status: 'idea', ...patch });
-const apice = async () => (await ctx.db.doc(`apices/${id}`).get()).data() as { version: number; image: { id: string } | null };
-const generateAndAccept = async (altText: string) => {
-  await handleGenerateImage(withModel(ctx, createFakeImageModel({ image: await sampleImage() })), { id }, ana);
-  await handleAcceptProposal(ctx, { id, altText }, ana);
-};
+const apice = async () => (await ctx.db.doc(`apices/${id}`).get()).data() as Record<string, unknown>;
+
+/** Lo que dejaron las operaciones retiradas: la imagen aceptada en el ápice, su registro y dos referencias. */
+const STORED_IMAGE = { id: 'img1', altText: 'Una huerta en pixeles', png: 'AAECAw==' };
+
+async function seedStoredImage(): Promise<void> {
+  await ctx.db.doc(`apices/${id}`).update({ image: STORED_IMAGE, activeReferenceCount: 1 });
+  await ctx.db.doc(`apices/${id}/images/img1`).set({ altText: STORED_IMAGE.altText, png: STORED_IMAGE.png, isRemoved: false, removal: null });
+  for (const [refId, isRemoved] of [['r1', false], ['r2', true]] as const) {
+    const path = `apices/${id}/references/${refId}`;
+    await putFile(ctx, path, PNG_BYTES);
+    await ctx.db.doc(path).set({ path, altText: `Referencia ${refId}`, isRemoved, removal: isRemoved ? { kind: 'removed' } : null });
+  }
+}
 
 beforeEach(async () => {
   await clearEmulators();
   ctx = createTestCtx({ now: new Date('2026-09-01T15:00:00Z') });
   await clearBucket(ctx);
   ana = (await seedAccount(ctx, { username: 'ana' })).uid;
-  fabi = (await seedAccount(ctx, { username: 'fabi', role: 'facilitator' })).uid;
   id = ((await handleCreateApice(ctx, { ...VALID, location: { mode: 'set', lat: 4.6, lng: -74.08, precision: 'approximate' } }, ana)) as { id: string }).id;
 });
 
 describe('no destrucción', () => {
-  it('RNF-7 (001): quitar, retirar, archivar, restaurar, aceptar y restaurar versión no borran nada', async () => {
+  it('RNF-7 (001): editar, restaurar versión, archivar y restaurar no borran nada', async () => {
     let state = await snapshot();
     expect([...state.docs.keys()]).toContain(`apices/${id}/versions/1/private/exact`);
-
-    // Dos referencias subidas; una se quita y otra se retira: los archivos y los documentos se conservan.
-    await putUpload(ctx, ana, 'u1', await png(8, 8));
-    await putUpload(ctx, ana, 'u2', await png(9, 9));
-    const first = (await handleAddReference(ctx, { id, uploadId: 'u1', altText: 'Una' }, ana)) as { refId: string };
-    const second = (await handleAddReference(ctx, { id, uploadId: 'u2', altText: 'Otra' }, ana)) as { refId: string };
-    state = await snapshot();
-    expect(state.files).toHaveLength(2);
-
-    state = await step('quitar una referencia', () => handleRemoveReference(ctx, { id, refId: first.refId }, ana), state);
-    state = await step('retirar una referencia', () => handleRetractImage(ctx, { id, refId: second.refId, reason: 'Sin permiso' }, fabi), state);
-    expect(state.files).toHaveLength(2);
 
     // Editar y restaurar versión: las versiones anteriores quedan intactas y aparece una nueva.
     state = await step('editar', () => handleEditApice(ctx, { id, baseVersion: 1, content: content({ needs: 'Semillas' }) }, ana), state);
     state = await step('restaurar versión', () => handleRestoreVersion(ctx, { id, n: 1, baseVersion: 2 }, ana), state);
-    expect((await apice()).version).toBe(3);
+    expect((await apice())['version']).toBe(3);
 
-    // Aceptar dos imágenes seguidas: la primera sigue en `images/`.
-    state = await step('aceptar la primera imagen', () => generateAndAccept('Primera'), state);
-    const firstImage = (await apice()).image?.id;
-    state = await step('aceptar la segunda imagen', () => generateAndAccept('Segunda'), state);
-    expect(await ctx.db.doc(`apices/${id}/images/${firstImage}`).get().then((d) => d.exists)).toBe(true);
-
-    // Archivar, restaurar y retirar la imagen actual: nada se borra.
     state = await step('archivar', () => handleArchiveApice(ctx, { id }, ana), state);
     state = await step('restaurar el ápice', () => handleRestoreApice(ctx, { id }, ana), state);
-    const current = (await apice()).image?.id;
-    state = await step('retirar la imagen del ápice', () => handleRetractImage(ctx, { id, imageId: current, reason: 'Motivo' }, fabi), state);
-    expect((await apice()).image).toBeNull();
-    expect([...state.docs.keys()].filter((p) => p.includes('/images/'))).toHaveLength(2);
+    expect([...state.docs.keys()].filter((path) => path.includes('/versions/') && !path.includes('/private/'))).toHaveLength(3);
+  });
+
+  it('RF-27 (021) · 27.4: la imagen aceptada y las referencias que ya existían sobreviven a editar, restaurar versión, publicar, archivar y restaurar', async () => {
+    await seedStoredImage();
+    let state = await snapshot();
+    expect(state.files).toEqual([`apices/${id}/references/r1`, `apices/${id}/references/r2`]);
+
+    const kept = async (name: string): Promise<void> => {
+      const data = await apice();
+      expect(data['image'], `${name}: el campo image`).toEqual(STORED_IMAGE);
+      expect(data['activeReferenceCount'], `${name}: el contador de referencias`).toBe(1);
+    };
+
+    const steps: Array<[string, () => Promise<unknown>]> = [
+      ['editar', () => handleEditApice(ctx, { id, baseVersion: 1, content: content({ needs: 'Semillas' }) }, ana)],
+      ['restaurar versión', () => handleRestoreVersion(ctx, { id, n: 1, baseVersion: 2 }, ana)],
+      ['publicar', () => handleSetVisibility(ctx, { id, visibility: 'public' }, ana)],
+      ['archivar', () => handleArchiveApice(ctx, { id }, ana)],
+      ['restaurar el ápice', () => handleRestoreApice(ctx, { id }, ana)],
+    ];
+    for (const [name, action] of steps) {
+      state = await step(name, action, state);
+      await kept(name);
+    }
+
+    expect(state.files).toEqual([`apices/${id}/references/r1`, `apices/${id}/references/r2`]);
+    expect([...state.docs.keys()].filter((path) => /\/(images|references)\//.test(path))).toHaveLength(3);
   });
 });

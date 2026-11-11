@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import './ConditionTag.css';
 
-export type Condition = 'visibility' | 'archived' | 'status' | 'reference';
+export type Condition = 'visibility' | 'archived' | 'status';
 
 export function ConditionTag({ condition, children }: { condition: Condition; children: ReactNode }) {
   return (

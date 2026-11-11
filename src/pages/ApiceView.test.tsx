@@ -1,11 +1,10 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SessionProvider, type SessionState } from '../app/session';
 import type { ApiceDoc, ApiceSource } from '../data/apices';
 import { fakeClient } from '../testing/facilitationDoubles';
-import type { ProposalSource } from '../data/proposals';
-import type { ReferenceSource } from '../data/references';
+import { buildingVariant } from '../../shared/domain/identity';
 import { expectBlocks } from '../testing/expectBlocks';
 import { ApiceView } from './ApiceView';
 
@@ -24,7 +23,6 @@ const apice = (extra: Partial<ApiceDoc> = {}): ApiceDoc => ({
   authorUsername: 'ana',
   lastEditedByUsername: 'beto',
   updatedAt: { seconds: Date.parse('2026-09-03T15:00:00Z') / 1000, nanoseconds: 0 },
-  image: null,
   ...extra,
 });
 
@@ -46,12 +44,9 @@ const ana: SessionState = { status: 'person', uid: 'u-ana', role: 'member', user
 const otra: SessionState = { status: 'person', uid: 'u-otra', role: 'member', username: 'otra' };
 const fabi: SessionState = { status: 'person', uid: 'fab', role: 'facilitator', username: 'fabi' };
 
-/** La consulta de generaciones del panel no es lo que miran las pruebas de ops de la ficha. */
-const withoutStatus = (calls: Array<{ op: string }>) => calls.filter((c) => c.op !== 'generationStatus');
-
 function setup(doc: ApiceDoc | null, session: SessionState, handlers = {}) {
   const src = fakeSource(doc);
-  const cl = fakeClient({ generationStatus: () => ({ remaining: 3, limit: 3, resetAt: '2026-10-08T05:00:00.000Z', blockedUntil: null }), setVisibility: () => ({}), archiveApice: () => ({}), restoreApice: () => ({}), ...handlers });
+  const cl = fakeClient({ setVisibility: () => ({}), archiveApice: () => ({}), restoreApice: () => ({}), ...handlers });
   render(
     <SessionProvider initial={session}>
       <ApiceView id="a1" source={src.source} client={cl.client} />
@@ -71,10 +66,10 @@ describe('ApiceView', () => {
     expect(lot).not.toBeNull();
     expect(lot.matches('article')).toBe(true);
     expect(container.querySelectorAll('article.lot').length).toBe(1);
-    // La ficha ya no es un bloque: solo lo son sus paneles internos y el edificio.
+    // La ficha ya no es un bloque: solo lo son sus paneles internos.
     expect(lot.classList.contains('block')).toBe(false);
     const heading = lot.querySelector('h1')!; // RF-18 (019) · 18.1, D-T12 (019)
-    const building = lot.querySelector('.block.building')!;
+    const building = lot.querySelector('.building')!; // D-T4 (021): el edificio ya no es un bloque
     expect(heading.textContent).toBe('Cosecha de lluvia');
     expect(building).not.toBeNull();
     expect(building.parentElement).toBe(heading.parentElement);
@@ -98,9 +93,8 @@ describe('ApiceView', () => {
     expect(screen.getByText(/3 de septiembre de 2026/)).toBeTruthy(); // RF-11 (019) · 11.4
   });
 
-  it('RF-22 (001): lo que falta (ubicación, imagen, necesidades) se muestra como marcador vacío', () => {
+  it('RF-22 (001): lo que falta (ubicación, necesidades) se muestra como marcador vacío', () => {
     setup(apice({ needs: '', location: null }), { status: 'visitor' });
-    expect(screen.getByRole('img', { name: 'Sin imagen' })).toBeTruthy();
     expect(screen.getByText('Sin ubicación')).toBeTruthy();
     expect(screen.getByText('Aún no se han escrito necesidades.')).toBeTruthy();
   });
@@ -121,7 +115,7 @@ describe('ApiceView', () => {
     const texto = document.body.textContent;
     expect(texto).toContain('No se encontró el ápice.');
     expect(texto).not.toContain('Cosecha de lluvia');
-    expect(withoutStatus(a.calls)).toEqual([]);
+    expect(a.calls).toEqual([]);
   });
 
   it('RF-22 (001), RF-14 (001): un ápice archivado sin permiso se ve igual que uno inexistente, y para un visitante también', () => {
@@ -134,6 +128,17 @@ describe('ApiceView', () => {
     expect(screen.getByRole('heading', { name: 'Cosecha de lluvia' })).toBeTruthy();
     push(null);
     expect(screen.getByText('No se encontró el ápice.')).toBeTruthy();
+  });
+
+  it('RF-14 (021) · 14.3: una cuenta activa ve «Editar» y lleva al formulario; un visitante y un ápice archivado, no', () => {
+    setup(apice(), otra);
+    expect(screen.getByRole('link', { name: 'Editar' }).getAttribute('href')).toBe('/apices/a1/editar');
+    cleanup();
+    setup(apice(), { status: 'visitor' });
+    expect(screen.queryByRole('link', { name: 'Editar' })).toBeNull();
+    cleanup();
+    setup(apice({ isArchived: true }), ana);
+    expect(screen.queryByRole('link', { name: 'Editar' })).toBeNull();
   });
 
   it('RF-13 (001): solo la autora y la facilitadora ven el control de visibilidad', () => {
@@ -150,13 +155,13 @@ describe('ApiceView', () => {
   it('RF-13 (001): la facilitadora cambia la visibilidad de un ápice ajeno', async () => {
     const { calls } = setup(apice(), fabi);
     await userEvent.click(screen.getByRole('button', { name: 'Hacer privado' }));
-    expect(withoutStatus(calls)).toEqual([{ op: 'setVisibility', payload: { id: 'a1', visibility: 'private' } }]);
+    expect(calls).toEqual([{ op: 'setVisibility', payload: { id: 'a1', visibility: 'private' } }]);
   });
 
   it('RF-14 (001): la autora archiva desde la ficha', async () => {
     const { calls } = setup(apice(), ana);
     await userEvent.click(screen.getByRole('button', { name: 'Archivar' }));
-    expect(withoutStatus(calls)).toEqual([{ op: 'archiveApice', payload: { id: 'a1' } }]);
+    expect(calls).toEqual([{ op: 'archiveApice', payload: { id: 'a1' } }]);
   });
 
   it('RF-14 (001): la autora ve su ápice archivado con aviso, solo con restaurar y sin cambiar visibilidad', async () => {
@@ -164,7 +169,7 @@ describe('ApiceView', () => {
     expect(screen.getByText(/archivado/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Hacer privado' })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Restaurar' }));
-    expect(withoutStatus(calls)).toEqual([{ op: 'restoreApice', payload: { id: 'a1' } }]);
+    expect(calls).toEqual([{ op: 'restoreApice', payload: { id: 'a1' } }]);
   });
 
   it('RF-14 (001): la facilitadora ve un ápice archivado ajeno, aunque sea privado', () => {
@@ -175,9 +180,9 @@ describe('ApiceView', () => {
 });
 
 describe('ApiceView · ubicación', () => {
-  it('RF-22 (001): una ubicación aproximada se muestra como zona de ≈ 1 km', () => {
+  it('RF-22 (001): una ubicación aproximada se muestra como zona de ≈ 5 km²', () => {
     setup(apice({ location: { lat: -33.455, lng: -70.665, precision: 'approximate' } }), { status: 'visitor' });
-    expect(screen.getByText('Zona de ≈ 1 km alrededor de -33.455, -70.665')).toBeTruthy();
+    expect(screen.getByText('Zona de ≈ 5 km² alrededor de -33.455, -70.665')).toBeTruthy();
   });
 
   it('RF-9 (001): una ubicación exacta se muestra como punto', () => {
@@ -198,68 +203,33 @@ describe('ApiceView · ubicación', () => {
   });
 });
 
-describe('ApiceView · referencias', () => {
-  const refs: ReferenceSource = { onReferences: (_id, _o, cb) => (cb([]), () => undefined), readImage: async () => 'blob:x' };
-  const view = (doc: ApiceDoc, session: SessionState) =>
-    render(
-      <SessionProvider initial={session}>
-        <ApiceView id="a1" source={fakeSource(doc).source} client={fakeClient({}).client} referenceSource={refs} />
-      </SessionProvider>,
-    );
+describe('ApiceView · sin imagen (021)', () => {
+  // Un documento de antes de la 021 trae su imagen aceptada; el almacén la conserva y la ficha no la muestra (RF-27 (021) · 27.4).
+  const withImage = { ...apice(), image: { altText: 'Una huerta pixelada', png: new Uint8Array([137, 80, 78, 71]) } } as ApiceDoc;
 
-  it('RF-15 (001): una persona inscrita ve el formulario de subida en un ápice no archivado', () => {
-    view(apice(), otra);
-    expect(screen.getByRole('button', { name: 'Subir referencia' })).toBeTruthy();
-  });
-
-  it('RF-15 (001): una visitante ve las referencias pero no puede subir', () => {
-    view(apice(), { status: 'visitor' });
-    expect(screen.getByRole('region', { name: 'Referencias' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Subir referencia' })).toBeNull();
-  });
-
-  it('RF-16 (001): en un ápice archivado no se sube, y la facilitación sí ve las quitadas', () => {
-    view(apice({ isArchived: true }), fabi);
-    expect(screen.queryByRole('button', { name: 'Subir referencia' })).toBeNull();
-    expect(screen.getByRole('region', { name: /quitadas o retiradas/i })).toBeTruthy();
-  });
-});
-
-describe('ApiceView · imagen pixelada', () => {
-  const proposals: ProposalSource = { onProposal: (_a, _u, cb) => (cb(null), () => undefined) };
-  const refs: ReferenceSource = { onReferences: (_id, _o, cb) => (cb([]), () => undefined), readImage: async () => 'blob:x' };
-  const view = (doc: ApiceDoc, session: SessionState) =>
-    render(
-      <SessionProvider initial={session}>
-        <ApiceView
-          id="a1"
-          source={fakeSource(doc).source}
-          client={fakeClient({ generationStatus: () => ({ remaining: 3, limit: 3, resetAt: '2026-10-08T05:00:00.000Z', blockedUntil: null }) }).client}
-          referenceSource={refs}
-          proposalSource={proposals}
-        />
-      </SessionProvider>,
-    );
-
-  it('RF-17 (001): una persona inscrita ve cuántas generaciones le quedan y puede generar', async () => {
-    view(apice(), otra);
-    expect(await screen.findByText(/Te quedan 3 de 3 generaciones hoy/)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Generar imagen' })).toBeTruthy();
-  });
-
-  it('RF-17 (001): una visitante o un ápice archivado no ofrecen generar', () => {
-    view(apice(), { status: 'visitor' });
-    expect(screen.queryByRole('button', { name: 'Generar imagen' })).toBeNull();
-  });
-
-  it('RF-18 (001): la imagen aceptada se ve en la ficha con su texto alternativo', () => {
-    view(apice({ image: { altText: 'Una huerta pixelada', png: new Uint8Array([137, 80, 78, 71]) } }), otra);
-    expect(screen.getByRole('img', { name: 'Una huerta pixelada' })).toBeTruthy();
-  });
+  for (const [who, session] of [
+    ['una visitante', { status: 'visitor' }],
+    ['la autora', ana],
+    ['otra persona inscrita', otra],
+    ['la facilitación', fabi],
+  ] as const) {
+    it(`RF-1 (021) · 1.1, RF-27 (021) · 27.1: para ${who}, la ficha no ofrece generar, ni propuestas, ni referencias, ni muestra imágenes`, () => {
+      const { calls } = setup(withImage, session);
+      expect(screen.getByRole('heading', { name: 'Cosecha de lluvia' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Generar imagen' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Subir referencia' })).toBeNull();
+      expect(screen.queryByRole('region', { name: /Referencias/i })).toBeNull();
+      expect(document.body.textContent).not.toMatch(/generaci|referencia|propuesta|Sin imagen/i);
+      expect(document.querySelectorAll('img, .pixel-image, input[type="file"]')).toHaveLength(0);
+      expect(screen.queryByRole('img', { name: 'Una huerta pixelada' })).toBeNull();
+      // Ni siquiera pregunta por el cupo de generación.
+      expect(calls).toEqual([]);
+    });
+  }
 });
 
 describe('ApiceView · bloques (002)', () => {
-  // Los controles de la ficha son de ProposalPanel, ReferenceManager, VisibilityControl y ArchiveControls;
+  // Los controles de la ficha son de VisibilityControl y ArchiveControls;
   // la página pone la ficha misma, que es una tarjeta, y el enlace «Historial», que es un enlace normal.
   it('RF-6 (002) · 6.1, 6.3: la ficha es un lote (antes un bloque; RF-3 (003) · 3.2, D-T21 (003)) y el enlace «Historial» no lleva clase de acción', () => {
     setup(apice(), ana);
@@ -282,26 +252,20 @@ describe('ApiceView · identidad (002)', () => {
     expect(list.querySelector('.axis-icon--cobijo')).toBeTruthy();
   });
 
-  it('RF-7 (002) · 7.1, 7.2: la imagen va en un edificio de 256 px como máximo', () => {
+  it('RF-7 (002) · 7.2, RF-2 (021) · 2.1, 2.4, 2.5, D-T4 (021): el edificio de la ficha mide 256 px como máximo y su forma sale del id', () => {
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
-    const { container } = render(
-      <SessionProvider initial={{ status: 'visitor' }}>
-        <ApiceView id="a1" source={fakeSource(apice({ image: { altText: 'Una huerta', png: new Uint8Array([1]) } })).source} client={fakeClient({}).client} />
-      </SessionProvider>,
-    );
-    expect(container.querySelector('.building')).toBeTruthy();
-    const img = screen.getByRole('img', { name: 'Una huerta' });
-    expect([img.style.width, img.style.height]).toEqual(['256px', '256px']);
-  });
-
-  it('RF-7 (002) · 7.4: sin imagen el edificio dice «Sin imagen»', () => {
     const { container } = render(
       <SessionProvider initial={{ status: 'visitor' }}>
         <ApiceView id="a1" source={fakeSource(apice()).source} client={fakeClient({}).client} />
       </SessionProvider>,
     );
-    expect(container.querySelector('.building')).toBeTruthy();
-    expect(screen.getByRole('img', { name: 'Sin imagen' })).toBeTruthy();
+    const building = container.querySelector('.building')!;
+    const drawing = building.querySelector('svg.building__drawing')!;
+    expect([drawing.getAttribute('width'), drawing.getAttribute('height')]).toEqual(['256', '256']);
+    expect(building.getAttribute('data-variant')).toBe(String(buildingVariant('a1')));
+    expect(building.getAttribute('data-stage')).toBe('prototipo');
+    // RF-2 (021) · 2.3, 2.6: un motivo por eje, con su nombre.
+    expect(within(building as HTMLElement).getAllByRole('img').map((motif) => motif.getAttribute('aria-label'))).toEqual(['Agua', 'Cobijo']);
   });
 
   it('RF-13 (002) · 13.1, 13.3: el estado, la visibilidad y el archivo son etiquetas con los textos de la 001', () => {
@@ -346,21 +310,6 @@ describe('ApiceView · taller (019)', () => {
     const list = show(apice()).querySelector('ul.apice-view__axes')!;
     expect(list.getAttribute('aria-label')).toBe('Ejes');
     expect(list.querySelectorAll('.axis-badge').length).toBe(2);
-  });
-
-  it('RF-4 (019) · 4.5, D-T23 (019): una idea con imagen la muestra en un bloque propio, fuera del edificio', () => {
-    const container = show(apice({ status: 'idea', image: { altText: 'Una huerta', png: new Uint8Array([1]) } }));
-    const figure = container.querySelector('figure.block.apice-view__image')!;
-    expect(figure).not.toBeNull();
-    expect(figure.querySelector('img[alt="Una huerta"]')).toBeTruthy();
-    expect(figure.closest('.building')).toBeNull();
-    expect(container.querySelector('.building img')).toBeNull();
-    expectBlocks(container, { nesting: true });
-  });
-
-  it('RF-4 (019) · 4.5: un prototipo con imagen no repite la imagen en un bloque propio', () => {
-    const container = show(apice({ status: 'prototipo', image: { altText: 'Una huerta', png: new Uint8Array([1]) } }));
-    expect(container.querySelector('figure.apice-view__image')).toBeNull();
   });
 
   it('RF-11 (019) · 11.4: la fecha de la última edición es larga, en hora de Bogotá', () => {

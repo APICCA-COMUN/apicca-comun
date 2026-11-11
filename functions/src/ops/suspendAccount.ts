@@ -1,9 +1,11 @@
 // RF-5 (001) · Suspender una cuenta: surte efecto de inmediato (D-T3 (001)); su nombre de usuario y contenido se conservan.
 // RF-14 (004) · 14.1, 14.7, RNF-1 (004), D-T9 (004) · En la misma transacción se retiran sus acuerdos y objeciones abiertas
 // y se marcan sus propuestas abiertas con `authorSuspended`. RF-7 (016) · 7.3, RF-4 (017): sus reservas de subida se
-// borran en esa misma transacción, así que no sobreviven al cambio de estado.
+// borran en esa misma transacción, así que no sobreviven al cambio de estado. RF-9 (010), D-T6 (010): sus participaciones en
+// Acciones Comunes se ocultan y lo que propuso sale de la lista, sin borrar nada.
 import { canSuspend } from '../../../shared/domain/access';
 import { requireFacilitator } from '../access';
+import { planActionSuspension } from '../commonActionSuspension';
 import type { Ctx } from '../context';
 import { ApiError } from '../errors';
 import { applyStanceWithdrawals, planStanceWithdrawals } from '../withdrawStances';
@@ -25,9 +27,11 @@ export async function handleSuspendAccount(ctx: Ctx, payload: Record<string, unk
     // Las reglas de Storage no leen el estado de la cuenta: sin reservas, una cuenta suspendida ya no sube. Son como mucho
     // 30 por día (RF-7 (016) · 7.3), lejos del tope de 500 escrituras por transacción.
     const reservations = await tx.get(ctx.db.collection('uploadReservations').where('uid', '==', target.uid));
+    const actions = await planActionSuspension(ctx, tx, target.uid);
     tx.update(accountRef, { status: 'suspended', suspendedBy: actor.uid, suspendedAt: ctx.now() });
     applyStanceWithdrawals(ctx, tx, plan, { uid: actor.uid, username: actor.username });
     for (const doc of reservations.docs) tx.delete(doc.ref);
+    actions.apply(tx);
   });
   await ctx.auth.revokeRefreshTokens(target.uid);
   return {};

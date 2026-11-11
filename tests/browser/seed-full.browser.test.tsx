@@ -1,4 +1,4 @@
-// La siembra completa contra los emuladores (T-8.1, RNF-5 (002), RF-13 (002), D-T13 (002); Mi tablero, RF-11 (003)): con la autora y la
+// La siembra completa contra los emuladores (T-8.1, RNF-5 (002), RF-13 (002), D-T13 (002); Lo mío, RF-15 (021)): con la autora y la
 // facilitación dentro del emulador de Auth, las rutas que piden sesión se montan sin redirigir, y las cuatro
 // etiquetas de condición (D-T17 (002)) aparecen en sus ápices.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -90,9 +90,11 @@ describe('con la autora', () => {
   it('RF-13 (002) · 13.1, 13.3: el estado aparece como etiqueta en el ápice con imagen', async () => {
     await show(`/apices/${APICE_IDS.withImage}`);
     await waitFor(() => tag('status', CONDITION_TEXTS.status));
-    const image = await waitFor(() => host!.querySelector<HTMLImageElement>('img.pixel-image'));
-    await waitFor(() => image.complete && image.naturalWidth > 0);
-    expect([image.naturalWidth, image.naturalHeight]).toEqual([64, 64]);
+    // RF-27 (021) · 27.4: la imagen sembrada se conserva en el almacén y la ficha no la muestra.
+    // En el panel: el logo de apoyo del menú de juego también es una imagen (RF-13 (021) · 13.5).
+    const panel = await waitFor(() => host!.querySelector<HTMLElement>('aside.game-panel'));
+    await waitFor(() => panel.querySelector('svg.building__drawing'));
+    expect(panel.querySelectorAll('img, canvas')).toHaveLength(0);
   });
 
   it('RF-13 (002) · 13.1, 13.3: la visibilidad privada aparece como etiqueta en el ápice privado', async () => {
@@ -112,10 +114,12 @@ describe('con la autora', () => {
     await waitFor(() => host!.querySelector('main section[aria-label]') !== null);
     expect(host!.querySelector('main')!.textContent).not.toContain('No encontramos esta página');
   });
-  it('RF-11 (003) · 11.1, 11.2: /tablero saluda a la autora con su @usuario, lista sus ápices y no el archivado (D-T22 (003))', async () => {
+  it('RF-17 (021) · 17.2, RF-15 (021) · 15.1, 15.3: /tablero lleva a Lo mío, con la cuenta de la autora, sus ápices y no el archivado', async () => {
     await show('/tablero');
-    expect(location.pathname).toBe('/tablero');
-    await waitFor(() => host!.querySelector('main h1')?.textContent === `Hola, @${AUTHOR.username}`);
+    await waitFor(() => location.search === '?mio=1');
+    expect(location.pathname).toBe('/');
+    await waitFor(() => host!.querySelector(`a.account-entry[aria-label^="Lo mío, @${AUTHOR.username}"]`));
+    await show('/?mio=1&vista=lista');
     const main = host!.querySelector('main')!;
     await waitFor(() => main.textContent!.includes('Huerta con imagen'));
     for (const name of ['Huerta con imagen', 'Los cinco ejes', 'Ápice privado']) expect(main.textContent).toContain(name);
@@ -136,8 +140,12 @@ describe('con la facilitación', () => {
     expect(host!.querySelector('main')!.textContent).toContain('Pendiente');
   });
 
-  it('RF-13 (002) · 13.1, 13.3: la referencia retirada aparece como etiqueta en su ápice', async () => {
+  it('RF-27 (021) · 27.1, 27.4: la ficha del ápice con una referencia retirada ya no la muestra ni la etiqueta, tampoco a la facilitación', async () => {
     await show(`/apices/${APICE_IDS.withRetractedReference}`);
-    await waitFor(() => tag('reference', CONDITION_TEXTS.retracted));
+    const main = await waitFor(() => host!.querySelector<HTMLElement>('aside.game-panel'));
+    await waitFor(() => main.querySelector('svg.building__drawing'));
+    expect(main.querySelectorAll('.tag[data-condition="reference"], img, input[type="file"]')).toHaveLength(0);
+    // Ni el texto alternativo de la referencia sembrada ni el motivo de su retiro.
+    expect(main.textContent).not.toMatch(/Imagen retirada|No corresponde al ápice/);
   });
 });

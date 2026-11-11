@@ -1,8 +1,10 @@
-// T-6.18 · Reglas de Firestore de la generación de imágenes: `proposals` (solo quien la pidió),
-// `apices/{id}/images` (las retiradas, solo facilitadores) y `generation`/`generationDays` (nadie).
-import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+// Reglas de Firestore de lo que dejó la generación de imágenes, tras su retiro (RF-27 (021) · 27.4, D-T6 (021)):
+// `proposals`, `apices/{id}/images`, `generation` y `generationDays` se conservan, y ningún cliente los lee ni los
+// escribe. Antes la propuesta la leía quien la pidió y las imágenes, quien veía el historial (RF-16 (001) y
+// RF-17 (001), sustituidos).
+import { assertFails, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestEnvironment } from './setup';
 
 let env: RulesTestEnvironment;
@@ -14,6 +16,9 @@ const ACCOUNTS: Record<string, { role: string; status: string }> = {
   fran: { role: 'facilitator', status: 'suspended' },
   sofi: { role: 'member', status: 'suspended' },
 };
+
+const ACTORS = ['visitor', ...Object.keys(ACCOUNTS)];
+const APICES = ['publico', 'privado', 'archivado'];
 
 const dbOf = (actor: string) =>
   actor === 'visitor' ? env.unauthenticatedContext().firestore() : env.authenticatedContext(actor).firestore();
@@ -33,7 +38,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'apices/publico'), { ...base, visibility: 'public' });
     await setDoc(doc(db, 'apices/privado'), { ...base, visibility: 'private' });
     await setDoc(doc(db, 'apices/archivado'), { ...base, visibility: 'public', isArchived: true });
-    for (const id of ['publico', 'privado', 'archivado']) {
+    for (const id of APICES) {
       await setDoc(doc(db, `apices/${id}/images/vigente`), { altText: 'a', isRemoved: false, removal: null });
       await setDoc(doc(db, `apices/${id}/images/retirada`), { altText: 'b', isRemoved: true, removal: { reason: 'x' } });
     }
@@ -49,24 +54,11 @@ afterAll(async () => {
 });
 
 describe('firestore.rules · proposals', () => {
-  it('RF-17 (001): la propuesta la lee solo quien la pidió', async () => {
-    await assertSucceeds(getDoc(doc(dbOf('ana'), 'proposals/publico_ana')));
-    await assertFails(getDoc(doc(dbOf('beto'), 'proposals/publico_ana')));
-    await assertFails(getDoc(doc(dbOf('visitor'), 'proposals/publico_ana')));
+  it('RF-27 (021) · 27.4: nadie lee una propuesta guardada, ni quien la pidió ni la facilitación', async () => {
+    for (const actor of ACTORS) await assertFails(getDoc(doc(dbOf(actor), 'proposals/publico_ana')));
   });
 
-  it('RF-17 (001): ni los facilitadores leen la propuesta ajena', async () => {
-    await assertFails(getDoc(doc(dbOf('fabi'), 'proposals/publico_ana')));
-  });
-
-  it('RF-17 (001): una cuenta suspendida no lee ni su propia propuesta', async () => {
-    await env.withSecurityRulesDisabled(async (context) => {
-      await setDoc(doc(context.firestore(), 'proposals/publico_sofi'), { apiceId: 'publico', requestedByUid: 'sofi' });
-    });
-    await assertFails(getDoc(doc(dbOf('sofi'), 'proposals/publico_sofi')));
-  });
-
-  it('RF-17 (001): nadie escribe ni borra la propuesta desde el cliente', async () => {
+  it('RF-27 (021) · 27.4: nadie escribe ni borra una propuesta desde el cliente', async () => {
     await assertFails(setDoc(doc(dbOf('ana'), 'proposals/publico_ana'), { requestedByUid: 'ana', png: 'otra' }));
     await assertFails(setDoc(doc(dbOf('ana'), 'proposals/nueva_ana'), { requestedByUid: 'ana' }));
     await assertFails(deleteDoc(doc(dbOf('ana'), 'proposals/publico_ana')));
@@ -74,35 +66,28 @@ describe('firestore.rules · proposals', () => {
 });
 
 describe('firestore.rules · apices/{id}/images', () => {
-  it('RF-16 (001): la imagen vigente la leen las cuentas activas que ven el ápice, no los visitantes', async () => {
-    await assertSucceeds(getDoc(doc(dbOf('beto'), 'apices/publico/images/vigente')));
-    await assertSucceeds(getDoc(doc(dbOf('beto'), 'apices/privado/images/vigente')));
-    await assertFails(getDoc(doc(dbOf('visitor'), 'apices/publico/images/vigente')));
-    await assertFails(getDoc(doc(dbOf('sofi'), 'apices/publico/images/vigente')));
+  it('RF-27 (021) · 27.4: nadie lee una imagen aceptada, vigente o retirada, ni su autora ni la facilitación', async () => {
+    for (const actor of ACTORS) {
+      for (const id of APICES) {
+        await assertFails(getDoc(doc(dbOf(actor), `apices/${id}/images/vigente`)));
+        await assertFails(getDoc(doc(dbOf(actor), `apices/${id}/images/retirada`)));
+      }
+      await assertFails(getDocs(collection(dbOf(actor), 'apices/publico/images')));
+    }
   });
 
-  it('RF-16 (001): una imagen retirada la lee solo un facilitador activo', async () => {
-    await assertFails(getDoc(doc(dbOf('beto'), 'apices/publico/images/retirada')));
-    await assertFails(getDoc(doc(dbOf('ana'), 'apices/publico/images/retirada')));
-    await assertFails(getDoc(doc(dbOf('visitor'), 'apices/publico/images/retirada')));
-    await assertFails(getDoc(doc(dbOf('fran'), 'apices/publico/images/retirada')));
-    await assertSucceeds(getDoc(doc(dbOf('fabi'), 'apices/publico/images/retirada')));
-  });
-
-  it('RF-16 (001): en un ápice archivado solo su autora y los facilitadores leen las imágenes', async () => {
-    await assertFails(getDoc(doc(dbOf('beto'), 'apices/archivado/images/vigente')));
-    await assertSucceeds(getDoc(doc(dbOf('ana'), 'apices/archivado/images/vigente')));
-    await assertSucceeds(getDoc(doc(dbOf('fabi'), 'apices/archivado/images/vigente')));
-  });
-
-  it('RF-16 (001): nadie escribe ni borra imágenes desde el cliente', async () => {
+  it('RF-27 (021) · 27.4: nadie escribe ni borra imágenes desde el cliente, y siguen guardadas', async () => {
     await assertFails(setDoc(doc(dbOf('fabi'), 'apices/publico/images/nueva'), { isRemoved: false }));
     await assertFails(deleteDoc(doc(dbOf('fabi'), 'apices/publico/images/vigente')));
+    await env.withSecurityRulesDisabled(async (context) => {
+      const stored = await getDocs(collection(context.firestore(), 'apices/publico/images'));
+      expect(stored.docs.map((snap) => snap.id).sort()).toEqual(['retirada', 'vigente']);
+    });
   });
 });
 
 describe('firestore.rules · generation y generationDays', () => {
-  it('RF-17 (001): el estado de la generación y los contadores no se leen ni se escriben', async () => {
+  it('RF-27 (021) · 27.4: el estado de la generación y sus contadores no se leen ni se escriben', async () => {
     for (const actor of ['ana', 'fabi', 'visitor']) {
       await assertFails(getDoc(doc(dbOf(actor), 'generation/ana')));
       await assertFails(getDoc(doc(dbOf(actor), 'generationDays/ana_2026-10-07')));

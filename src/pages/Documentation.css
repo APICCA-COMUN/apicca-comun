@@ -71,6 +71,7 @@
 }
 
 .documentation__section-title {
+  display: block;
   margin-block: 0 0.25rem;
   font-size: var(--type-meta-size);
   font-weight: 800;

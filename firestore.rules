@@ -81,25 +81,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // RF-13 (001): las referencias las ven quienes ven el ápice; RF-16 (001): las quitadas, solo los facilitadores.
+    // RF-27 (021) · 27.4: las referencias, las imágenes aceptadas y las propuestas que dejó la generación de imágenes
+    // se conservan, pero ningún cliente las lee ni las escribe.
     match /apices/{id}/references/{refId} {
-      allow read: if exists(apicePath(id))
-        && canViewApice(get(apicePath(id)).data)
-        && (resource.data.isRemoved == false || isActiveFacilitator());
-      allow write: if false;
+      allow read, write: if false;
     }
 
-    // RF-16 (001): las imágenes aceptadas las ven las cuentas activas que ven el ápice; las retiradas, solo los facilitadores.
     match /apices/{id}/images/{imageId} {
-      allow read: if canSeeApiceHistory(id)
-        && (resource.data.isRemoved == false || isActiveFacilitator());
-      allow write: if false;
+      allow read, write: if false;
     }
 
-    // RF-17 (001): la propuesta de imagen es solo de quien la pidió, mientras su cuenta esté activa.
     match /proposals/{key} {
-      allow read: if isActive() && resource.data.requestedByUid == request.auth.uid;
-      allow write: if false;
+      allow read, write: if false;
     }
 
     // RF-13 (001): los eventos de auditoría, con el mismo alcance que el historial (RNF-6 (001)).
@@ -125,6 +118,31 @@ service cloud.firestore {
     match /threads/{id}/messages/{messageId} {
       allow read: if (resource.data.isArchived == false && get(/databases/$(database)/documents/threads/$(id)).data.isArchived == false)
         || (isActive() && (resource.data.authorUid == request.auth.uid || isActiveFacilitator()));
+      allow write: if false;
+    }
+
+    // Una Acción Común listada (abierta o cerrada, con la autora activa) la lee cualquiera; la archivada o la de una
+    // autora suspendida, solo su autora activa y los facilitadores.
+    function canReadAction(data) {
+      return data.isListed == true || (isActive() && (data.authorUid == request.auth.uid || isActiveFacilitator()));
+    }
+
+    // RF-8 (010), RF-9 (010), D-T4 (010): lectura según `canReadAction`; escribe el servidor (RNF-2 (010)).
+    match /commonActions/{id} {
+      allow read: if canReadAction(resource.data);
+      allow write: if false;
+    }
+
+    // RF-5 (010) · 5.1, RF-9 (010): las participaciones suspendidas se ocultan, salvo a la persona y a los facilitadores.
+    match /commonActions/{id}/participants/{uid} {
+      allow read: if (resource.data.suspended == false && canReadAction(get(/databases/$(database)/documents/commonActions/$(id)).data))
+        || (isActive() && (uid == request.auth.uid || isActiveFacilitator()));
+      allow write: if false;
+    }
+
+    // RF-7 (010) · 7.3: las versiones, para cuentas activas que pueden leer la Acción Común.
+    match /commonActions/{id}/versions/{n} {
+      allow read: if isActive() && canReadAction(get(/databases/$(database)/documents/commonActions/$(id)).data);
       allow write: if false;
     }
 

@@ -1,0 +1,36 @@
+/* RF-23 (021) · 23.2, D-T39 (021): el panel del boceto. El edificio va sobre un suelo con borde punteado, la misma forma
+   que lo distingue en el mapa. Solo tokens. */
+
+.sketch-panel__field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  margin-block: 1rem;
+}
+
+.sketch-panel__preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border: 3px dashed var(--node-ring);
+  border-radius: var(--radius-lot);
+}
+
+.sketch-panel__preview figcaption {
+  font-weight: 800;
+}
+
+.sketch-panel a.block {
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (forced-colors: active) {
+  .sketch-panel__preview {
+    border-color: CanvasText;
+  }
+}

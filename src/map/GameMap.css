@@ -1,0 +1,454 @@
+/* RF-4 (021) · 4.1, 4.3, 4.4, RF-6 (021), RF-7 (021), RF-8 (021) · 8.1, 8.2, RF-9 (021) · 9.1, D-T17 (021): lienzo del mapa
+   propio. Fondo pleno sin retícula; cada manzana es una placa `surface` y los edificios se apoyan en ella sin tarjeta.
+   Los grupos y el «+n» son nodos `charcoal`. Solo colores de tokens (D-T20 (002)); tamaños de texto de la escala y radios
+   de `--radius-*` (RF-2 (019), RF-3 (019)). */
+
+.game-map-shell {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+/* RF-11 (021) · 11.2, D-T22 (021): en la página del mapa, el lienzo llena el escenario; el aviso del tope flota arriba. */
+.game-map-shell--fill {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+}
+
+.game-map-shell--fill .game-map {
+  flex: 1 1 auto;
+  block-size: auto;
+  min-block-size: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.game-map-shell--fill .game-map__notice {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: 12px;
+  inset-inline: 12px;
+}
+
+.game-map__notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+/* La ventana que se arrastra. `clip` impide que el foco en un edificio de fuera la desplace. */
+.game-map {
+  position: relative;
+  box-sizing: border-box;
+  block-size: clamp(22.5rem, 70vh, 35rem);
+  overflow: hidden;
+  overflow: clip;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lot);
+  background-color: var(--background);
+  color: var(--text);
+  cursor: grab;
+  touch-action: pinch-zoom;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.game-map[data-dragging='true'] {
+  cursor: grabbing;
+}
+
+/* El origen del lienzo; el encuadre lo desplaza con `transform` (GameMap.tsx). */
+.game-map__world {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 0;
+  block-size: 0;
+}
+
+/* El origen mide 0 px: el tope `max-width: 100%` de `.block` (blocks.css) dejaría sin ancho a edificios, grupos y «+n».
+   Cada uno trae su medida propia. */
+.game-map__world .block {
+  max-inline-size: none;
+}
+
+.game-map__ground {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.game-map__plate {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 2px;
+}
+
+/* RF-18 (021) · 18.5, 18.6, D-T30 (021): el camino es un trazo de 12 px en `node-ring` (3:1 o más con el fondo en los dos
+   temas), con extremos y uniones redondeados; el cerrado va punteado. El borrador de «Trazar camino» es más delgado y
+   punteado corto; el camino elegido, más grueso. */
+.game-map__path {
+  fill: none;
+  stroke: var(--node-ring);
+  stroke-width: 12px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.game-map__path[data-closed='true'] {
+  stroke-dasharray: 2 22;
+}
+
+.game-map__path[data-draft='true'] {
+  stroke-width: 8px;
+  stroke-dasharray: 12 12;
+}
+
+.game-map__path[data-selected='true'] {
+  stroke-width: 16px;
+}
+
+/* El rótulo del camino: una píldora centrada en su punto, sobre el trazo. */
+button.block.game-map__path-label {
+  position: absolute;
+  z-index: 1;
+  min-block-size: 0;
+  max-inline-size: 14rem;
+  padding: 6px 14px;
+  overflow: hidden;
+  border: 2px solid var(--node-ring);
+  border-radius: var(--radius-pill);
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: var(--type-meta-size);
+  font-weight: 800;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+button.block.game-map__path-label[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 3px var(--text), var(--shadow-block);
+}
+
+/* Edificio (RF-4 (021) · 4.4, RF-8 (021) · 8.5): una caja de 92 × 108 px (`SPOT_WIDTH` y `SPOT_HEIGHT` del dominio) con el
+   dibujo y el nombre debajo, en dos líneas como máximo. Sin tarjeta ni sombra: la placa es su suelo. */
+button.block.game-map__building {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  inline-size: 92px;
+  block-size: 108px;
+  min-height: 0;
+  padding: 4px 2px 0;
+  border-radius: var(--radius-building);
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--text);
+  transition: transform var(--duration-raise);
+}
+
+.game-map__building .building {
+  align-items: center;
+  gap: 0;
+}
+
+/* En el mapa la etapa se lee por la forma del edificio y en su nombre accesible; la etiqueta no cabe en la manzana. */
+.game-map__building .building__stage {
+  display: none;
+}
+
+.game-map__name {
+  display: -webkit-box;
+  max-inline-size: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+  text-align: center;
+  font-size: var(--type-meta-size);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+@media (hover: hover) {
+  button.block.game-map__building:not(:disabled, [aria-disabled='true']):hover {
+    box-shadow: none;
+    transform: translateY(-3px);
+  }
+}
+
+button.block.game-map__building:not(:disabled, [aria-disabled='true']):active {
+  box-shadow: none;
+}
+
+/* El elegido lleva el anillo del token `focus` y su suelo propio. */
+button.block.game-map__building[aria-pressed='true'] {
+  background-color: var(--background);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+button.block.game-map__building[aria-pressed='true'] .building {
+  --building-ground: var(--background);
+}
+
+/* El boceto del visitante (RF-23 (021) · 23.2, D-T39 (021)): un contorno punteado lo distingue por su forma, no solo por
+   su nombre; va por fuera del anillo del elegido. */
+button.block.game-map__building[data-sketch='true']::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border: 3px dashed var(--node-ring);
+  border-radius: var(--radius-building);
+  pointer-events: none;
+}
+
+/* Terreno de los ápices sin ubicación (RF-9 (021) · 9.1): aparte, con borde discontinuo y su rótulo. */
+.game-map__terrain {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed var(--field-border);
+  border-radius: var(--radius-lot);
+}
+
+.game-map__terrain .building {
+  --building-ground: var(--background);
+}
+
+.game-map__terrain-label {
+  position: absolute;
+  inset-block-start: 10px;
+  inset-inline-start: 24px;
+  color: var(--text-muted);
+  font-size: var(--type-meta-size);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* Grupo de un nivel alejado (RF-7 (021) · 7.2): un nodo redondo de 80 px con su número. */
+button.block.game-map__group {
+  position: absolute;
+  inline-size: 80px;
+  block-size: 80px;
+  min-height: 0;
+  padding: 0;
+  border: 3px solid var(--node-ring);
+  border-radius: var(--radius-pill);
+  background-color: var(--charcoal);
+  color: var(--on-charcoal);
+  font-size: var(--type-title-size);
+  font-weight: 800;
+  line-height: 1;
+}
+
+button.block.game-map__group--unlocated {
+  border-style: dashed;
+  border-color: var(--on-charcoal-muted);
+}
+
+.game-map__group-label {
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  color: var(--text-muted);
+  font-size: var(--type-meta-size);
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+/* «+n» (RF-6 (021) · 6.2): un nodo de 48 px sobre el borde de la placa. */
+button.block.game-map__more {
+  position: absolute;
+  inline-size: var(--size-control);
+  block-size: var(--size-control);
+  min-height: 0;
+  padding: 0;
+  border: 2px solid var(--node-ring);
+  border-radius: var(--radius-pill);
+  background-color: var(--charcoal);
+  color: var(--on-charcoal);
+  font-size: var(--type-body-size);
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Norte y escala (RF-4 (021) · 4.3), fuera de lo que se arrastra. */
+.game-map__legend {
+  position: absolute;
+  inset-block-end: 16px;
+  inset-inline-start: 16px;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  color: var(--text);
+  font-size: var(--type-meta-size);
+  font-weight: 700;
+  line-height: 1.25;
+  pointer-events: none;
+}
+
+.game-map__north {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+/* La flecha del norte: un triángulo hecho con bordes. */
+.game-map__north::before {
+  content: '';
+  inline-size: 0;
+  block-size: 0;
+  border-inline: 6px solid transparent;
+  border-block-end: 10px solid currentColor;
+}
+
+.game-map__scale {
+  box-sizing: border-box;
+  padding-block-end: 4px;
+  border: 2px solid currentColor;
+  border-block-start-width: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Acercar, alejar y encuadre inicial (RF-8 (021) · 8.2): botones de ícono de 48 px. */
+.game-map__controls {
+  position: absolute;
+  inset-block-end: 16px;
+  inset-inline-end: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: auto;
+}
+
+button.icon-button.game-map__control {
+  inline-size: var(--size-control);
+  block-size: var(--size-control);
+  min-height: var(--size-control);
+}
+
+.game-map__control svg {
+  inline-size: 24px;
+  block-size: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Lista de una manzana con más de siete ápices (RF-6 (021) · 6.3). */
+.game-map__dialog-title {
+  margin: 0 0 1rem;
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  line-height: var(--type-title-line);
+}
+
+.game-map__entries {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+button.block.game-map__entry {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  inline-size: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-block);
+  text-align: start;
+}
+
+.game-map__entry .building {
+  flex: none;
+  inline-size: 64px;
+}
+
+.game-map__entry[aria-pressed='true'] {
+  outline: 3px solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.game-map__entry-name {
+  min-inline-size: 0;
+  font-weight: 700;
+}
+
+/* Al cambiar de nivel, lo dibujado aparece con un fundido breve; con movimiento reducido, de una vez. */
+@keyframes game-map-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .game-map__world {
+    animation: game-map-in 160ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.block.game-map__building {
+    transition: none;
+  }
+
+  button.block.game-map__building:not(:disabled, [aria-disabled='true']):hover {
+    transform: none;
+  }
+}
+
+/* Colores forzados: sin rellenos de tokens, las formas llevan el trazo del sistema y el elegido, el resaltado. */
+@media (forced-colors: active) {
+  .game-map {
+    border-color: CanvasText;
+  }
+
+  .game-map__plate {
+    fill: Canvas;
+    stroke: CanvasText;
+  }
+
+  .game-map__path {
+    stroke: CanvasText;
+  }
+
+  button.block.game-map__path-label {
+    border-color: CanvasText;
+  }
+
+  .game-map__terrain {
+    border-color: CanvasText;
+  }
+
+  button.block.game-map__building[data-sketch='true']::after {
+    border-color: CanvasText;
+  }
+
+  button.block.game-map__building[aria-pressed='true'] {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}

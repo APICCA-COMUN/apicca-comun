@@ -56,12 +56,6 @@ export function canSeeHistory(viewer: ApiceViewer | null, apice: ApiceAccessStat
   return isActive(viewer) && canView(viewer, apice);
 }
 
-/** La imagen de una referencia: quien ve el ápice; si está quitada o retirada, solo un facilitador activo (RF-1 (007), RF-2 (007)). */
-export function canReadReference(viewer: ApiceViewer | null, apice: ApiceAccessState, isRemoved: boolean): boolean {
-  if (!canView(viewer, apice)) return false;
-  return !isRemoved || (isActive(viewer) && viewer.role === 'facilitator');
-}
-
 const isAuthorOrFacilitator = (viewer: ApiceViewer, apice: ApiceAccessState): boolean =>
   viewer.role === 'facilitator' || apice.authorUid === viewer.uid;
 

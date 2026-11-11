@@ -8,7 +8,6 @@ import { Link, useRoute } from '../app/router';
 import { useSession, type PersonSession } from '../app/session';
 import { usePageTitle } from '../app/usePageTitle';
 import { ApiClientError } from '../data/api';
-import '../components/SiteNav.css';
 import './Facilitation.css';
 
 const AREA = 'Facilitación';

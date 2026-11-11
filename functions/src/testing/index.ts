@@ -1,5 +1,5 @@
-// Utillaje de pruebas del servidor: contexto contra los emuladores, reloj fijo, sembrado de datos
-// y modelo doble. No entra en la compilación de producción.
+// Utillaje de pruebas del servidor: contexto contra los emuladores, reloj fijo y sembrado de datos.
+// No entra en la compilación de producción.
 import { randomBytes } from 'node:crypto';
 import { getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
@@ -7,20 +7,9 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import type { AccountDoc, AccountStatus, Role } from '../../../shared/domain/accounts';
 import type { Ctx } from '../context';
-import type { ImageModel } from '../model/imageModel';
 
 export const TEST_PROJECT_ID = 'demo-apicca';
 const APP_NAME = 'apicca-test';
-
-/** PNG de 1 × 1 píxel: la «imagen» fija del modelo doble. */
-const FIXED_IMAGE = Uint8Array.from(
-  Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==', 'base64'),
-);
-
-/** Modelo doble: devuelve siempre la misma imagen, sin gastar ni salir de la máquina. */
-export const fakeImageModel: ImageModel = {
-  generate: async () => FIXED_IMAGE,
-};
 
 export interface TestCtx extends Ctx {
   /** Fija el instante que devuelve `now()`. */
@@ -38,7 +27,6 @@ export function createTestCtx(options: { now?: Date } = {}): TestCtx {
     storage: getStorage(app),
     now: () => new Date(current.getTime()),
     random: (bytes) => Uint8Array.from(randomBytes(bytes)),
-    imageModel: fakeImageModel,
     setNow: (date) => {
       current = date;
     },

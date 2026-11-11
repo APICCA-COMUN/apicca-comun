@@ -1,5 +1,6 @@
-// RF-22 (001), RF-9 (001), RF-13 (001), RF-14 (001), RF-17 (001), RF-12 (003) · 12.1, 12.5, RF-6 (002) · 6.1, RF-4 (002) · 4.2, RF-7 (002) · 7.1, 7.2, RF-13 (002) · 13.1, 13.3,
-// RF-18 (019) · 18.1, D-T12 (019), RF-17 (019) · 17.2, D-T11 (019), RF-11 (019) · 11.1 a 11.4, RF-4 (019) · 4.5, D-T23 (019) · Ficha de un ápice: todos sus datos con marcadores donde falta algo,
+// RF-22 (001), RF-9 (001), RF-13 (001), RF-14 (001), RF-12 (003) · 12.1, 12.5, RF-6 (002) · 6.1, RF-4 (002) · 4.2, RF-7 (002) · 7.2, RF-13 (002) · 13.1, 13.3,
+// RF-18 (019) · 18.1, D-T12 (019), RF-17 (019) · 17.2, D-T11 (019), RF-11 (019) · 11.1 a 11.4, D-T23 (019),
+// RF-1 (021) · 1.1, RF-2 (021) · 2.1, 2.4, RF-27 (021) · 27.1, D-T5 (021), RF-14 (021) · 14.3 (el enlace «Editar») · Ficha de un ápice: su edificio vectorial, sin imágenes, generación ni referencias; todos sus datos con marcadores donde falta algo,
 // y los controles de visibilidad y archivo para quien puede usarlos. Un ápice que la persona no puede ver se
 // muestra igual que uno inexistente, para no revelar que existe. El título de la página es h1.
 import { useEffect, useState } from 'react';
@@ -9,16 +10,11 @@ import { formatLongDate } from '../../shared/domain/dates';
 import { Link } from '../app/router';
 import { useSession } from '../app/session';
 import { usePageTitle } from '../app/usePageTitle';
-import { api, media, type ApiOps, type MediaOps, type OpClient } from '../data/api';
-import { firestoreProposalSource, type ProposalSource } from '../data/proposals';
-import { firestoreReferenceSource, type ReferenceSource } from '../data/references';
+import { api, type ApiOps, type OpClient } from '../data/api';
 import { firestoreApiceSource, type ApiceDoc, type ApiceSource } from '../data/apices';
 import { ArchiveControls } from '../components/ArchiveControls';
-import { ProposalPanel } from '../components/ProposalPanel';
-import { ReferenceManager } from '../components/ReferenceManager';
 import { AxisBadge } from '../components/AxisIcon';
 import { Building } from '../components/Building';
-import { PixelImage } from '../components/PixelImage';
 import { describeLocation } from '../components/locationText';
 import { VisibilityControl } from '../components/VisibilityControl';
 import './ApiceView.css';
@@ -27,12 +23,9 @@ interface Props {
   id: string;
   source?: ApiceSource;
   client?: OpClient<ApiOps>;
-  referenceSource?: ReferenceSource;
-  proposalSource?: ProposalSource;
-  mediaClient?: OpClient<MediaOps>;
 }
 
-export function ApiceView({ id, source = firestoreApiceSource, client = api, referenceSource = firestoreReferenceSource, proposalSource = firestoreProposalSource, mediaClient = media }: Props) {
+export function ApiceView({ id, source = firestoreApiceSource, client = api }: Props) {
   const session = useSession();
   const [apice, setApice] = useState<ApiceDoc | null | undefined>(undefined);
   useEffect(() => source.onApice(id, setApice), [source, id]);
@@ -53,14 +46,9 @@ export function ApiceView({ id, source = firestoreApiceSource, client = api, ref
   return (
     <article className="lot apice-view">
       <header className="apice-view__head">
-        <Building image={apice.image ?? null} axes={apice.axes} stage={apice.status} needs={hasNeeds(apice.needs)} max={4} />
+        <Building axes={apice.axes} stage={apice.status} seed={apice.id} needs={hasNeeds(apice.needs)} max={4} />
         <h1>{apice.name}</h1>
       </header>
-      {apice.status === 'idea' && apice.image ? (
-        <figure className="block apice-view__image">
-          <PixelImage image={apice.image} />
-        </figure>
-      ) : null}
       <p>{apice.description}</p>
       <ul className="apice-view__axes" aria-label="Ejes">
         {apice.axes.map((axis) => (
@@ -81,28 +69,18 @@ export function ApiceView({ id, source = firestoreApiceSource, client = api, ref
       </div>
       <h2>Ubicación</h2>
       <p>{describeLocation(apice.location)}</p>
-      {session.status === 'person' ? (
-        <ProposalPanel
-          apiceId={apice.id}
-          axes={apice.axes}
-          uid={session.uid}
-          canGenerate={canEdit(viewer, apice)}
-          source={proposalSource}
-          client={client}
-          mediaClient={mediaClient}
-        />
-      ) : null}
-      <ReferenceManager
-        apiceId={apice.id}
-        canEdit={canEdit(viewer, apice)}
-        isFacilitator={session.status === 'person' && session.role === 'facilitator'}
-        source={referenceSource}
-      />
       <p>
         Creado por {apice.authorUsername ?? 'una persona de la comunidad'}
         {apice.updatedAt === undefined ? '' : ` · Última edición el ${formatLongDate(apice.updatedAt)}`}
         {apice.lastEditedByUsername === undefined ? '' : ` por ${apice.lastEditedByUsername}`}
       </p>
+      {canEdit(viewer, apice) ? (
+        <p>
+          <Link href={`/apices/${apice.id}/editar`} className="block action-secondary">
+            Editar
+          </Link>
+        </p>
+      ) : null}
       {session.status === 'person' ? <Link href={`/apices/${apice.id}/historial`}>Historial</Link> : null}
       {canChangeVisibility(viewer, apice) ? <VisibilityControl id={apice.id} visibility={apice.visibility} client={client} /> : null}
       {canArchive(viewer, apice) ? <ArchiveControls id={apice.id} isArchived={apice.isArchived} client={client} /> : null}

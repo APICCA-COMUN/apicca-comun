@@ -51,9 +51,19 @@ describe('LocationPicker por coordenadas', () => {
     expect((screen.getByRole('radio', { name: /Aproximada/ }) as HTMLInputElement).checked).toBe(true);
   });
 
-  it('RF-9 (001): muestra la zona que verán las demás personas con coordenadas válidas', () => {
+  it('RF-5 (021) · 5.2: con coordenadas válidas dice que se mostrará la zona, sin adelantar su centro', () => {
     render(<Harness initial={{ mode: 'set', lat: '-33.4512', lng: '-70.6634', precision: 'approximate' }} />);
-    expect(screen.getByText(/Se mostrará: Zona de ≈ 1 km alrededor de -33.455, -70.665/)).toBeTruthy();
+    expect(screen.getByText('Se mostrará: la zona de ≈ 5 km² que contiene ese punto')).toBeTruthy();
+  });
+
+  it('RF-9 (001): con precisión exacta dice que se mostrará el punto', () => {
+    render(<Harness initial={{ mode: 'set', lat: '-33.4512', lng: '-70.6634', precision: 'exact' }} />);
+    expect(screen.getByText('Se mostrará: Punto exacto: -33.4512, -70.6634')).toBeTruthy();
+  });
+
+  it('RF-5 (021) · 5.2: la precisión aproximada se ofrece como una zona de ≈ 5 km²', () => {
+    render(<Harness initial={{ mode: 'set', lat: '-33.4512', lng: '-70.6634', precision: 'approximate' }} />);
+    expect(screen.getByRole('radio', { name: 'Aproximada (zona de ≈ 5 km²)' })).toBeTruthy();
   });
 
   it('RF-9 (001): con coordenadas inválidas avisa y no ofrece una vista previa', () => {
@@ -64,7 +74,7 @@ describe('LocationPicker por coordenadas', () => {
 
   it('RF-9 (001): con ubicación guardada, quitarla marca el borrador y se puede deshacer', async () => {
     render(<Harness stored={stored} />);
-    expect(screen.getByText(/Zona de ≈ 1 km alrededor de -33.455, -70.665/)).toBeTruthy();
+    expect(screen.getByText(/Zona de ≈ 5 km² alrededor de -33.455, -70.665/)).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Quitar ubicación' }));
     expect(draftOf()).toEqual({ mode: 'remove' });
     expect(screen.getByText(/Se quitará la ubicación al guardar/)).toBeTruthy();

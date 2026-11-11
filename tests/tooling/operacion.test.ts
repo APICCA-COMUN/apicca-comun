@@ -17,17 +17,19 @@ const headings = (markdown: string): string[] =>
 const internalDocs = ['docs/operacion.md', 'docs/despliegues.md'].every((path) => existsSync(resolve(root, path)));
 
 describe.skipIf(!internalDocs)('operación · documentos', () => {
-  it('RF-7 (013) · 7.1: docs/operacion.md tiene las seis secciones del runbook', () => {
+  it('RF-7 (013) · 7.1: docs/operacion.md tiene las cinco secciones del runbook', () => {
     expect(headings(read('docs/operacion.md'))).toEqual(
-      expect.arrayContaining([
-        'Desplegar por partes',
-        'Revertir el hosting',
-        'Restaurar un respaldo',
-        'Rotar `OPENROUTER_API_KEY`',
-        'Rotar `IP_HASH_SALT`',
-        'Plantilla del correo',
-      ]),
+      expect.arrayContaining(['Desplegar por partes', 'Revertir el hosting', 'Restaurar un respaldo', 'Rotar `IP_HASH_SALT`', 'Plantilla del correo']),
     );
+  });
+
+  it('RF-27 (021) · 27.3, RNF-8 (021): el runbook ya no rota la llave de generación; explica cómo retirarla junto con la función `media`', () => {
+    const runbook = read('docs/operacion.md');
+    expect(headings(runbook)).not.toContain('Rotar `OPENROUTER_API_KEY`');
+    const section = runbook.split('## Retirar `OPENROUTER_API_KEY`')[1]?.split('\n## ')[0] ?? '';
+    expect(section).toContain('npx firebase functions:delete media --region us-central1 --project apicca-com');
+    expect(section).toContain('npx firebase functions:secrets:destroy OPENROUTER_API_KEY --project apicca-com');
+    expect(runbook).not.toContain('functions:media');
   });
 
   it('RF-8 (017): el runbook documenta el rol IAM que necesitan las reglas de Storage, cómo concederlo y cómo comprobarlo', () => {
@@ -108,8 +110,8 @@ describe('operación · dependencias', () => {
   const names = (path: string, key: 'dependencies' | 'devDependencies'): string[] =>
     Object.keys((JSON.parse(read(path)) as Record<string, Record<string, string>>)[key] ?? {}).sort();
 
-  it('RNF-2 (013): las functions conservan sus tres dependencias', () => {
-    expect(names('functions/package.json', 'dependencies')).toEqual(['firebase-admin', 'firebase-functions', 'sharp']);
+  it('RNF-2 (013), RF-27 (021) · 27.3, RNF-3 (021): las functions quedan sin la biblioteca de imágenes y suman solo h3-js', () => {
+    expect(names('functions/package.json', 'dependencies')).toEqual(['firebase-admin', 'firebase-functions', 'h3-js']);
   });
 
   it('RNF-2 (013): el sitio no suma dependencias de ejecución', () => {

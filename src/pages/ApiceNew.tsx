@@ -47,7 +47,8 @@ export function ApiceNew({ client = api }: { client?: OpClient<ApiOps> }) {
           const place = location?.mode === 'set' ? { location } : {};
           const { id } = await client.call('createApice', { name, description, axes, needs, offers, ...place });
           drafts.clear(DRAFT_KEY);
-          navigate(`/apices/${id}`);
+          // Se queda en el panel, con la consulta del mapa (RF-10 (021) · 10.3, RF-14 (021) · 14.5).
+          navigate(`/apices/${id}${window.location.search}`, { keepFocus: true });
         }}
       />
     </section>

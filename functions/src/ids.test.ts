@@ -6,7 +6,6 @@ import { readTarget } from './ops/accountStatus';
 import { readId } from './ops/apiceInput';
 import { readAmendmentId, readCommentId } from './ops/commentAmendment';
 import { readMessageId, readThreadId } from './ops/forumInput';
-import { readToken } from './ops/mediaInput';
 import { handleResolveEnrollment } from './ops/resolveEnrollment';
 
 function expectInvalidRequest(fn: () => unknown): void {
@@ -56,7 +55,6 @@ describe('ids · readSafeId', () => {
       expectInvalidRequest(() => readMessageId({ messageId: dot }));
       expectInvalidRequest(() => readAmendmentId({ amendmentId: dot }));
       expectInvalidRequest(() => readCommentId({ commentId: dot }));
-      expectInvalidRequest(() => readToken({ uploadId: dot }, 'uploadId'));
       await expect(readTarget({} as never, { uid: dot })).rejects.toMatchObject({
         name: 'ApiError',
         code: 'invalid-request',

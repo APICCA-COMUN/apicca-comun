@@ -1,4 +1,4 @@
-// RF-14 (003) · 14.8, 14.9; D-T14 (003), D-26 (003): estructura de la documentación. Verifica el índice,
+// RF-14 (003) · 14.8, 14.9; D-T14 (003), D-26 (003); RF-28 (021) · 28.2, D-T8 (021): estructura de la documentación. Verifica el índice,
 // los archivos, los títulos y los enlaces internos; no compara el texto, que redacta la persona.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -9,7 +9,7 @@ import { parseMarkdown, inlineText, type Block, type Inline } from '../../shared
 
 const DIR = resolve(import.meta.dirname, '../../docs/documentacion');
 
-/** Los doce títulos que exige RF-14 (003) · 14.9. */
+/** Los títulos que exige RF-14 (003) · 14.9, sin «Imagen pixelada», que retiró RF-28 (021) · 28.2: quedan once. «Mi tablero» se queda como título del artículo, aunque el botón diga «Lo mío» (D-T41 (021)). */
 const REQUIRED_TITLES = [
   'Qué es APICCA',
   'Cómo entrar',
@@ -17,7 +17,6 @@ const REQUIRED_TITLES = [
   'Ápice',
   'Ejes',
   'Ficha del ápice',
-  'Imagen pixelada',
   'Historial',
   'Facilitación',
   'Constitución y propuestas',
@@ -90,7 +89,7 @@ function validateDocs(index: DocsIndex, files: Record<string, string>): string[]
   return problems;
 }
 
-/** Índice y artículos sintéticos válidos, con los doce títulos. */
+/** Índice y artículos sintéticos válidos, con los once títulos. */
 function synthetic(): { index: DocsIndex; files: Record<string, string> } {
   const files: Record<string, string> = {};
   const articulos = REQUIRED_TITLES.map((t, i) => {
@@ -117,9 +116,18 @@ describe('RF-14 (003) · 14.8, 14.9: contenido de la documentación', () => {
     for (const a of flattenIndex(index)) expect(existsSync(resolve(DIR, a.archivo)), a.archivo).toBe(true);
   });
 
-  it('RF-14 (003) · 14.9: los doce títulos exigidos están en el índice real', () => {
+  it('RF-14 (003) · 14.9: los once títulos exigidos están en el índice real', () => {
     const titles = flattenIndex(index).map((a) => titleOf(parseMarkdown(files[a.archivo] ?? '')));
     for (const t of REQUIRED_TITLES) expect(titles, t).toContain(t);
+  });
+
+  it('RF-28 (021) · 28.2: la documentación ya no nombra la imagen pixelada, la generación ni las referencias', () => {
+    expect(Object.keys(files)).not.toContain('08-imagen-pixelada.md');
+    expect(flattenIndex(index).map((a) => a.slug)).not.toContain('imagen-pixelada');
+    const named = Object.entries(files).flatMap(([file, text]) =>
+      text.split('\n').filter((line) => /imagen|imágenes|pixel|referencias?\b|generación de/i.test(line)).map((line) => `${file}: ${line}`),
+    );
+    expect(named).toEqual([]);
   });
 
   it('RF-14 (003) · 14.8: el caso sintético válido no tiene problemas', () => {
@@ -151,9 +159,9 @@ describe('RF-14 (003) · 14.8, 14.9: contenido de la documentación', () => {
     expect(validateDocs(i, f).join('\n')).toMatch(/02-a1\.md: sin título/);
   });
 
-  it('RF-14 (003) · 14.9: falla si falta uno de los doce títulos', () => {
+  it('RF-14 (003) · 14.9: falla si falta uno de los once títulos', () => {
     const { index: i, files: f } = synthetic();
-    f['12-a11.md'] = '# Otro título\n';
+    f['11-a10.md'] = '# Otro título\n';
     expect(validateDocs(i, f).join('\n')).toMatch(/falta el artículo: Mi tablero/);
   });
 

@@ -8,7 +8,7 @@ import { resolve } from 'node:path';
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { App } from '../App';
-import { ROUTES } from '../app/router';
+import { ROUTES, isMapPage, matchRoute } from '../app/router';
 import { SessionProvider, VISITOR, type SessionState } from '../app/session';
 import { accessibleNames, type AccessibleName } from './accessibleNames';
 
@@ -30,71 +30,33 @@ const generated: Fixture = {};
 
 /**
  * Al comparar, solo las rutas que ya existían en la 002; las nuevas las cubren el inventario y T-5.17 (003).
- * Lo que la 002 mostraba en el inicio vive ahora en `/prototipado` (RF-18 (003), D-19 (003)); también la
- * visita a `/entrar` con sesión, que antes caía en el mapa del inicio.
+ * RF-11 (021), D-T21 (021): `/` y los paneles del ápice son ahora el mapa, con su barra dentro de `<main>`; sus nombres los
+ * fijan `Play.test.tsx` y el inventario, así que no se comparan con la 002. Tampoco `/entrar` con sesión, que lleva al
+ * mapa con lo propio (RF-17 (021) · 17.2).
  */
-const PATHS = GENERATE ? ALL_PATHS : ALL_PATHS.filter((path) => path in baseline);
-const RELOCATED: Record<string, string> = { '/': '/prototipado', '/entrar · facilitador': '/prototipado' };
-const visitedPath = (path: string, who: string): string =>
-  GENERATE ? path : (RELOCATED[`${path} · ${who}`] ?? RELOCATED[path] ?? path);
+const isMapPath = (path: string): boolean => isMapPage(matchRoute(path).page);
+const PATHS = GENERATE ? ALL_PATHS : ALL_PATHS.filter((path) => path in baseline && !isMapPath(path));
+const compared = (path: string, who: string): boolean => GENERATE || !(path === '/entrar' && who === 'facilitador');
 
-/**
- * Lo único nuevo: con sesión, Prototipado suma «Nuevo ápice» (RF-18 (003) · 18.2); sin sesión, `/entrar`
- * enlaza a «Solicitar inscripción» (RF-13 (003) · 13.3). Con la 005 (RF-12 (005) · 12.1), Prototipado suma un
- * edificio del lote por ápice (RF-6 (005) · 6.1) y `/entrar`, «Mostrar contraseña» (RF-5 (005)). Con la 005 v0.4
- * (RF-7 (005) · 7.12), el panel está siempre a la vista con el primer ápice: «Ver ficha» y, para quien puede editar,
- * su edición rápida; los botones de eje del panel repiten los nombres de los filtros.
- */
-/**
- * Con la 019, el edificio suma la etapa a su nombre (D-T19 (019)), la franja suma «Ver como lista» (RF-6 (019) · 6.2) y
- * la lista ya no se ve junto al terreno, así que sale el enlace de su tarjeta (RF-6 (019) · 6.3). El mapa queda detrás de
- * «Ver en el mapa» (RF-10 (019) · 10.5): sale su pin y entra el control.
- */
-const BUILDING: AccessibleName = { role: 'button', name: 'Huerta del barrio, Idea' };
-const VIEW_TOGGLE: AccessibleName = { role: 'button', name: 'Ver como lista' };
-const LIST_CARD: AccessibleName = { role: 'link', name: 'Huerta del barrio' };
-const MAP_TOGGLE: AccessibleName = { role: 'button', name: 'Ver en el mapa' };
-const MAP_PIN: AccessibleName = { role: 'button', name: 'Huerta del barrio: agua, alimento' };
-const PANEL_VIEW: AccessibleName[] = [{ role: 'link', name: 'Ver ficha' }];
-const PANEL_EDIT: AccessibleName[] = [
-  { role: 'button', name: 'Guardar cambios' },
-  { role: 'link', name: 'Editar todo' },
-  { role: 'link', name: 'Ver historial' },
-  { role: 'radio', name: 'en marcha' },
-  { role: 'radio', name: 'idea' },
-  { role: 'radio', name: 'prototipo' },
-  { role: 'textbox', name: 'Descripción' },
-  { role: 'textbox', name: 'Nombre' },
-];
+/** Sin sesión, `/entrar` enlaza a «Solicitar inscripción» (RF-13 (003) · 13.3) y suma «Mostrar contraseña» (RF-5 (005)). */
 const ADDED: Record<string, AccessibleName[]> = {
-  '/prototipado · facilitador': [{ role: 'link', name: 'Nuevo ápice' }, BUILDING, VIEW_TOGGLE, MAP_TOGGLE, ...PANEL_VIEW, ...PANEL_EDIT],
-  '/prototipado · visitante': [BUILDING, VIEW_TOGGLE, MAP_TOGGLE, ...PANEL_VIEW],
   '/entrar · visitante': [{ role: 'link', name: 'Pide tu inscripción' }, { role: 'button', name: 'Mostrar contraseña' }],
 };
 /** Nombres que la 008 sustituye por los del lienzo en `/entrar` (RF-7 (008) · 7.5, 7.6, D-10 (008)). */
 const RENAMED: Record<string, string> = { 'Correo electrónico': 'Correo', '¿Olvidaste tu contraseña?': 'Olvidé mi contraseña' };
 /** RF-17 (019) · 17.1, 17.2, D-T11 (019): en toda ruta, «Estado» se llama «Etapa» y las etapas van con mayúscula inicial. */
 const STAGE_RENAMED: Record<string, string> = { Estado: 'Etapa', idea: 'Idea', prototipo: 'Prototipo', 'en marcha': 'En marcha' };
-const withRenames = (names: AccessibleName[], visited: string): AccessibleName[] =>
+const withRenames = (names: AccessibleName[], path: string): AccessibleName[] =>
   names.map((entry) => {
-    const name = visited === '/entrar' ? (RENAMED[entry.name] ?? entry.name) : entry.name;
+    const name = path === '/entrar' ? (RENAMED[entry.name] ?? entry.name) : entry.name;
     return { ...entry, name: STAGE_RENAMED[name] ?? name };
   });
-/** Única excepción de rol (RF-17 (003) · 17.1, D-23 (003)): en Prototipado los filtros de eje pasan de casilla a botón; RF-12 (019) · 12.2: lo mismo con el selector de ejes del formulario. */
-const AXIS_FILTERS = new Set(['Agua', 'Alimento', 'Cobijo', 'Comunicación', 'Energía']);
-const withAxisButtons = (names: AccessibleName[], visited: string): AccessibleName[] =>
-  !['/prototipado', '/apices/nuevo', '/apices/ejemplo/editar'].includes(visited)
-    ? names
-    : names.map((entry) => (entry.role === 'checkbox' && AXIS_FILTERS.has(entry.name) ? { ...entry, role: 'button' } : entry));
 
 const expectedNames = (path: string, who: string): AccessibleName[] | undefined => {
   const base = baseline[path]?.[who];
   if (base === undefined) return base;
-  const visited = visitedPath(path, who);
-  const added = ADDED[`${visited} · ${who}`] ?? [];
-  const hidden = [LIST_CARD, MAP_PIN];
-  const shown = visited === '/prototipado' ? base.filter((entry) => !hidden.some((gone) => entry.role === gone.role && entry.name === gone.name)) : base;
-  return withRenames([...withAxisButtons(shown, visited), ...added], visited).sort((a, b) => a.role.localeCompare(b.role, 'es') || a.name.localeCompare(b.name, 'es'));
+  const added = ADDED[`${path} · ${who}`] ?? [];
+  return withRenames([...base, ...added], path).sort((a, b) => a.role.localeCompare(b.role, 'es') || a.name.localeCompare(b.name, 'es'));
 };
 
 /** Algunas piezas (el mapa tras una redirección) se pintan tarde: espera a que el conjunto no cambie. */
@@ -118,8 +80,8 @@ afterAll(() => {
 });
 
 describe.each(PATHS)('nombres accesibles en %s', (path) => {
-  it.each(SESSIONS)('RF-17 (003) · 17.3: como %s, los nombres de <main> son los de la línea base', async (who, session) => {
-    window.history.replaceState(null, '', visitedPath(path, who));
+  it.each(SESSIONS.filter(([who]) => compared(path, who)))('RF-17 (003) · 17.3: como %s, los nombres de <main> son los de la línea base', async (who, session) => {
+    window.history.replaceState(null, '', path);
     render(
       <SessionProvider initial={session}>
         <App />

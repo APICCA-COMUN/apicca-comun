@@ -7,17 +7,17 @@ Se apoya en tres ideas: el apoyo mutuo, el *commoning* (cuidar y gestionar entre
 ## Qué hay en el sitio
 
 - **Ápices.** Son el módulo principal. Un [ápice](/documentacion/apice) es un lugar de encuentro donde se prepara una idea, un prototipo o una iniciativa en marcha. Cada uno conecta uno o más de cinco [ejes](/documentacion/ejes) de autonomía compartida: agua, alimento, cobijo, energía y comunicación.
-- **Acciones Comunes.** Son la base del apoyo mutuo: acciones reales a favor del bien común. Los ápices son el espacio donde se preparan; el sitio todavía no las incluye como una función aparte.
+- **Acciones Comunes.** Son la base del apoyo mutuo: acciones reales a favor del bien común. En el mapa, cada Acción Común es un camino que une varios ápices; mira [Cómo se juega](/documentacion/como-se-juega).
 - **Constitución común.** Las reglas del sitio son de las personas que lo habitan y solo cambian por [propuestas](/documentacion/constitucion-y-propuestas) abiertas a todas las personas inscritas.
 
 ## Quién puede qué
 
-Cualquier visitante puede explorar en [Prototipado](/prototipado) los ápices públicos y leer la [constitución](/constitucion). Para crear y co-editar ápices hace falta una cuenta, y se llega a ella por invitación; mira [cómo entrar](/documentacion/como-entrar).
+Cualquier visitante puede explorar en el [mapa](/) los ápices públicos y sus caminos, hacer un boceto de su propio ápice y leer la [constitución](/constitucion), que en el menú se llama «Reglas». Para crear y co-editar ápices hace falta una cuenta, y se llega a ella por invitación; mira [cómo entrar](/documentacion/como-entrar).
 
 ## Por dónde seguir
 
 1. Si aún no tienes cuenta, lee [Solicitar inscripción](/documentacion/solicitar-inscripcion).
 2. Si ya la tienes, sigue con [Tu primer ápice](/documentacion/tu-primer-apice).
-3. Para ver qué hacen otras personas, abre [Prototipado](/prototipado).
+3. Para ver qué hacen otras personas, abre el [mapa](/).
 
 La idea de fondo es sencilla: lo común se hace entre varias, a la vista y con memoria de lo que cada quien aportó.

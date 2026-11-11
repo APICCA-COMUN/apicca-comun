@@ -1,20 +1,20 @@
-// RF-7 (003) · 7.2–7.4, 7.9 y RF-11 (003) · 11.8 · D-T7 (003): la navegación es dato del dominio. El menú de la
-// cabecera, el de Facilitación, la sección vigente y el destino de retorno al entrar se prueban sin navegador.
+// RF-7 (003) · 7.4, 7.9, RF-11 (003) · 11.8, RF-13 (021) · 13.1 · D-T7 (003), D-T24 (021): la navegación es dato del
+// dominio. El menú de juego, el de Facilitación, la sección vigente y el destino de retorno al entrar se prueban sin
+// navegador.
 
 export type MenuItem = {
   readonly label: string;
   readonly href: string;
-  /** Solo se muestra con sesión de persona inscrita o facilitador (RF-7 (003) · 7.3). */
+  /** Solo se muestra con sesión de persona inscrita o facilitador. */
   readonly requiresSession: boolean;
 };
 
-/** Menú de la cabecera, en orden (RF-7 (003) · 7.2 y 7.3). */
+/** Menú de juego, en orden, con los nombres de D-10 (021) (RF-13 (021) · 13.1). Lo que pide sesión va aparte. */
 export const MAIN_MENU: readonly MenuItem[] = [
-  { label: 'Mi tablero', href: '/tablero', requiresSession: true },
-  { label: 'Prototipado', href: '/prototipado', requiresSession: false },
-  { label: 'Foro', href: '/foro', requiresSession: false },
-  { label: 'Documentación', href: '/documentacion', requiresSession: false },
-  { label: 'Constitución', href: '/constitucion', requiresSession: false },
+  { label: 'Jugar', href: '/', requiresSession: false },
+  { label: 'Cómo se juega', href: '/documentacion', requiresSession: false },
+  { label: 'Reglas', href: '/constitucion', requiresSession: false },
+  { label: 'Plaza', href: '/foro', requiresSession: false },
 ];
 
 /** Menú interno de las páginas de Facilitación (RF-7 (003) · 7.9). */

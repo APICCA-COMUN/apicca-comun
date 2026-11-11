@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { APICE_STATUSES, AXES } from './apice';
 import { listQueryShape, NO_FILTERS, type ListAudience, type ListFilters } from './discovery';
+import { commonActionsQuery } from './commonActions/queries';
 import { constitutionQueryShapes } from './constitution/queries';
 import { latestMessagesQuery, openingMessageQuery } from './forum/queries';
 import type { QueryShape } from './discovery';
@@ -197,5 +198,15 @@ describe('índices del descubrimiento', () => {
       { collectionGroup: 'messages', queryScope: 'COLLECTION', fields: [{ fieldPath: 'isArchived', order: 'ASCENDING' }, { fieldPath: 'createdAt', order: 'DESCENDING' }] },
     ]);
     expect(missingIndexes(committed, [indexForShape(latestMessagesQuery({ includeArchived: false }))])).toEqual([]);
+  });
+
+  it('RF-5 (010), RF-6 (010), D-T5 (010): el archivo declara la lista de Acciones Comunes y «Lo mío», con el arreglo como CONTAINS', () => {
+    const mine = indexForShape(commonActionsQuery('uid'));
+    expect(mine.fields).toEqual([
+      { fieldPath: 'isListed', order: 'ASCENDING' },
+      { fieldPath: 'participantUids', arrayConfig: 'CONTAINS' },
+      { fieldPath: 'createdAt', order: 'DESCENDING' },
+    ]);
+    expect(missingIndexes(committed, [indexForShape(commonActionsQuery(null)), mine])).toEqual([]);
   });
 });

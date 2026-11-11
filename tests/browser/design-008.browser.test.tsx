@@ -1,5 +1,7 @@
 // Medidas de la spec 008 en Chromium real: controles de 48 px, botones de ícono de 44 px y foco a 3 px (RF-2 (008),
-// RF-3 (008)), cabecera y pie (RF-4 (008), RF-5 (008)) inicio (RF-6 (008)) entrar (RF-7 (008)) Mi tablero (RF-8 (008)) Prototipado (RF-9 (008)) Documentación (RF-10 (008)) y Constitución (RF-11 (008)), a 360 y 1280 px. Cada página suma aquí sus medidas al llegar su turno (D-5 (008)).
+// RF-3 (008)), cabecera y pie (RF-4 (008), RF-5 (008)) entrar (RF-7 (008)) Documentación (RF-10 (008)) y Constitución (RF-11 (008)), a 360 y 1280 px. Cada página suma aquí sus medidas al llegar su turno (D-5 (008)).
+// RF-11 (021) sustituye el inicio (RF-6 (008)), Mi tablero (RF-8 (008)) y Prototipado (RF-9 (008)): sus medidas salen con
+// esas páginas, y los enlaces del menú se miden en el menú de juego (RF-13 (021), D-T24 (021)).
 import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { act } from 'react';
@@ -13,14 +15,9 @@ import '../../src/styles/paths.css';
 import { SessionProvider, type SessionState } from '../../src/app/session';
 import { SiteHeader } from '../../src/components/SiteHeader';
 import { SiteFooter } from '../../src/components/SiteFooter';
-import { Home } from '../../src/pages/Home';
 import { LoginPage } from '../../src/pages/Login';
-import { Dashboard } from '../../src/pages/Dashboard';
-import { Prototyping } from '../../src/pages/Prototyping';
 import { Documentation } from '../../src/pages/Documentation';
 import { ConstitutionPage } from '../../src/pages/ConstitutionPage';
-import { NO_NOTICE } from '../../src/data/constitution/notice';
-import { fakeListSource } from '../../src/testing/listDoubles';
 
 let bench: HTMLDivElement | undefined;
 
@@ -97,7 +94,7 @@ const PERSON: SessionState = { status: 'person', uid: 'u1', role: 'member', user
 const VISITOR: SessionState = { status: 'visitor' };
 
 /** Monta cabecera y pie reales con la sesión dada, en la ruta dada. */
-async function showChrome(session: SessionState, path = '/prototipado') {
+async function showChrome(session: SessionState, path = '/foro') {
   history.replaceState(null, '', path);
   bench?.remove();
   bench = document.createElement('div');
@@ -135,16 +132,13 @@ describe.each([360, 1280])('cabecera y pie a %i px', (width) => {
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width);
   });
 
-  it('RF-4 (008) · 4.2, 4.3: enlaces de 16/700 y 44 px de alto; el vigente en 800 con subrayado de 3 px a 8 px', async () => {
+  it('RF-4 (008) · 4.2, 4.3, RF-13 (021) · 13.1: enlaces de 16/700 y 44 px de alto; el vigente en 800 con subrayado de 3 px a 8 px', async () => {
     await page.viewport(width, 800);
-    const box = await showChrome(VISITOR, '/prototipado');
-    // RF-21 (019) · 21.2, D-T14 (019): por debajo de 1024 px los destinos van tras «Menú»; se abre para medirlos.
-    const toggle = [...box.querySelectorAll<HTMLButtonElement>('header nav button')].find((button) => button.textContent?.trim() === 'Menú');
-    if (toggle !== undefined && getComputedStyle(toggle).display !== 'none' && toggle.getAttribute('aria-expanded') !== 'true') {
-      toggle.click();
-      await new Promise((done) => setTimeout(done, 50));
-    }
-    const links = [...box.querySelectorAll<HTMLElement>('header nav a')];
+    const box = await showChrome(VISITOR, '/foro');
+    // D-T24 (021): los destinos van en el menú de juego, tras «Menú»; se abre para medirlos.
+    box.querySelector<HTMLButtonElement>('header button[aria-haspopup="dialog"]')!.click();
+    await new Promise((done) => setTimeout(done, 50));
+    const links = [...box.querySelectorAll<HTMLElement>('dialog nav a')];
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) {
       const style = getComputedStyle(link);
@@ -152,7 +146,7 @@ describe.each([360, 1280])('cabecera y pie a %i px', (width) => {
       expect(link.getBoundingClientRect().height, link.textContent!).toBe(44);
       expect(style.paddingLeft).toBe('10px');
     }
-    const current = box.querySelector<HTMLElement>('header nav a[aria-current="page"]')!;
+    const current = box.querySelector<HTMLElement>('dialog nav a[aria-current="page"]')!;
     const style = getComputedStyle(current);
     expect(style.fontWeight).toBe('800');
     expect(style.textDecorationLine).toBe('underline');
@@ -177,7 +171,7 @@ describe.each([360, 1280])('cabecera y pie a %i px', (width) => {
     probe.style.cssText = 'background-color:var(--charcoal);color:var(--on-charcoal)';
     box.append(probe);
     const expected = getComputedStyle(probe);
-    const avatar = box.querySelector<HTMLElement>('header a.account-initial')!;
+    const avatar = box.querySelector<HTMLElement>('header .account-initial')!;
     const rect = avatar.getBoundingClientRect();
     const style = getComputedStyle(avatar);
     expect([rect.width, rect.height]).toEqual([44, 44]);
@@ -203,122 +197,6 @@ describe.each([360, 1280])('cabecera y pie a %i px', (width) => {
     expect(style.paddingTop).toBe('28px');
     expect(style.paddingBottom).toBe('28px');
     expect(style.paddingLeft).toBe(width === 1280 ? '48px' : '16px');
-  });
-});
-
-/** Monta el inicio con la sesión dada. */
-async function showHome(session: SessionState) {
-  bench?.remove();
-  bench = document.createElement('div');
-  document.body.append(bench);
-  const root = createRoot(bench);
-  const scope = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
-  scope.IS_REACT_ACT_ENVIRONMENT = true;
-  try {
-    await act(async () => {
-      root.render(
-        <SessionProvider initial={session}>
-          <main>
-            <Home />
-          </main>
-        </SessionProvider>,
-      );
-    });
-  } finally {
-    scope.IS_REACT_ACT_ENVIRONMENT = false;
-  }
-  return bench;
-}
-
-/** `clamp(min, vw, max)` en píxeles con el ancho real de la ventana (`vw` mide `innerWidth`). */
-const clampPx = (min: number, vw: number, max: number, _width: number) => Math.min(max, Math.max(min, (vw / 100) * window.innerWidth));
-
-describe.each([360, 1280])('inicio a %i px', (width) => {
-  it('RF-6 (008) · 6.1: cada sección deja debajo clamp(64px, 10vw, 140px)', async () => {
-    await page.viewport(width, 800);
-    const box = await showHome(VISITOR);
-    const probe = document.createElement('i');
-    probe.style.marginBottom = 'clamp(64px, 10vw, 140px)';
-    box.append(probe);
-    const expected = getComputedStyle(probe).marginBottom;
-    const sections = [...box.querySelectorAll<HTMLElement>('.home__hero, .home__section')];
-    expect(sections).toHaveLength(3);
-    for (const el of sections) expect(getComputedStyle(el).marginBottom, el.className).toBe(expected);
-  });
-
-  it('RF-6 (008) · 6.2, RF-2 (019): el título principal usa clamp(32px, 5vw, 48px), línea 1,05 y peso 800; la entrada es lead, text-muted y de 28em como máximo', async () => {
-    await page.viewport(width, 800);
-    const box = await showHome(VISITOR);
-    const h1 = getComputedStyle(box.querySelector('h1')!);
-    const size = clampPx(32, 5, 48, width); // RF-2 (019): display-size
-    expect(parseFloat(h1.fontSize)).toBeCloseTo(size, 1);
-    expect(parseFloat(h1.lineHeight)).toBeCloseTo(size * 1.05, 1);
-    expect(h1.fontWeight).toBe('800');
-    const probe = document.createElement('i');
-    probe.style.color = 'var(--text-muted)';
-    box.append(probe);
-    const lead = getComputedStyle(box.querySelector('.home__hero-text p')!);
-    expect(lead.fontSize).toBe('18px');
-    expect(lead.color).toBe(getComputedStyle(probe).color);
-    expect(parseFloat(lead.maxWidth)).toBeCloseTo(28 * 18, 1);
-  });
-
-  it('RF-6 (008) · 6.3, RF-2 (019): los títulos de sección usan clamp(28px, 3.6vw, 40px), línea 1,12 y peso 800', async () => {
-    await page.viewport(width, 800);
-    const box = await showHome(VISITOR);
-    const size = clampPx(28, 3.6, 40, width); // RF-2 (019): heading-size
-    const titles = box.querySelectorAll('.home__section h2');
-    expect(titles).toHaveLength(2);
-    for (const h2 of titles) {
-      const style = getComputedStyle(h2);
-      expect(parseFloat(style.fontSize)).toBeCloseTo(size, 1);
-      expect(parseFloat(style.lineHeight)).toBeCloseTo(size * 1.12, 1);
-      expect(style.fontWeight).toBe('800');
-    }
-  });
-
-  it('RF-6 (008) · 6.4, 6.9: las tarjetas de eje usan subheading en peso 800; los pasos, título de 22 px y texto en cuerpo', async () => {
-    await page.viewport(width, 800);
-    const box = await showHome(VISITOR);
-    const axis = getComputedStyle(box.querySelector('.home__axis h3')!);
-    expect(axis.fontSize).toBe('20px');
-    expect(axis.fontWeight).toBe('800');
-    const title = getComputedStyle(box.querySelector('.home__step-text h3')!);
-    expect(title.fontSize).toBe('22px');
-    expect(title.fontWeight).toBe('800');
-    expect(getComputedStyle(box.querySelector('.home__step-text p')!).fontSize).toBe('16px');
-  });
-
-  it('RF-6 (008) · 6.5: los enlaces de texto van subrayados, en text, 16/700 y de 44 px como mínimo', async () => {
-    await page.viewport(width, 800);
-    const box = await showHome(VISITOR);
-    const probe = document.createElement('i');
-    probe.style.color = 'var(--text)';
-    box.append(probe);
-    const links = [...box.querySelectorAll<HTMLElement>('.home__actions > a:not(.block), .home__closing a')];
-    expect(links).toHaveLength(2);
-    for (const link of links) {
-      const style = getComputedStyle(link);
-      expect(style.textDecorationLine).toBe('underline');
-      expect(style.color).toBe(getComputedStyle(probe).color);
-      expect(style.fontSize).toBe('16px');
-      expect(style.fontWeight).toBe('700');
-      expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
-    }
-  });
-});
-
-describe.each([360, 1280])('inicio, cierre a %i px', (width) => {
-  it('RF-6 (008) · 6.10, RF-2 (019): el título de cierre usa clamp(32px, 5vw, 48px), línea 1,08, peso 800, centrado y de 14em como máximo', async () => {
-    await page.viewport(width, 800);
-    const box = await showHome(VISITOR);
-    const h2 = getComputedStyle(box.querySelector('.home__closing h2')!);
-    const size = clampPx(32, 5, 48, width); // RF-2 (019): display-size
-    expect(parseFloat(h2.fontSize)).toBeCloseTo(size, 1);
-    expect(parseFloat(h2.lineHeight)).toBeCloseTo(size * 1.08, 1);
-    expect(h2.fontWeight).toBe('800');
-    expect(parseFloat(h2.maxWidth)).toBeCloseTo(14 * size, 1);
-    expect(getComputedStyle(box.querySelector('.home__closing')!).alignItems).toBe('center');
   });
 });
 
@@ -403,177 +281,6 @@ describe.each([360, 1280])('entrar a %i px', (width) => {
     expect(eye.bottom).toBeLessThanOrEqual(field.bottom);
     expect(field.right - eye.right).toBeLessThanOrEqual(8);
     expect(parseFloat(getComputedStyle(input).paddingRight)).toBeGreaterThanOrEqual(field.right - eye.left);
-  });
-});
-
-describe.each([
-  [360, 'light'],
-  [1280, 'light'],
-  [360, 'dark'],
-  [1280, 'dark'],
-] as const)('Mi tablero a %i px, tema %s', (width, theme) => {
-  async function showDashboard() {
-    document.documentElement.setAttribute('data-theme', theme);
-    await page.viewport(width, 800);
-    bench?.remove();
-    bench = document.createElement('div');
-    document.body.append(bench);
-    const root = createRoot(bench);
-    const scope = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
-    scope.IS_REACT_ACT_ENVIRONMENT = true;
-    try {
-      await act(async () => {
-        root.render(
-          <SessionProvider initial={PERSON}>
-            <main>
-              <Dashboard
-                source={{ fetchPage: async () => ({ items: [], cursor: null }) }}
-                noticeSource={{ fetchNotice: async () => NO_NOTICE }}
-              />
-            </main>
-          </SessionProvider>,
-        );
-      });
-    } finally {
-      scope.IS_REACT_ACT_ENVIRONMENT = false;
-    }
-    await new Promise((done) => setTimeout(done, 50));
-    return bench;
-  }
-
-  /** Valor calculado de una propiedad de longitud con la expresión dada. */
-  function resolve(box: HTMLElement, property: 'marginTop' | 'fontSize', expression: string): string {
-    const probe = document.createElement('i');
-    probe.style[property] = expression;
-    box.append(probe);
-    const value = getComputedStyle(probe)[property];
-    probe.remove();
-    return value;
-  }
-
-  it('RF-8 (008) · 8.1: el contenido deja clamp(32px, 5vw, 64px) arriba y clamp(64px, 10vw, 140px) abajo', async () => {
-    const box = await showDashboard();
-    expect(getComputedStyle(box.querySelector('.dashboard')!).paddingTop).toBe(resolve(box, 'marginTop', 'clamp(32px, 5vw, 64px)'));
-    expect(getComputedStyle(box.querySelector('.dashboard')!).marginBottom).toBe(resolve(box, 'marginTop', 'clamp(64px, 10vw, 140px)'));
-  });
-
-  it('RF-8 (008) · 8.2, RF-2 (019): el saludo usa display, línea 1,15 y peso 800; los títulos de sección, heading, línea 1,2 y peso 800', async () => {
-    const box = await showDashboard();
-    const h1 = getComputedStyle(box.querySelector('h1')!);
-    const size = resolve(box, 'fontSize', 'var(--type-display-size)'); // RF-2 (019)
-    expect(h1.fontSize).toBe(size);
-    expect(parseFloat(h1.lineHeight)).toBeCloseTo(parseFloat(size) * 1.15, 1);
-    expect(h1.fontWeight).toBe('800');
-    const titles = [...box.querySelectorAll<HTMLElement>('.dashboard h2')];
-    expect(titles.length).toBeGreaterThan(0);
-    const small = resolve(box, 'fontSize', 'var(--type-heading-size)'); // RF-2 (019)
-    for (const h2 of titles) {
-      const style = getComputedStyle(h2);
-      expect(style.fontSize).toBe(small);
-      expect(parseFloat(style.lineHeight)).toBeCloseTo(parseFloat(small) * 1.2, 1);
-      expect(style.fontWeight).toBe('800');
-    }
-  });
-
-  it('RF-8 (008) · 8.3: el título «Mis ápices» se separa 24 px de lo que sigue (su lote ilustrado, cuando hay ápices)', async () => {
-    const box = await showDashboard();
-    const title = box.querySelector<HTMLElement>('.dashboard h2')!;
-    expect(title.textContent).toBe('Mis ápices');
-    expect(getComputedStyle(title.parentElement!).rowGap).toBe('24px');
-    const next = title.nextElementSibling as HTMLElement;
-    expect(next.getBoundingClientRect().top - title.getBoundingClientRect().bottom).toBe(24);
-  });
-
-  it('RF-8 (008) · 8.5, 8.6: las secciones van sin lote y separadas clamp(48px, 8vw, 96px); la fila del saludo lleva «Nuevo ápice» a la derecha', async () => {
-    const box = await showDashboard();
-    const dash = box.querySelector<HTMLElement>('.dashboard')!;
-    expect(dash.closest('.lot')).toBeNull();
-    expect(getComputedStyle(dash).rowGap).toBe(resolve(box, 'marginTop', 'clamp(48px, 8vw, 96px)'));
-    const head = dash.querySelector<HTMLElement>('.dashboard__head')!;
-    const link = head.querySelector<HTMLElement>('a[href="/apices/nuevo"]')!;
-    expect(link.getBoundingClientRect().height).toBe(48);
-    expect(head.querySelector('h1')!.getBoundingClientRect().left).toBeLessThanOrEqual(link.getBoundingClientRect().left);
-  });
-});
-
-describe.each([360, 1280])('Prototipado a %i px', (width) => {
-  async function showPrototyping() {
-    await page.viewport(width, 800);
-    history.replaceState(null, '', '/prototipado');
-    bench?.remove();
-    bench = document.createElement('div');
-    document.body.append(bench);
-    const root = createRoot(bench);
-    const scope = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
-    scope.IS_REACT_ACT_ENVIRONMENT = true;
-    try {
-      await act(async () => {
-        root.render(
-          <SessionProvider initial={PERSON}>
-            <main>
-              {/* Con ápices: sin ellos, la página es solo el terreno de partida (RF-19 (019)). */}
-              <Prototyping source={fakeListSource(2).source} />
-            </main>
-          </SessionProvider>,
-        );
-      });
-    } finally {
-      scope.IS_REACT_ACT_ENVIRONMENT = false;
-    }
-    await new Promise((done) => setTimeout(done, 50));
-    // Espera a que lleguen los ápices del doble y se pinte el terreno con su panel.
-    for (let attempt = 0; attempt < 40 && bench.querySelector('.apice-panel h2') === null; attempt += 1) {
-      await new Promise((done) => setTimeout(done, 50));
-    }
-    return bench;
-  }
-
-  function resolve(box: HTMLElement, property: 'marginTop' | 'fontSize', expression: string): string {
-    const probe = document.createElement('i');
-    probe.style[property] = expression;
-    box.append(probe);
-    const value = getComputedStyle(probe)[property];
-    probe.remove();
-    return value;
-  }
-
-  it('RF-9 (008) · 9.1: sin lote envolvente, deja clamp(32px, 6vw, 64px) arriba y separa sus bloques 24 px', async () => {
-    const box = await showPrototyping();
-    const root = box.querySelector<HTMLElement>('.prototyping')!;
-    expect(root.closest('.lot')).toBeNull();
-    expect(getComputedStyle(root).paddingTop).toBe(resolve(box, 'marginTop', 'clamp(32px, 6vw, 64px)'));
-    expect(getComputedStyle(root).rowGap).toBe('24px');
-  });
-
-  it('RF-9 (008) · 9.2, RF-2 (019): el título usa display, línea 1,1 y peso 800; el contador, 16 px y peso 800', async () => {
-    const box = await showPrototyping();
-    const h1 = getComputedStyle(box.querySelector('h1')!);
-    const size = resolve(box, 'fontSize', 'var(--type-display-size)'); // RF-2 (019)
-    expect(h1.fontSize).toBe(size);
-    expect(parseFloat(h1.lineHeight)).toBeCloseTo(parseFloat(size) * 1.1, 1);
-    expect(h1.fontWeight).toBe('800');
-    // RF-7 (019) · 7.1: el contador está en la franja del terreno.
-    const count = getComputedStyle(box.querySelector('.apice-lot-section__strip [role="status"]')!);
-    expect(count.fontSize).toBe('16px');
-    expect(count.fontWeight).toBe('800');
-  });
-
-  it('RF-9 (008) · 9.3, RF-7 (019) · 7.1: «Nuevo ápice» y «Archivados» van en la misma fila que el título; el contador, en la franja', async () => {
-    const box = await showPrototyping();
-    const head = box.querySelector<HTMLElement>('.prototyping__head')!;
-    const links = [...head.querySelectorAll<HTMLElement>('a')];
-    expect(links.map((a) => a.textContent)).toEqual(['Nuevo ápice', 'Archivados']);
-    expect(head.querySelector('h1')).not.toBeNull();
-    expect(head.querySelector('[role="status"]')).toBeNull();
-    expect(box.querySelector('.apice-lot-section__strip [role="status"]')).not.toBeNull();
-  });
-
-  it('RF-9 (008) · 9.5: el panel lleva radio de 14 px, shadow-block y 24 px de relleno', async () => {
-    const box = await showPrototyping();
-    const panel = box.querySelector<HTMLElement>('.apice-panel')!;
-    const style = getComputedStyle(panel);
-    expect(style.borderTopLeftRadius).toBe('14px');
-    expect(style.paddingTop).toBe('24px');
   });
 });
 

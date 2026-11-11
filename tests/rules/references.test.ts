@@ -1,8 +1,9 @@
-// T-5.3 · Reglas de Firestore de `apices/{id}/references`: las ve quien ve el ápice si no están quitadas;
-// las quitadas, solo los facilitadores; nadie escribe desde el cliente (D-T1 (001)).
-import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
+// Reglas de Firestore de `apices/{id}/references` tras el retiro de la imagen (RF-27 (021) · 27.4, D-T6 (021)):
+// las referencias que ya existían se conservan, pero ningún cliente las lee ni las escribe. Antes las veía quien
+// veía el ápice (RF-13 (001), RF-16 (001), sustituidos).
+import { assertFails, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestEnvironment } from './setup';
 
 let env: RulesTestEnvironment;
@@ -13,6 +14,10 @@ const ACCOUNTS: Record<string, { role: string; status: string }> = {
   fabi: { role: 'facilitator', status: 'active' },
   fran: { role: 'facilitator', status: 'suspended' },
 };
+
+/** Visitante, autora, otra persona inscrita y las dos cuentas de facilitación. */
+const ACTORS = ['visitor', 'ana', 'beto', 'fabi', 'fran'];
+const APICES = ['publico', 'privado', 'archivado'];
 
 const dbOf = (actor: string) =>
   actor === 'visitor' ? env.unauthenticatedContext().firestore() : env.authenticatedContext(actor).firestore();
@@ -32,7 +37,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'apices/publico'), { ...base, visibility: 'public' });
     await setDoc(doc(db, 'apices/privado'), { ...base, visibility: 'private' });
     await setDoc(doc(db, 'apices/archivado'), { ...base, visibility: 'public', isArchived: true });
-    for (const id of ['publico', 'privado', 'archivado']) {
+    for (const id of APICES) {
       await setDoc(doc(db, `apices/${id}/references/vigente`), { altText: 'a', isRemoved: false, removal: null });
       await setDoc(doc(db, `apices/${id}/references/quitada`), { altText: 'b', isRemoved: true, removal: { kind: 'removed' } });
     }
@@ -44,44 +49,32 @@ afterAll(async () => {
 });
 
 describe('firestore.rules · apices/{id}/references', () => {
-  it('RF-13 (001): ápice público: un visitante lee la referencia vigente', async () => {
-    await assertSucceeds(getDoc(doc(dbOf('visitor'), 'apices/publico/references/vigente')));
+  it('RF-27 (021) · 27.4: nadie lee una referencia, vigente o quitada, ni su autora ni la facilitación', async () => {
+    for (const actor of ACTORS) {
+      for (const id of APICES) {
+        await assertFails(getDoc(doc(dbOf(actor), `apices/${id}/references/vigente`)));
+        await assertFails(getDoc(doc(dbOf(actor), `apices/${id}/references/quitada`)));
+      }
+    }
   });
 
-  it('RF-13 (001): ápice privado: el visitante no la lee y una cuenta activa sí', async () => {
-    await assertFails(getDoc(doc(dbOf('visitor'), 'apices/privado/references/vigente')));
-    await assertSucceeds(getDoc(doc(dbOf('beto'), 'apices/privado/references/vigente')));
-    await assertFails(getDoc(doc(dbOf('fran'), 'apices/privado/references/vigente')));
+  it('RF-27 (021) · 27.4: nadie lista las referencias, tampoco con el filtro de las vigentes', async () => {
+    for (const actor of ACTORS) {
+      await assertFails(getDocs(collection(dbOf(actor), 'apices/publico/references')));
+      await assertFails(getDocs(query(collection(dbOf(actor), 'apices/publico/references'), where('isRemoved', '==', false))));
+    }
   });
 
-  it('RF-13 (001): ápice archivado: solo su autora y los facilitadores leen la referencia', async () => {
-    await assertFails(getDoc(doc(dbOf('visitor'), 'apices/archivado/references/vigente')));
-    await assertFails(getDoc(doc(dbOf('beto'), 'apices/archivado/references/vigente')));
-    await assertSucceeds(getDoc(doc(dbOf('ana'), 'apices/archivado/references/vigente')));
-    await assertSucceeds(getDoc(doc(dbOf('fabi'), 'apices/archivado/references/vigente')));
-  });
-
-  it('RF-16 (001): una referencia quitada solo la lee un facilitador activo', async () => {
-    const path = 'apices/publico/references/quitada';
-    await assertFails(getDoc(doc(dbOf('visitor'), path)));
-    await assertFails(getDoc(doc(dbOf('ana'), path)));
-    await assertFails(getDoc(doc(dbOf('fran'), path)));
-    await assertSucceeds(getDoc(doc(dbOf('fabi'), path)));
-  });
-
-  it('RF-16 (001): la lista de referencias vigentes se consulta con el filtro isRemoved, las quitadas solo las ve un facilitador', async () => {
-    const vigentes = query(collection(dbOf('beto'), 'apices/publico/references'), where('isRemoved', '==', false));
-    await assertSucceeds(getDocs(vigentes));
-    await assertFails(getDocs(collection(dbOf('beto'), 'apices/publico/references')));
-    await assertSucceeds(getDocs(collection(dbOf('fabi'), 'apices/publico/references')));
-  });
-
-  it('RF-16 (001): ninguna persona escribe referencias desde el cliente, ni un facilitador', async () => {
+  it('RF-27 (021) · 27.4: nadie las escribe ni las borra desde el cliente, y siguen guardadas', async () => {
     for (const actor of ['ana', 'fabi']) {
       const db = dbOf(actor);
       await assertFails(setDoc(doc(db, 'apices/publico/references/nueva'), { isRemoved: false }));
       await assertFails(updateDoc(doc(db, 'apices/publico/references/vigente'), { isRemoved: true }));
       await assertFails(deleteDoc(doc(db, 'apices/publico/references/vigente')));
     }
+    await env.withSecurityRulesDisabled(async (context) => {
+      const stored = await getDocs(collection(context.firestore(), 'apices/publico/references'));
+      expect(stored.docs.map((snap) => snap.id).sort()).toEqual(['quitada', 'vigente']);
+    });
   });
 });

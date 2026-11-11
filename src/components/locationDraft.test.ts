@@ -62,9 +62,9 @@ describe('describeLocation', () => {
     expect(describeLocation(undefined)).toBe('Sin ubicación');
   });
 
-  it('RF-9 (001): la aproximada se dice zona de ≈ 1 km y la exacta, punto', () => {
+  it('RF-5 (021) · 5.2: la aproximada se dice zona de ≈ 5 km² y la exacta, punto', () => {
     expect(describeLocation({ lat: -33.455, lng: -70.665, precision: 'approximate' })).toBe(
-      'Zona de ≈ 1 km alrededor de -33.455, -70.665',
+      'Zona de ≈ 5 km² alrededor de -33.455, -70.665',
     );
     expect(describeLocation({ lat: -33.4512, lng: -70.6634, precision: 'exact' })).toBe('Punto exacto: -33.4512, -70.6634');
   });

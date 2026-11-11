@@ -216,8 +216,8 @@ body:has([role='dialog']) .action-primary:not([role='dialog'] .action-primary) {
 
 /* RF-4 (008) · 4.5, D-T5 (008), RF-2 (019), RF-3 (019), D-T3 (019), D-T4 (019): la inicial de la cuenta en la cabecera, un círculo de 44 px con radio píldora y tamaño lead.
    RF-15 (019) · 15.1, D-T9 (019): sobre `charcoal`, sin colores de eje, con la letra en `on-charcoal` y un aro de 2 px en `node-ring`
-   (el aro va por dentro de los 44 px). */
-a.account-initial {
+   (el aro va por dentro de los 44 px). RF-15 (021) · 15.3, D-T24 (021): ahora va dentro del enlace de la cuenta. */
+.account-initial {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -235,7 +235,34 @@ a.account-initial {
 }
 
 @media (forced-colors: active) {
-  a.account-initial {
+  .account-initial {
     border: 2px solid CanvasText;
   }
+}
+
+/* RF-7 (003) · 7.4, RF-4 (008) · 4.2, 4.3, RF-13 (021) · 13.1, D-T24 (021): enlaces de menú de 16/700 y 44 px (el menú de
+   juego y el de Facilitación); la sección vigente se marca con peso 800 y subrayado de 3 px a 8 px, no solo con el
+   color. */
+.menu-link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--size-icon-control);
+  padding-inline: 10px;
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.menu-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.menu-link[aria-current='page'] {
+  color: var(--text);
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 8px;
 }

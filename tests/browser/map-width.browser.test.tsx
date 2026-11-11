@@ -1,6 +1,6 @@
-// RF-12 (003) · 12.2 · El mapa ocupa todo el ancho del contenido de su lote, a 360 y a 1280 px: en `/prototipado` (la
-// página real, con la siembra parcial) y dentro de un lote con la forma de la ficha (la ficha no trae mapa hoy;
-// si lo trae, el lote es el mismo). El ancho del contenido es el del lote sin borde ni relleno.
+// RF-11 (021) · 11.2, 11.3, RF-14 (021) · 14.7, D-T22 (021) · En `/` (la página real, con la siembra parcial) el mapa
+// ocupa toda la ventana bajo la barra de juego, a 360, 1100 y 1280 px, sin desplazamiento horizontal ni vertical. Con un
+// panel abierto, por debajo de 900 px el panel sube desde abajo y desde 900 px va a la derecha; el mapa no se encoge.
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { commands, page } from 'vitest/browser';
 import { act } from 'react';
@@ -12,10 +12,9 @@ import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
-import { ApiceMap } from '../../src/components/ApiceMap';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
 
-const WIDTHS = [360, 1280];
+const WIDTHS = [360, 1100, 1280];
 
 let host: HTMLDivElement | undefined;
 let root: Root | undefined;
@@ -51,16 +50,15 @@ async function mount(node: React.ReactNode) {
   await actNow(() => created.render(node));
 }
 
-/** El ancho del contenido de un lote: sin borde ni relleno. */
-function contentWidth(lot: HTMLElement): number {
-  const style = getComputedStyle(lot);
-  return lot.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-}
-
-/** El mapa mide el ancho del contenido de su lote (con la tolerancia de un píxel de redondeo). */
-function expectFullWidth(map: HTMLElement, lot: HTMLElement) {
-  expect(map.getBoundingClientRect().width).toBeGreaterThan(0);
-  expect(Math.abs(map.getBoundingClientRect().width - contentWidth(lot))).toBeLessThanOrEqual(1);
+/** El mapa llena la ventana a lo ancho y hasta abajo, sin desplazamiento (con un píxel de redondeo). */
+function expectFullWindow(map: HTMLElement) {
+  const box = map.getBoundingClientRect();
+  expect(box.width).toBeGreaterThan(0);
+  expect(Math.abs(box.left)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box.right - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box.bottom - innerHeight)).toBeLessThanOrEqual(1);
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
+  expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(innerHeight);
 }
 
 beforeAll(async () => {
@@ -78,38 +76,41 @@ afterEach(async () => {
 });
 
 describe.each(WIDTHS)('mapa a %i px', (width) => {
-  it(`RF-12 (003) · 12.2: en /prototipado el mapa mide el ancho del contenido del lote a ${width} px`, async () => {
+  it(`RF-11 (021) · 11.2, 11.3: en / el mapa ocupa la ventana bajo la barra de juego a ${width} px`, async () => {
     await page.viewport(width, 800);
-    history.replaceState(null, '', '/prototipado');
+    history.replaceState(null, '', '/');
     await mount(
       <SessionProvider source={firebaseSessionSource}>
         <App />
       </SessionProvider>,
     );
-    // El mapa se pide con «Ver en el mapa» (RF-10 (019) · 10.5).
-    const toggle = await waitFor(() => [...host!.querySelectorAll('button')].find((button) => button.textContent === 'Ver en el mapa'));
-    await actNow(() => toggle.click());
     const map = await waitFor(() => host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]'));
-    await waitFor(() => map.querySelector('.leaflet-container'));
-    const lot = map.closest<HTMLElement>('.prototyping')!;
-    expect(lot).not.toBeNull();
-    expectFullWidth(map, lot);
-    expectFullWidth(map.querySelector<HTMLElement>('.leaflet-container')!, lot);
+    expectFullWindow(map);
+    const hud = host!.querySelector<HTMLElement>('.play__hud')!;
+    expect(Math.abs(map.getBoundingClientRect().top - hud.getBoundingClientRect().bottom)).toBeLessThanOrEqual(1);
   });
 
-  it(`RF-12 (003) · 12.2: en un lote como el de la ficha con ubicación el mapa mide el ancho del contenido a ${width} px`, async () => {
+  it(`RF-14 (021) · 14.1, 14.7: con la ficha abierta el mapa no se encoge y el panel va ${width < 900 ? 'abajo' : 'a la derecha'} a ${width} px`, async () => {
     await page.viewport(width, 800);
+    history.replaceState(null, '', '/');
     await mount(
-      <main>
-        <article className="lot apice-view">
-          <h2>Ápice con ubicación</h2>
-          <ApiceMap apices={[{ id: 'a', name: 'Huerta', axes: ['agua'], location: { lat: 4.6, lng: -74.08, precision: 'exact' } }]} />
-        </article>
-      </main>,
+      <SessionProvider source={firebaseSessionSource}>
+        <App />
+      </SessionProvider>,
     );
-    const map = await waitFor(() => host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]'));
-    await waitFor(() => map.querySelector('.leaflet-container'));
-    expectFullWidth(map, map.closest<HTMLElement>('.lot')!);
-    expectFullWidth(map.querySelector<HTMLElement>('.leaflet-container')!, map.closest<HTMLElement>('.lot')!);
+    const building = await waitFor(() => host!.querySelector<HTMLButtonElement>('section[aria-label="Mapa de ápices"] button[aria-pressed]'));
+    await actNow(() => building.click());
+    const panel = await waitFor(() => host!.querySelector<HTMLElement>('aside.game-panel'));
+    const map = host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]')!;
+    expectFullWindow(map);
+    const box = panel.getBoundingClientRect();
+    if (width < 900) {
+      expect(Math.abs(box.bottom - innerHeight)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.width - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+    } else {
+      // A 12 px del borde derecho, como una tarjeta sobre el mapa (GamePanel.css).
+      expect(Math.abs(document.documentElement.clientWidth - box.right - 12)).toBeLessThanOrEqual(1);
+      expect(box.width).toBeLessThan(width / 2);
+    }
   });
 });

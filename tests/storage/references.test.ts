@@ -1,5 +1,6 @@
-// T-2 (007) · Reglas de Storage de `apices/**`: ningún cliente lee ni escribe; las referencias
-// las entrega la op `readReference` (D-T2 (007), D-T4 (007)), que reemplaza la lectura de D-T10 (001).
+// Reglas de Storage de `apices/**`: ningún cliente lee ni escribe (RF-6 (007), que RF-27 (021) · 27.5 conserva).
+// Los archivos de las referencias que ya existían se quedan guardados y no los entrega nadie: la op `readReference`
+// se retiró con la imagen (D-T6 (021)).
 import { assertFails, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { deleteObject, getBytes, ref, uploadBytes } from 'firebase/storage';
@@ -52,20 +53,20 @@ const setApice = (fields: Record<string, unknown>) =>
   });
 
 describe('storage.rules · apices/{id}/references', () => {
-  it('RF-6 (007): nadie lee una referencia desde el cliente, con o sin sesión, ni siquiera un facilitador', async () => {
+  it('RF-27 (021) · 27.5, RF-6 (007): nadie lee una referencia desde el cliente, con o sin sesión, ni siquiera un facilitador', async () => {
     for (const uid of [null, 'ana', 'beto', 'fabi', 'susi'] as const) {
       await assertFails(getBytes(ref(storageAs(uid), FILE)));
       await assertFails(getBytes(ref(storageAs(uid), REMOVED_FILE)));
     }
   });
 
-  it('RF-6 (007): tampoco en un ápice público y no archivado', async () => {
+  it('RF-27 (021) · 27.5, RF-6 (007): tampoco en un ápice público y no archivado', async () => {
     await setApice({ visibility: 'public', isArchived: false });
     await assertFails(getBytes(ref(storageAs(null), FILE)));
     await assertFails(getBytes(ref(storageAs('fabi'), FILE)));
   });
 
-  it('RF-16 (001): nadie escribe ni borra referencias desde el cliente, ni siquiera un facilitador', async () => {
+  it('RF-27 (021) · 27.5: nadie escribe ni borra referencias desde el cliente, ni siquiera un facilitador', async () => {
     for (const uid of ['ana', 'fabi'] as const) {
       await assertFails(uploadBytes(ref(storageAs(uid), 'apices/a1/references/r9'), new Uint8Array(10), PNG));
       await assertFails(uploadBytes(ref(storageAs(uid), FILE), new Uint8Array(10), PNG));

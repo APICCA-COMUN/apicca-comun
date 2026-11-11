@@ -19,7 +19,7 @@ Cada eje tiene su ícono y su color propios en todo el sitio. El color nunca es 
 ## Para qué sirven
 
 - **Al crear o editar** un ápice, eliges sus ejes en la [ficha](/documentacion/ficha-del-apice).
-- **Al explorar**, en [Prototipado](/prototipado) puedes filtrar por uno o varios ejes. Si eliges varios, ves los ápices que conectan alguno de ellos. El filtro de eje se puede combinar con el de estado, y entonces se muestran solo los que cumplen ambos.
+- **Al explorar**, en el [mapa](/) puedes filtrar por uno o varios ejes. Si eliges varios, ves los ápices que conectan alguno de ellos. El filtro de eje se puede combinar con el de etapa, y entonces se muestran solo los que cumplen ambos.
 - **Al leer**, los ejes dicen de un vistazo de qué trata cada ápice.
 
 Si ningún ápice cumple los filtros, el sitio lo dice y te ofrece quitarlos.

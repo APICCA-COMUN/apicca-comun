@@ -6,7 +6,7 @@ En APICCA se entra por invitación. Así el espacio lo habitan solo las personas
 
 1. Abre [Entrar](/entrar).
 2. Escribe tu correo y tu contraseña.
-3. Al terminar, vuelves a la página que estabas viendo o, si no hay ninguna, a [Mi tablero](/documentacion/mi-tablero).
+3. Al terminar, vuelves a la página que estabas viendo o, si no hay ninguna, al mapa con [Lo mío](/documentacion/mi-tablero).
 
 Si el correo o la contraseña no coinciden, el sitio te lo dice sin indicar cuál de los dos falló. Tras varios intentos fallidos puede limitar temporalmente nuevos intentos.
 

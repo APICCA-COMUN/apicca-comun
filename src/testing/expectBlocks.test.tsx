@@ -69,7 +69,7 @@ describe('expectBlocks', () => {
   });
 
   it('RF-2 (002) · 2.1: un style sin color, como el lado calculado de un edificio, no falla', () => {
-    mount('<div style="width: 128px; height: 128px; image-rendering: pixelated"></div>');
+    mount('<div style="width: 128px; height: 128px"></div>');
     expect(blockProblems(container)).toEqual([]);
   });
 });
@@ -94,7 +94,7 @@ describe('blockNesting', () => {
 
   it('RF-3 (003) · 3.3: el edificio de un ápice dentro de una tarjeta o un lote no falla (D-28 (003))', () => {
     mount(`
-      <article class="block"><div class="block building"><img alt="" /></div><h3>Huerta</h3></article>
+      <article class="block"><div class="block building"><svg></svg></div><h3>Huerta</h3></article>
       <section class="lot"><div class="block building"></div></section>`);
     expect(blockNesting(container)).toEqual([]);
     // El edificio no es contenedor: un bloque dentro de él sí falla.

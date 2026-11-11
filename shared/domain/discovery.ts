@@ -69,7 +69,8 @@ export type ListAudience = 'visitor' | 'member' | 'archived-own' | 'archived-all
 /** Una condición de la consulta. El rango (`<=`) cubre las propuestas vencidas (D-T14 (004)). */
 export interface QueryCondition {
   field: string;
-  op: '==' | 'array-contains-any' | '<=';
+  /** `array-contains` lo usa «Lo mío» de las Acciones Comunes (D-T5 (010)). */
+  op: '==' | 'array-contains' | 'array-contains-any' | '<=';
   value: string | boolean | number | string[];
 }
 

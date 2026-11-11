@@ -111,4 +111,4 @@ main > .lot {
   gap: 8px 24px;
 }
 
-/* El contador pasó a la franja del terreno: su estilo está en `TerrainStrip.css` (RF-7 (019) · 7.1, D-T20 (019)). */
+/* El contador va en la barra del mapa: su estilo está en `Play.css` (RF-12 (021) · 12.1, D-T22 (021)). */

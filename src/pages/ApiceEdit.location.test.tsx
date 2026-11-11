@@ -76,7 +76,7 @@ describe('ApiceEdit · ubicación', () => {
 
   it('RF-9 (001): otra persona no lo pide ni lo ve, y puede guardar dejando la ubicación intacta', async () => {
     const { asked, calls } = setup(beto);
-    expect(screen.getByText(/Zona de ≈ 1 km alrededor de 1.005, 2.005/)).toBeTruthy();
+    expect(screen.getByText(/Zona de ≈ 5 km² alrededor de 1.005, 2.005/)).toBeTruthy();
     expect(screen.queryByText(/Punto exacto/)).toBeNull();
     fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'Otra' } });
     await save();
@@ -135,7 +135,7 @@ describe('ApiceEdit · ubicación', () => {
         current: { version: 3, content: { name: 'Huerta', description: 'Otra', axes: ['alimento'], needs: '', offers: '', status: 'idea' } },
       }),
     });
-    expect(screen.getByText(/Zona de ≈ 1 km alrededor de 1.005, 2.005/)).toBeTruthy();
+    expect(screen.getByText(/Zona de ≈ 5 km² alrededor de 1.005, 2.005/)).toBeTruthy();
     push(apice({ version: 3, description: 'Otra', location: null }));
     fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'Mía' } });
     await save();

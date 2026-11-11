@@ -1,5 +1,6 @@
-// T-7.3 · Saltarse la interfaz (RNF-5 (001), RF-5 (001), RF-14 (001), RF-19 (001)): con el SDK desnudo y con
-// las ops llamadas sin pasar por ninguna pantalla, lo que la spec prohíbe falla con el error esperado.
+// T-7.3 · Saltarse la interfaz (RNF-5 (001), RF-5 (001), RF-14 (001)): con el SDK desnudo y con las ops llamadas
+// sin pasar por ninguna pantalla, lo que la spec prohíbe falla con el error esperado. El tope diario de generación
+// (RF-19 (001)) se retiró con la imagen (RF-27 (021), D-T6 (021)).
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -7,13 +8,10 @@ import { ApiError } from '../../functions/src/errors';
 import { handleArchiveApice } from '../../functions/src/ops/archiveApice';
 import { handleCreateApice } from '../../functions/src/ops/createApice';
 import { handleEditApice } from '../../functions/src/ops/editApice';
-import { handleGenerateImage } from '../../functions/src/ops/generateImage';
 import { handleRestoreVersion } from '../../functions/src/ops/restoreVersion';
 import { handleSetVisibility } from '../../functions/src/ops/setVisibility';
-import { createFakeImageModel } from '../../functions/src/model/imageModel';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from '../../functions/src/testing';
 import { VALID } from '../../functions/src/testing/apiceKit';
-import { sampleImage, withModel } from '../../functions/src/testing/generationKit';
 import { createTestEnvironment } from '../rules/setup';
 
 let env: RulesTestEnvironment;
@@ -48,7 +46,6 @@ beforeAll(async () => {
   uid['fabi'] = (await seedAccount(ctx, { username: 'fabi', role: 'facilitator' })).uid;
   uid['susi'] = (await seedAccount(ctx, { username: 'susi', status: 'suspended' })).uid;
   uid['gero'] = (await seedAccount(ctx, { username: 'gero' })).uid;
-  uid['dora'] = (await seedAccount(ctx, { username: 'dora' })).uid;
 
   const withExact = { ...VALID, location: { mode: 'set', ...EXACT, precision: 'approximate' } };
   pub = (await handleCreateApice(ctx, withExact, uid['ana'] as string)).id;
@@ -80,7 +77,12 @@ describe('saltarse la interfaz · lecturas', () => {
 
   it('RNF-4 (001): lo público del ápice no trae el punto exacto, solo la zona', async () => {
     const stored = (await getDoc(doc(dbOf(null), `apices/${pub}`))).data() as { location: { lat: number; lng: number } };
-    expect(stored.location).toEqual({ lat: 4.355, lng: -74.125, precision: 'approximate' });
+    expect(stored.location).toEqual({
+      lat: 4.367389,
+      lng: -74.124852,
+      precision: 'approximate',
+      zone: { cell: '8766e08e4ffffff', lat: 4.367389, lng: -74.124852 },
+    });
   });
 });
 
@@ -139,11 +141,10 @@ describe('saltarse la interfaz · archivo', () => {
 });
 
 describe('saltarse la interfaz · suspensión', () => {
-  it('RF-5 (001): una cuenta suspendida no crea, edita ni genera, y las reglas no le abren lo privado', async () => {
+  it('RF-5 (001): una cuenta suspendida no crea ni edita, y las reglas no le abren lo privado', async () => {
     const susi = uid['susi'] as string;
     expect(await codeOf(handleCreateApice(ctx, VALID, susi))).toBe('account-suspended');
     expect(await codeOf(handleEditApice(ctx, { id: pub, baseVersion: 1, content: content() }, susi))).toBe('account-suspended');
-    expect(await codeOf(handleGenerateImage(ctx, { id: pub }, susi))).toBe('account-suspended');
     await assertFails(getDoc(doc(dbOf('susi'), `apices/${priv}`)));
     await assertSucceeds(getDoc(doc(dbOf('susi'), `apices/${pub}`)));
     await assertFails(getDoc(doc(dbOf('susi'), `apices/${pub}/versions/1`)));
@@ -156,16 +157,4 @@ describe('saltarse la interfaz · suspensión', () => {
     expect(await codeOf(handleEditApice(ctx, { id: pub, baseVersion: 2, content: content({ name: 'Después' }) }, gero))).toBe('account-suspended');
     await assertFails(getDoc(doc(dbOf('gero'), `apices/${priv}`)));
   });
-});
-
-describe('saltarse la interfaz · tope diario', () => {
-  it('RF-19 (001): la cuarta generación del día se rechaza con generation-limit-reached, llamando la op directamente', async () => {
-    const dora = uid['dora'] as string;
-    const model = withModel(ctx, createFakeImageModel({ image: await sampleImage() }));
-    for (let i = 0; i < 3; i += 1) {
-      expect(await codeOf(handleGenerateImage(model, { id: pub }, dora))).toBe('sin-error');
-    }
-    expect(await codeOf(handleGenerateImage(model, { id: pub }, dora))).toBe('generation-limit-reached');
-    expect((await ctx.db.doc(`generationDays/${dora}_2026-09-01`).get()).get('count')).toBe(3);
-  }, 60_000);
 });

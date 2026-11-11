@@ -1,0 +1,107 @@
+/* RF-13 (021) · 13.1–13.7, D-T24 (021): el menú de juego. Un diálogo angosto con los destinos en columna, de 44 px y
+   16/700 como los enlaces de menú (RF-4 (008) · 4.2), la cuenta debajo y el apoyo al fondo sobre `footer-bg`, porque el logo es el negativo (RF-3 (015)).
+   Solo tokens. */
+button.game-menu__toggle {
+  min-block-size: var(--size-icon-control);
+  padding-inline: 18px;
+  font-weight: 800;
+}
+
+.dialog.game-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  inline-size: min(22rem, calc(100% - 2rem));
+  padding: 20px;
+}
+
+.dialog.game-menu:not([open]) {
+  display: none;
+}
+
+.game-menu__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.game-menu__title {
+  margin: 0;
+  font-size: var(--type-title-size);
+  line-height: var(--type-title-line);
+  font-weight: var(--type-title-weight);
+}
+
+.game-menu__nav,
+.game-menu__account {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.game-menu__account {
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+}
+
+.game-menu__who {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 4px;
+  padding-inline: 10px;
+}
+
+.game-menu__name {
+  font-weight: 800;
+}
+
+.game-menu__role {
+  color: var(--text-muted);
+  font-size: var(--type-meta-size);
+}
+
+.game-menu__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-block-start: 8px;
+}
+
+.game-menu__support {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-block);
+  background-color: var(--footer-bg);
+  color: var(--on-charcoal-muted);
+  font-size: var(--type-body-size);
+}
+
+.game-menu__support-link {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px;
+}
+
+.game-menu__support-link img {
+  display: block;
+  width: auto;
+  height: 28px;
+}
+
+@media (forced-colors: active) {
+  .game-menu__support {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* RF-21 (021) · 21.4: «Ver la bienvenida», bajo los destinos. */
+.game-menu__welcome {
+  align-self: flex-start;
+}

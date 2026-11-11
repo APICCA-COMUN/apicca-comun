@@ -1,6 +1,6 @@
-// RF-16 (003) · 16.1 · Aire entre secciones en Chromium real: en `/` la separación entre las secciones y en
-// `/prototipado` el espacio bajo el lote salen de la escala de `lots.css` (`--section-gap`, de 64 a 140 px), a 360 y
-// 1280 px. D-T19 (003).
+// RF-16 (003) · 16.1 · Aire entre secciones en Chromium real: la escala de `lots.css` (`--section-gap`, de 64 a 140 px)
+// y el espacio bajo el contenido de una página de texto (el Foro) salen de ella, a 360 y 1280 px. D-T19 (003). El inicio
+// de secciones ya no existe: `/` es el mapa (RF-11 (021)).
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { commands, page } from 'vitest/browser';
 import { act } from 'react';
@@ -85,7 +85,7 @@ function expectInScale(value: number) {
 describe.each(WIDTHS)('aire entre secciones a %i px', (width) => {
   it(`RF-16 (003) · 16.1: la escala --section-gap queda entre 64 y 140 px a ${width} px`, async () => {
     await page.viewport(width, 800);
-    await open('/');
+    await open('/documentacion');
     const probe = document.createElement('div');
     probe.style.height = 'var(--section-gap)';
     host!.append(probe);
@@ -97,23 +97,10 @@ describe.each(WIDTHS)('aire entre secciones a %i px', (width) => {
     if (width === 1280) expect(height).toBeGreaterThan(MIN + 20);
   });
 
-  it(`RF-16 (003) · 16.1: en / la separación entre dos secciones va de 64 a 140 px a ${width} px`, async () => {
+  it(`RF-16 (003) · 16.1: en /foro el contenido deja de 64 a 140 px de aire debajo a ${width} px`, async () => {
     await page.viewport(width, 800);
-    await open('/');
-    const sections = await waitFor(() => {
-      const found = [...host!.querySelectorAll<HTMLElement>('main > .home__section')];
-      return found.length >= 2 && found;
-    });
-    for (let index = 1; index < sections.length; index += 1) {
-      const gap = sections[index]!.getBoundingClientRect().top - sections[index - 1]!.getBoundingClientRect().bottom;
-      expectInScale(gap);
-    }
-  });
-
-  it(`RF-16 (003) · 16.1: en /prototipado el contenido deja de 64 a 140 px de aire debajo a ${width} px`, async () => {
-    await page.viewport(width, 800);
-    await open('/prototipado');
-    const lot = await waitFor(() => host!.querySelector<HTMLElement>('main > .prototyping'));
+    await open('/foro');
+    const lot = await waitFor(() => host!.querySelector<HTMLElement>('main .forum'));
     expectInScale(parseFloat(getComputedStyle(lot).marginBlockEnd));
   });
 });

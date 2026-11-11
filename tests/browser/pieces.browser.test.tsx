@@ -1,6 +1,7 @@
 // Capturas de pieza (T-8.3, RNF-5 (002)): el logo en los dos temas y con colores forzados (RF-1 (002) · 1.4,
 // 1.6), el favicon a 16 y 32 px (RF-1 (002) · 1.7), los cinco íconos en monocromo (RF-4 (002) · 4.3), los
-// bloques de acción y sus estados (RF-6 (002) · 6.1) y el mapa tintado (RF-8 (002) · 8.1). Las referencias
+// bloques de acción y sus estados (RF-6 (002) · 6.1) y el mapa propio con una manzana, el terreno sin ubicación y sus
+// controles (RF-4 (021) · 4.1, RF-9 (021) · 9.1, RNF-7 (021); antes, el mapa tintado de RF-8 (002) · 8.1). Las referencias
 // viven en `__screenshots__/` con sufijo de plataforma y se versionan solo cuando la persona las aprueba
 // (T-8.4). La tolerancia es la de `vitest.config.ts` (D-T12 (002)). La 003 suma las piezas
 // nuevas (T-7.5 (003), RNF-2 (003), D-T22 (003)): caminos y nodos, botones de ícono, pie, etiqueta, lote y campo.
@@ -18,7 +19,8 @@ import { THEMES } from '../../shared/domain/identity';
 import { AXES } from '../../shared/domain/apice';
 import { Logo } from '../../src/components/Logo';
 import { AxisIcon } from '../../src/components/AxisIcon';
-import { ApiceMap, type MappedApice } from '../../src/components/ApiceMap';
+import { GameMap } from '../../src/map/GameMap';
+import type { ListedApice } from '../../src/data/apices';
 import { RoadSegment } from '../../src/components/RoadSegment';
 import { Node } from '../../src/components/Node';
 import { ConditionTag } from '../../src/components/ConditionTag';
@@ -117,18 +119,19 @@ describe.each(THEMES)('piezas en el tema %s', (theme) => {
     await expect.element(page.elementLocator(piece)).toMatchScreenshot(`bloques-${theme}`);
   });
 
-  it('RF-8 (002) · 8.1: captura del mapa tintado', async () => {
-    const apices: MappedApice[] = [
-      { id: 'a', name: 'Huerta del barrio', axes: ['agua', 'alimento'], location: { lat: 4.6, lng: -74.08, precision: 'exact' } },
-      { id: 'b', name: 'Radio comunitaria', axes: ['comunicación'], location: { lat: 4.65, lng: -74.05, precision: 'exact' } },
+  it('RF-4 (021) · 4.1, RF-9 (021) · 9.1, RNF-7 (021): captura del mapa propio con una manzana y ápices sin ubicación', async () => {
+    const zone = { cell: '8766e092affffff', lat: 4.597156, lng: -74.08474 };
+    const base = { description: '', updatedAt: { seconds: 1_790_000_000, nanoseconds: 0 }, needs: '' };
+    const located = { lat: zone.lat, lng: zone.lng, precision: 'approximate' as const, zone };
+    const apices: ListedApice[] = [
+      { ...base, id: 'a', name: 'Huerta del barrio', axes: ['agua', 'alimento'], status: 'en marcha', needs: 'Manos', location: located },
+      { ...base, id: 'b', name: 'Radio comunitaria', axes: ['comunicación'], status: 'prototipo', location: located },
+      { ...base, id: 'c', name: 'Panel solar', axes: ['energía'], status: 'idea', location: located },
     ];
-    const piece = await mount(<ApiceMap apices={apices} />, theme, 640);
-    await waitFor(() => piece.querySelector('.leaflet-marker-icon'));
-    await waitFor(() => {
-      const tiles = [...piece.querySelectorAll<HTMLImageElement>('img.leaflet-tile')];
-      return tiles.length > 0 && tiles.every((tile) => tile.complete && tile.naturalWidth === 256);
-    });
-    await expect.element(page.elementLocator(piece.querySelector<HTMLElement>('.leaflet-container')!)).toMatchScreenshot(`mapa-${theme}`);
+    const piece = await mount(<GameMap items={apices} selectedId="b" onSelect={() => undefined} />, theme, 640);
+    const map = await waitFor(() => piece.querySelector<HTMLElement>('.game-map'));
+    await waitFor(() => document.getAnimations().length === 0);
+    await expect.element(page.elementLocator(map)).toMatchScreenshot(`mapa-${theme}`);
   });
 });
 
@@ -174,7 +177,6 @@ describe.each(THEMES)('piezas de la 003 en el tema %s', (theme) => {
         <ConditionTag condition="visibility">Privado</ConditionTag>
         <ConditionTag condition="archived">Archivado</ConditionTag>
         <ConditionTag condition="status">En marcha</ConditionTag>
-        <ConditionTag condition="reference">Referencia</ConditionTag>
       </div>,
       theme,
     );

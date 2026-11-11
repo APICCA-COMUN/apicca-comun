@@ -14,6 +14,7 @@ import { emulatorLane } from '../../src/data/emulatorPorts';
 import { emailKey } from '../../shared/domain/invitations';
 import { FIXED_TIME } from './fixed-time';
 import {
+  ACTION,
   APICE_IDS,
   AUTHOR,
   CONSTITUTION_IDS,
@@ -287,7 +288,26 @@ interface SeedApice {
   archived?: boolean;
   image?: { id: string; altText: string; png: Uint8Array } | null;
   activeReferenceCount?: number;
+  /** Ubicación publicada, como la deja `publishedLocation` (functions/src/zone.ts); sin ella, el ápice no tiene ubicación. */
+  location?: SeedLocation;
 }
+
+interface SeedLocation {
+  lat: number;
+  lng: number;
+  precision: 'approximate';
+  zone: { cell: string; lat: number; lng: number };
+}
+
+/**
+ * Zonas H3 reales de resolución 7 (D-6 (021), D-T19 (021)), calculadas con `h3-js`: la del centro de Bogotá y su vecina
+ * al occidente. Aproximadas, así que el punto publicado es el centro de la zona.
+ */
+const zoned = (cell: string, lat: number, lng: number): SeedLocation => ({ lat, lng, precision: 'approximate', zone: { cell, lat, lng } });
+const ZONES = {
+  center: zoned('8766e092affffff', 4.597156, -74.08474),
+  west: zoned('8766e0905ffffff', 4.61069, -74.103401),
+} as const;
 
 /** Los mismos campos que `createApiceDoc` (functions/src/apiceStore.ts) más lo que cambian las demás ops. */
 async function writeApice(db: Firestore, at: Timestamp, apice: SeedApice): Promise<void> {
@@ -304,8 +324,8 @@ async function writeApice(db: Firestore, at: Timestamp, apice: SeedApice): Promi
     updatedAt: at,
     lastEditedByUsername: apice.authorUsername,
     version: 1,
-    location: null,
-    hasLocation: false,
+    location: apice.location ?? null,
+    hasLocation: apice.location !== undefined,
     // Como `acceptProposal`: el PNG vive en el propio documento (D-T6 (001)).
     image: apice.image === undefined || apice.image === null ? null : { ...apice.image, png: Bytes.fromUint8Array(apice.image.png) },
     activeReferenceCount: apice.activeReferenceCount ?? 0,
@@ -313,7 +333,7 @@ async function writeApice(db: Firestore, at: Timestamp, apice: SeedApice): Promi
   batch.set(doc(db, `apices/${apice.id}/versions/1`), {
     n: 1,
     content: apice.content,
-    location: null,
+    location: apice.location ?? null,
     kind: 'create',
     restoredFromN: null,
     savedByUid: apice.authorUid,
@@ -455,7 +475,8 @@ export const seedFull: BrowserCommand<[], void> = async () => {
         ...extra,
       });
 
-      // Público con imagen (en el documento, como `acceptProposal`) y una referencia activa (también en Storage).
+      // RF-27 (021) · 27.4: la siembra conserva lo que existía antes del retiro de la imagen, para probar que se guarda y
+      // no se muestra. Público con imagen en el documento y una referencia activa (también en Storage).
       const activePath = `apices/${APICE_IDS.withImage}/references/${REFERENCE_IDS.active}`;
       await writeApice(db, at, {
         id: APICE_IDS.withImage,
@@ -463,6 +484,7 @@ export const seedFull: BrowserCommand<[], void> = async () => {
         ...author,
         image: { id: 'imagen-fija', altText: 'Tablero de dos tonos, verde y ámbar', png },
         activeReferenceCount: 1,
+        location: ZONES.center,
       });
       await setDoc(doc(db, activePath), referenceDoc(activePath, 'Tablero de referencia', {}));
       await uploadBytes(ref(context.storage(), activePath), png, { contentType: 'image/png' });
@@ -471,12 +493,18 @@ export const seedFull: BrowserCommand<[], void> = async () => {
         id: APICE_IDS.allAxes,
         content: content('Los cinco ejes', 'en marcha', ['agua', 'alimento', 'cobijo', 'energía', 'comunicación']),
         ...author,
+        location: ZONES.west,
       });
       await writeApice(db, at, { id: APICE_IDS.private, content: content('Ápice privado', 'idea', ['cobijo']), ...author, visibility: 'private' });
       await writeApice(db, at, { id: APICE_IDS.archived, content: content('Ápice archivado', 'idea', ['energía']), ...author, archived: true });
 
-      // Propuesta pendiente de la autora (functions/src/ops/generateImage.ts); vence en 2099 por la misma razón.
-      await writeApice(db, at, { id: APICE_IDS.withProposal, content: content('Ápice con propuesta', 'idea', ['comunicación']), ...author });
+      // Propuesta pendiente de la autora, como las que dejaba la generación; vence en 2099 por la misma razón.
+      await writeApice(db, at, {
+        id: APICE_IDS.withProposal,
+        content: content('Ápice con propuesta', 'idea', ['comunicación']),
+        ...author,
+        location: ZONES.center,
+      });
       await setDoc(doc(db, `proposals/${APICE_IDS.withProposal}_${AUTHOR.uid}`), {
         apiceId: APICE_IDS.withProposal,
         requestedByUid: AUTHOR.uid,
@@ -488,9 +516,9 @@ export const seedFull: BrowserCommand<[], void> = async () => {
         expiresAt: Timestamp.fromDate(new Date('2099-01-01T00:00:00Z')),
       });
 
-      // Referencia retirada por la facilitación (functions/src/ops/referenceRemoval.ts): el contador ya no la cuenta.
+      // Referencia retirada por la facilitación, como las dejaba el servidor: el contador ya no la cuenta.
       const retractedPath = `apices/${APICE_IDS.withRetractedReference}/references/${REFERENCE_IDS.retracted}`;
-      // Idea con imagen y sin necesidades (RF-4 (019) · 4.5, RF-9 (019), D-T18 (019)): el edificio es solo la base y no lleva pin.
+      // Idea con imagen y sin necesidades (RF-9 (019), D-T18 (019)): el edificio es solo la base y no lleva pin.
       await writeApice(db, at, {
         id: APICE_IDS.withRetractedReference,
         content: { ...content('Referencia retirada', 'idea', ['agua']), needs: '' },
@@ -505,6 +533,28 @@ export const seedFull: BrowserCommand<[], void> = async () => {
         }),
       );
       await uploadBytes(ref(context.storage(), retractedPath), png, { contentType: 'image/png' });
+      // Una Acción Común abierta que une tres ápices públicos: los mismos campos que `proposeCommonAction` (RF-1 (010)).
+      const actionData = {
+        title: ACTION.title,
+        description: 'Juntemos el agua lluvia de los techos del barrio para regar las huertas.',
+        axis: 'agua',
+        apiceIds: [APICE_IDS.withImage, APICE_IDS.allAxes, APICE_IDS.withProposal],
+      };
+      await setDoc(doc(db, `commonActions/${ACTION.id}`), {
+        ...actionData,
+        status: 'abierta',
+        authorUid: AUTHOR.uid,
+        authorUsername: AUTHOR.username,
+        authorSuspended: false,
+        isListed: true,
+        participantUids: [AUTHOR.uid],
+        participantCount: 1,
+        version: 1,
+        createdAt: at,
+        updatedAt: at,
+      });
+      await setDoc(doc(db, `commonActions/${ACTION.id}/participants/${AUTHOR.uid}`), { uid: AUTHOR.uid, username: AUTHOR.username, joinedAt: at, suspended: false });
+      await setDoc(doc(db, `commonActions/${ACTION.id}/versions/1`), { ...actionData, editedBy: AUTHOR.uid, editedAt: at });
     });
   } finally {
     await env.cleanup();

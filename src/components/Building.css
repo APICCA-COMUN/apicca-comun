@@ -1,6 +1,7 @@
-/* RF-7 (002) · 7.1 a 7.4, D-T10 (002): el edificio es un bloque `charcoal`; los íconos van arriba y la
-   imagen debajo, sin suavizado (PixelImage.css). El marcador sin imagen va sobre `surface` para que su
-   texto tenga el contraste de `text`. Solo colores de tokens (D-T20 (002)). */
+/* RF-1 (021) · 1.2, RF-2 (021) · 2.2, 2.3, 2.6, RF-3 (021), D-T4 (021): el edificio es un dibujo de formas planas. La base,
+   el cuerpo y el techo llevan el relleno y el trazo del primer eje; los vanos y los puestos de los motivos van en
+   `surface`, y cada motivo conserva los colores de su eje (AxisIcon.css). La etapa se lee por la forma (una, dos o
+   tres partes) y por el texto. Solo colores de tokens (D-T20 (002)). */
 
 .building {
   display: flex;
@@ -8,34 +9,10 @@
   align-items: flex-start;
   gap: 0.5rem;
   width: 100%;
-  border-color: var(--charcoal);
-  background-color: var(--charcoal);
-}
-
-.building__axes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
-
-.building .pixel-image {
-  flex: none;
-}
-
-/* RF-2 (019), D-T3 (019): texto vacío con tamaño meta. */
-.building .pixel-image--empty {
-  border-color: var(--field-border);
-  background-color: var(--surface);
-  color: var(--text);
-  font-size: var(--type-meta-size);
-}
-
-/* RF-4 (019) · 4.1 a 4.4, D-T19 (019): el edificio crece por etapa. La base lleva el relleno del primer eje y el
-   techo, su trazo; la etapa se lee por la forma (una, dos o tres partes) y por el texto. Solo colores de tokens. */
-.building {
-  position: relative;
-  --building-fill: var(--on-charcoal-muted);
-  --building-stroke: var(--on-charcoal);
+  --building-fill: var(--surface);
+  --building-stroke: var(--field-border);
+  /* El fondo sobre el que se apoya el dibujo: el pin se recorta contra él. */
+  --building-ground: var(--surface);
 }
 
 .building--axis-agua {
@@ -63,75 +40,80 @@
   --building-stroke: var(--axis-comunicacion-stroke);
 }
 
-.building__structure {
-  display: flex;
-  flex-direction: column;
+/* El pin se ancla a la esquina del dibujo. */
+.building__figure {
+  position: relative;
+  display: block;
   flex: none;
   max-width: 100%;
+  line-height: 0;
+}
+
+.building__drawing {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.building__base,
+.building__wall,
+.building__roof {
+  stroke: var(--building-stroke);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.building__base,
+.building__wall {
+  fill: var(--building-fill);
 }
 
 .building__roof {
-  height: 20px;
-  background-color: var(--building-stroke);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  fill: var(--building-stroke);
+}
+
+.building__window {
+  fill: var(--surface);
+}
+
+.building__door {
+  fill: var(--building-stroke);
+}
+
+.building__plate {
+  fill: var(--surface);
+  stroke: var(--building-stroke);
+  stroke-width: 1;
+}
+
+/* RF-3 (021) · 3.4, RF-9 (002): la parte nueva crece desde su apoyo. */
+.building__body,
+.building__roof {
+  transform-box: fill-box;
   transform-origin: bottom;
   animation: building-grow 240ms ease-out;
 }
 
-/* El marco de 2 px es `BODY_FRAME` en Building.tsx: la estructura lo suma para que la imagen mida 64·n (RF-7 (002) · 7.2). */
-.building__body {
-  display: flex;
-  border: 2px solid var(--building-stroke);
-  background-color: var(--charcoal);
-  line-height: 0;
-  transform-origin: bottom;
-  animation: building-grow 240ms ease-out;
-}
-
-.building__body .pixel-image {
-  max-width: 100%;
-}
-
-/* El cuerpo anula el interlineado para que la imagen no deje hueco; el marcador «Sin imagen» lo recupera, o sus dos
-   líneas se encimarían (caso límite §6 de la 019). */
-.building__body .pixel-image--empty {
-  line-height: var(--type-meta-line);
-}
-
-.building__base {
-  height: 20px;
-  background-color: var(--building-fill);
-  border-bottom: 3px solid var(--building-stroke);
-}
-
-.building__stage {
-  color: var(--on-charcoal);
-  font-size: var(--type-meta-size);
-  line-height: var(--type-meta-line);
-}
-
-/* RF-13 (002) · 13.1, RF-4 (019) · 4.4: la etiqueta de la etapa va sobre `charcoal`, así que usa `on-charcoal` y no
-   `text-muted`, que no contrasta con ese fondo. */
-.building__stage .tag,
-.building__stage .tag .tag-dot {
-  color: var(--on-charcoal);
-}
-
-.building__stage .tag .tag-dot {
-  background-color: var(--on-charcoal);
-}
-
-/* RF-9 (019) · 9.1, 9.3, D-T21 (019): círculo de 14 px, decorativo y sin cifras; el texto está en la tarjeta y el panel. */
+/* RF-9 (019) · 9.1, 9.3, D-T21 (019): círculo de 14 px, decorativo y sin cifras; el texto está en la tarjeta y el panel.
+   Va sobre el extremo derecho de la base, que está en las tres etapas y no lleva motivos (D-T4 (021)). */
 .building__pin {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: 89%;
+  left: 95%;
+  transform: translate(-50%, -50%);
   width: 14px;
   height: 14px;
   border-radius: var(--radius-pill);
   background-color: var(--building-fill);
-  border: 2px solid var(--on-charcoal);
+  border: 2px solid var(--building-stroke);
+  box-shadow: 0 0 0 2px var(--building-ground);
   box-sizing: border-box;
+}
+
+.building__stage {
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line);
 }
 
 @keyframes building-grow {
@@ -147,30 +129,37 @@
 
 /* RNF-5 (019): con movimiento reducido las partes no animan. */
 @media (prefers-reduced-motion: reduce) {
-  .building__roof,
-  .building__body {
+  .building__body,
+  .building__roof {
     animation-name: none;
     transition-duration: 0s;
   }
 }
 
-/* Colores forzados (caso límite §6): la forma y el texto dicen la etapa; los colores pasan al sistema. */
+/* Colores forzados (caso límite §6): la forma y el texto dicen la etapa y los ejes; los colores pasan al sistema. */
 @media (forced-colors: active) {
-  .building__roof {
-    background-color: CanvasText;
+  .building__base,
+  .building__wall,
+  .building__plate {
+    fill: Canvas;
+    stroke: CanvasText;
   }
 
-  .building__body {
-    border-color: CanvasText;
+  .building__roof,
+  .building__door {
+    fill: CanvasText;
+    stroke: CanvasText;
   }
 
-  .building__base {
-    background-color: Canvas;
-    border-color: CanvasText;
+  .building__window {
+    fill: Canvas;
+    stroke: CanvasText;
+    stroke-width: 1;
   }
 
   .building__pin {
     background-color: Highlight;
     border-color: CanvasText;
+    box-shadow: none;
   }
 }

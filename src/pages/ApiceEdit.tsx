@@ -126,7 +126,8 @@ function Editor({ id, client, opened, latest, source, mayReadExact }: EditorProp
     const result = await client.call('editApice', { id, baseVersion, content, ...place });
     if (result.ok) {
       drafts.clear(draftKey);
-      navigate(`/apices/${id}`);
+      // Se queda en el panel, con la consulta del mapa (RF-10 (021) · 10.3, RF-14 (021) · 14.5).
+      navigate(`/apices/${id}${window.location.search}`, { keepFocus: true });
     } else {
       setConflict({ mine: content, location, current: result.current });
     }

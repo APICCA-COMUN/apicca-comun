@@ -123,36 +123,6 @@ export const TYPE_SCALE = {
 
 export const TOKEN_NAMES = Object.keys(light) as readonly TokenName[];
 
-/** Una referencia a un token de un tema. */
-export interface TokenRef {
-  theme: ThemeName;
-  token: TokenName;
-}
-
-/**
- * Paleta del terreno (RF-1 (019) · 1.1, D-T24 (019)): 16 referencias a tokens, de la más oscura a la más clara. El
- * pixelado de las imágenes nuevas usa estos colores (RF-1 (019) · 1.2). El trazo de comunicación queda fuera porque casi
- * repite su relleno. Si cambia un token de la lista, cambia la paleta de las imágenes que se acepten después.
- */
-export const TERRAIN_PALETTE: readonly TokenRef[] = [
-  { theme: 'dark', token: 'background' },
-  { theme: 'dark', token: 'surface' },
-  { theme: 'dark', token: 'line' },
-  { theme: 'light', token: 'charcoal' },
-  { theme: 'light', token: 'axis-agua-stroke' },
-  { theme: 'light', token: 'axis-alimento-stroke' },
-  { theme: 'light', token: 'axis-energia-stroke' },
-  { theme: 'light', token: 'axis-cobijo-stroke' },
-  { theme: 'light', token: 'axis-comunicacion-fill' },
-  { theme: 'light', token: 'axis-agua-fill' },
-  { theme: 'light', token: 'axis-alimento-fill' },
-  { theme: 'light', token: 'axis-cobijo-fill' },
-  { theme: 'light', token: 'axis-energia-fill' },
-  { theme: 'light', token: 'line' },
-  { theme: 'light', token: 'background' },
-  { theme: 'light', token: 'surface' },
-];
-
 // Tintado de las teselas del mapa (D-T8 (002)); no es token público de §4.0. Con
 // `forced-colors: active` no se aplica ninguno.
 export const MAP_TINT: Readonly<Record<ThemeName, string>> = {

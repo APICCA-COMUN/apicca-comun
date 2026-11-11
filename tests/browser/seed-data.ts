@@ -20,6 +20,8 @@ export const FACILITATOR = { uid: 'facilitacion-fija', email: 'facilitacion@ejem
  * Un ápice por condición. Todos son de la autora, salvo los que reutiliza la siembra parcial; `FACILITATOR` no tiene ninguno.
  * Etapas (RF-4 (019)): `withImage` es prototipo, `allAxes` está en marcha y los demás son ideas. Todos tienen necesidades
  * salvo `withRetractedReference`.
+ * Ubicación (D-T19 (021)): `withImage` y `withProposal` comparten la zona del centro de Bogotá, `allAxes` está en la zona
+ * vecina y los demás no tienen ubicación, así que el mapa muestra manzanas y el terreno aparte.
  */
 export const APICE_IDS = {
   /** Público, con imagen PNG de 64 × 64 y una referencia activa en Storage. */
@@ -37,13 +39,16 @@ export const APICE_IDS = {
 } as const;
 
 /** La invitación pendiente de la facilitación. */
+/** La Acción Común sembrada (RF-18 (021), RF-20 (021)): abierta, de `AUTHOR`, con tres ápices públicos. */
+export const ACTION = { id: 'camino-fijo', title: 'Agua lluvia del barrio' } as const;
+
 export const INVITED_EMAIL = 'invitada@ejemplo.org';
 
 /** Id de la referencia activa de `withImage` y de la retirada de `withRetractedReference`. */
 export const REFERENCE_IDS = { active: 'referencia-activa', retracted: 'referencia-retirada' } as const;
 
 /** Textos de las condiciones, los mismos de la 001 (RF-13 (002) · 13.3). */
-export const CONDITION_TEXTS = { private: 'privado', archived: 'archivado', status: 'Prototipo', retracted: 'Retirada' } as const;
+export const CONDITION_TEXTS = { private: 'privado', archived: 'archivado', status: 'Prototipo' } as const;
 
 // Constitución común sembrada (T-11.2, RNF-4 (004), D-T18 (004)): abierta, con tres secciones, un documento y tres
 // propuestas. Las ids son fijas para que las rutas de la matriz y de las capturas no cambien entre corridas.

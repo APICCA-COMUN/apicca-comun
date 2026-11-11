@@ -1,24 +1,20 @@
 // T-7.1 · Recorrido de punta a punta del criterio de finalización de la spec (§8): una facilitadora invita,
-// dos personas se registran, una crea un ápice, la otra lo co-edita y se resuelve un conflicto, se genera (con el
-// modelo doble) y se acepta una imagen, se ubica, se hace público y un visitante lo halla por eje, leyendo con las
-// reglas reales. Las ops se llaman como las llama la callable: payload plano y uid.
+// dos personas se registran, una crea un ápice, la otra lo co-edita y se resuelve un conflicto, se ubica, se hace
+// público y un visitante lo halla por eje, leyendo con las reglas reales. Las ops se llaman como las llama la
+// callable: payload plano y uid. Generar y aceptar la imagen salió del recorrido con su retiro (RF-27 (021)).
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { listQueryShape, NO_FILTERS } from '../../shared/domain/discovery';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createFakeImageModel } from './model/imageModel';
-import { handleAcceptProposal } from './ops/acceptProposal';
 import { handleCreateApice } from './ops/createApice';
 import { handleEditApice } from './ops/editApice';
-import { handleGenerateImage } from './ops/generateImage';
 import { handleInvite } from './ops/invite';
 import { handleRegister } from './ops/register';
 import { handleSetVisibility } from './ops/setVisibility';
 import { clearEmulators, createTestCtx, seedAccount, type TestCtx } from './testing';
-import { withModel, sampleImage } from './testing/generationKit';
-import { clearBucket } from './testing/mediaKit';
+import { clearBucket } from './testing/storageKit';
 
 let ctx: TestCtx;
 let env: RulesTestEnvironment;
@@ -50,7 +46,7 @@ async function inviteAndRegister(facilitator: string, email: string, username: s
 }
 
 describe('recorrido de la spec 001', () => {
-  it('RF-1 (001): invitar, registrar, crear, co-editar con conflicto, generar y aceptar, ubicar, publicar y hallarlo por eje', async () => {
+  it('RF-1 (001): invitar, registrar, crear, co-editar con conflicto, ubicar, publicar y hallarlo por eje', async () => {
     const facilitator = (await seedAccount(ctx, { username: 'fabi', role: 'facilitator' })).uid;
 
     // Invitar y registrar a dos personas (RF-1 (001), RF-2 (001)).
@@ -82,12 +78,6 @@ describe('recorrido de la spec 001', () => {
       ok: true,
       version: 3,
     });
-
-    // Se genera con el modelo doble y se acepta la imagen (RF-17 (001), RF-18 (001)).
-    const model = createFakeImageModel({ image: await sampleImage() });
-    expect(await handleGenerateImage(withModel(ctx, model), { id }, ana)).toEqual({});
-    expect(await handleAcceptProposal(ctx, { id, altText: 'Una huerta en pixeles' }, ana)).toEqual({ ok: true });
-    expect((await ctx.db.doc(`apices/${id}`).get()).get('image')).toMatchObject({ altText: 'Una huerta en pixeles' });
 
     // Se ubica con la forma que manda la interfaz: `location` junto a `content` (RF-9 (001)).
     expect(

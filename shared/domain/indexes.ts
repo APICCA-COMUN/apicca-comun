@@ -1,6 +1,7 @@
 // Índices compuestos de Firestore derivados de `listQueryShape` (RF-21 (001), D-T17 (001)).
 // El archivo `firestore.indexes.json` se genera con `npm run gen-indexes`; nunca se edita a mano.
 import { APICE_STATUSES, AXES } from './apice';
+import { commonActionQueryShapes } from './commonActions/queries';
 import { constitutionQueryShapes } from './constitution/queries';
 import { forumQueryShapes } from './forum/queries';
 import { listQueryShape, type ListAudience, type QueryShape } from './discovery';
@@ -53,7 +54,7 @@ export function indexForShape(shape: QueryShape): IndexDef {
     .filter((condition) => condition.op === '==')
     .map((condition) => condition.field)
     .sort();
-  const arrays = shape.conditions.filter((condition) => condition.op === 'array-contains-any');
+  const arrays = shape.conditions.filter((condition) => condition.op === 'array-contains-any' || condition.op === 'array-contains');
   const ranges = [
     ...new Set(
       shape.conditions
@@ -97,6 +98,11 @@ export function requiredIndexes(): IndexDef[] {
   }
   // Las consultas del foro (RF-1 (009), RF-2 (009)).
   for (const shape of forumQueryShapes()) {
+    const index = indexForShape(shape);
+    found.set(keyOf(index), index);
+  }
+  // Las Acciones Comunes: la lista y «Lo mío» (D-T5 (010)).
+  for (const shape of commonActionQueryShapes()) {
     const index = indexForShape(shape);
     found.set(keyOf(index), index);
   }

@@ -1,0 +1,18 @@
+/* RF-21 (001), RF-10 (021): los ejes de la tarjeta van en fila, sin viñetas; cada uno ya lleva su ícono y su nombre. */
+.apice-card__axes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* RF-19 (021) · 19.5: la casilla de «Trazar camino», con su etiqueta al lado. */
+.apice-card__path {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-block-size: var(--size-icon-control);
+  font-weight: 700;
+}

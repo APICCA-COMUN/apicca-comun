@@ -1,13 +1,11 @@
-// Mapa en Chromium real (T-6.6): en los dos temas, el panel de teselas se tinta con `--map-tint` y cambia con el
-// tema sin recrear la capa (RF-8 (002) · 8.1, 8.2); si las teselas no cargan se ve el fondo del tema; la atribución
-// queda fuera del tintado y alcanza 4,5:1 (8.6); los colores de `leaflet.css` quedan sobrescritos por tokens
-// (RF-2 (002) · 2.1, D-T20 (002)); los pines se alcanzan con Tab en el orden de la lista y su foco usa `focus` y
-// sube de `z-index` (8.5); con colores forzados no hay tintado y el pin usa los colores del sistema; sin ápices no
-// hay errores, y en el inicio la lista sigue junto al mapa (8.7).
-// RF-10 (019) · 10.3, 10.4, 10.5, D-T25 (019): el mapa de Prototipado se abre con «Ver en el mapa»; la rueda sin Ctrl ni ⌘
-// desplaza la página y no cambia el zoom; con Ctrl o ⌘ acerca y aleja; el mapa no se aleja más allá de donde el mundo
-// cubre su ancho, así que no se repite a los lados.
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+// Mapa propio en Chromium real (D-T19 (021)): sin teselas, imágenes ni peticiones a otros orígenes y con los colores del
+// contrato de tokens en los dos temas (RF-4 (021) · 4.1, 4.2); el norte, la escala y el nombre de cada edificio a la vista
+// (4.3, 4.4); se arrastra con el puntero sin elegir lo que queda debajo (RF-8 (021) · 8.1); los controles miden 44 px o más
+// (8.2); el teclado mueve el lienzo, cambia de nivel y pasa de un edificio al vecino (8.3 a 8.5); la rueda sola desplaza la
+// página y con Ctrl cambia el nivel (8.6); elegir un grupo acerca hasta sus manzanas (RF-7 (021) · 7.2, 7.3); con colores
+// forzados las placas usan los colores del sistema (RNF-1 (021)); y en Prototipado el mapa es una vista propia
+// (RF-10 (021) · 10.2, 10.3).
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { cdp, commands, page, userEvent } from 'vitest/browser';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -15,33 +13,39 @@ import '../../src/styles/tokens.css';
 import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
-import { THEMES, contrastRatio, pinAccessibleName } from '../../shared/domain/identity';
+import { THEMES } from '../../shared/domain/identity';
 import type { Axis } from '../../shared/domain/apice';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
-import { ApiceMap, type MappedApice } from '../../src/components/ApiceMap';
+import type { ListedApice } from '../../src/data/apices';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
+import { GameMap } from '../../src/map/GameMap';
 import { LONG_NAME } from './seed-data';
 
-const apice = (id: string, name: string, lat: number, lng: number, axes: Axis[]): MappedApice => ({
+/** Zonas H3 reales de resolución 7 (D-6 (021)): el centro de Bogotá y Medellín. */
+const BOGOTA = { cell: '8766e092affffff', lat: 4.597156, lng: -74.08474 };
+const MEDELLIN = { cell: '876619d92ffffff', lat: 6.243305, lng: -75.585547 };
+
+const apice = (id: string, name: string, axes: Axis[], zone: typeof BOGOTA | null): ListedApice => ({
   id,
   name,
+  description: `${name}: ápice de prueba.`,
   axes,
-  location: { lat, lng, precision: 'exact' },
+  status: 'idea',
+  updatedAt: { seconds: 1_790_000_000, nanoseconds: 0 },
+  needs: '',
+  location: zone === null ? null : { lat: zone.lat, lng: zone.lng, precision: 'approximate', zone },
 });
 
-/** En el orden de la lista: Huerta y Cocina comparten ubicación y van en el primer pin. */
-const LISTED = [
-  apice('a', 'Huerta', 4.6, -74.08, ['alimento', 'agua']),
-  apice('c', 'Panel solar', 4.7, -74.0, ['energía']),
-  apice('b', 'Cocina', 4.6, -74.08, ['agua']),
-  apice('d', 'Radio comunitaria', 4.65, -74.2, ['comunicación', 'cobijo']),
+/** Tres ápices en la misma manzana: el mapa abre en el nivel barrio. */
+const BLOCK = [
+  apice('a', 'Huerta', ['alimento', 'agua'], BOGOTA),
+  apice('b', 'Cocina', ['agua'], BOGOTA),
+  apice('c', 'Panel solar', ['energía'], BOGOTA),
 ];
-const EXPECTED_ORDER = [
-  pinAccessibleName('2 ápices: Huerta, Cocina', ['agua', 'alimento']),
-  pinAccessibleName('Panel solar', ['energía']),
-  pinAccessibleName('Radio comunitaria', ['cobijo', 'comunicación']),
-];
+
+/** Dos ciudades lejanas: el mapa abre alejado, con un grupo por ciudad. */
+const FAR = [apice('a', 'Huerta', ['agua'], BOGOTA), apice('m', 'Radio', ['comunicación'], MEDELLIN)];
 
 let host: HTMLDivElement | undefined;
 let root: Root | undefined;
@@ -68,25 +72,23 @@ async function waitFor<T>(find: () => T | null | undefined | false, timeoutMs = 
   }
 }
 
-/** El valor calculado de una propiedad para un valor CSS cualquiera (un token o un color del sistema). */
-function computed(property: 'color' | 'backgroundColor' | 'filter', value: string): string {
+const pause = (ms: number) => new Promise((done) => setTimeout(done, ms));
+
+/** El valor calculado de un color cualquiera (un token o un color del sistema). */
+function computed(value: string): string {
   const probe = document.createElement('div');
-  probe.style[property] = value;
+  probe.style.color = value;
   document.body.append(probe);
-  const result = getComputedStyle(probe)[property];
+  const result = getComputedStyle(probe).color;
   probe.remove();
   return result;
 }
 
-/** `rgb(r, g, b)` a `#RRGGBB`. */
-function hex(rgb: string): string {
-  const [r, g, b] = rgb.match(/\d+(\.\d+)?/g)!.map(Number);
-  return `#${[r, g, b].map((part) => Math.round(part!).toString(16).padStart(2, '0')).join('')}`;
-}
-
-async function mount(apices: readonly MappedApice[]): Promise<HTMLElement> {
+/** Monta el mapa con un botón delante, para llegar a él con Tab, y espera a que se quede quieto. */
+async function mount(items: readonly ListedApice[], width = 640): Promise<{ map: HTMLElement; onSelect: ReturnType<typeof vi.fn> }> {
+  const onSelect = vi.fn();
   host = document.createElement('div');
-  host.style.width = '640px';
+  host.style.width = `${width}px`;
   document.body.append(host);
   const created = createRoot(host);
   root = created;
@@ -94,33 +96,48 @@ async function mount(apices: readonly MappedApice[]): Promise<HTMLElement> {
     created.render(
       <>
         <button type="button">antes del mapa</button>
-        <ApiceMap apices={apices} />
+        <GameMap items={items} selectedId={null} onSelect={onSelect} />
       </>,
     ),
   );
-  const container = await waitFor(() => host!.querySelector<HTMLElement>('.leaflet-container'));
-  await waitFor(() => apices.length === 0 || host!.querySelector('.leaflet-marker-icon'));
-  // Las teselas locales cargan del servidor de pruebas (D-T13 (002)).
-  await waitFor(() => {
-    const tiles = [...host!.querySelectorAll<HTMLImageElement>('img.leaflet-tile')];
-    return tiles.length > 0 && tiles.every((tile) => tile.complete && tile.naturalWidth === 256);
-  });
-  return container;
+  const map = await waitFor(() => host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]'));
+  await settle();
+  return { map, onSelect };
+}
+
+/** Espera a que terminen el fundido del nivel y la medida del lienzo. */
+async function settle() {
+  await pause(50);
+  await waitFor(() => document.getAnimations().length === 0);
+}
+
+/** Centro de un elemento en la ventana. */
+function center(element: Element): { x: number; y: number } {
+  const box = element.getBoundingClientRect();
+  return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+}
+
+const buildings = (map: HTMLElement) => [...map.querySelectorAll<HTMLButtonElement>('.game-map__building')];
+const building = (map: HTMLElement, name: string) => buildings(map).find((button) => button.getAttribute('aria-label') === `${name}, Idea`)!;
+
+/**
+ * Un arrastre real con el ratón, desde un punto del mapa (relativo a su esquina) hasta `by` píxeles más allá. Va por el
+ * proveedor y no por CDP: la ventana de pruebas está escalada y CDP mide en la ventana de afuera.
+ */
+async function drag(map: HTMLElement, from: { x: number; y: number }, by: { x: number; y: number }) {
+  await userEvent.dragAndDrop(map, map, { sourcePosition: from, targetPosition: { x: from.x + by.x, y: from.y + by.y } });
+  await pause(50);
+}
+
+/** Un punto de un elemento, relativo a la esquina del mapa. */
+function within(map: HTMLElement, element: Element): { x: number; y: number } {
+  const box = map.getBoundingClientRect();
+  const spot = center(element);
+  return { x: spot.x - box.left, y: spot.y - box.top };
 }
 
 async function forcedColors(active: boolean) {
   await cdp().send('Emulation.setEmulatedMedia', { features: active ? [{ name: 'forced-colors', value: 'active' }] : [] });
-}
-
-/** El color del píxel central de un elemento en una captura real. */
-async function centerPixel(element: Element): Promise<string> {
-  const base64 = await page.screenshot({ element, save: false });
-  const bitmap = await createImageBitmap(await (await fetch(`data:image/png;base64,${base64}`)).blob());
-  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-  const context = canvas.getContext('2d')!;
-  context.drawImage(bitmap, 0, 0);
-  const [r, g, b] = context.getImageData(Math.floor(bitmap.width / 2), Math.floor(bitmap.height / 2), 1, 1).data;
-  return hex(`rgb(${r}, ${g}, ${b})`);
 }
 
 afterEach(async () => {
@@ -133,149 +150,200 @@ afterEach(async () => {
   delete document.documentElement.dataset['theme'];
 });
 
-describe.each(THEMES)('mapa en el tema %s', (theme) => {
-  beforeAll(() => {
+describe.each(THEMES)('mapa propio en el tema %s', (theme) => {
+  // El marco de pruebas mide 414 px: sin esto, los controles de un mapa de 640 px quedan fuera de la ventana.
+  beforeAll(async () => {
     document.documentElement.dataset['theme'] = theme;
+    await page.viewport(1280, 800);
   });
 
-  it('RF-8 (002) · 8.1, 8.2: el panel de teselas usa --map-tint y cambia con el tema sin recrear la capa', async () => {
+  it('RF-4 (021) · 4.1, D-T17 (021): el fondo, las placas y los nombres salen de los tokens, sin teselas ni imágenes', async () => {
     document.documentElement.dataset['theme'] = theme;
-    const container = await mount(LISTED);
-    const pane = container.querySelector<HTMLElement>('.leaflet-tile-pane')!;
-    const tiles = [...pane.querySelectorAll('img.leaflet-tile')];
-    expect(getComputedStyle(pane).filter).toBe(computed('filter', 'var(--map-tint)'));
-    expect(getComputedStyle(pane).filter).not.toBe('none');
-    const other = THEMES.find((name) => name !== theme)!;
-    const before = getComputedStyle(pane).filter;
-    document.documentElement.dataset['theme'] = other;
-    expect(getComputedStyle(pane).filter).toBe(computed('filter', 'var(--map-tint)'));
-    expect(getComputedStyle(pane).filter).not.toBe(before);
-    // La misma capa: ni el panel ni las teselas se reemplazan.
-    expect(container.querySelector('.leaflet-tile-pane')).toBe(pane);
-    expect(tiles.every((tile) => tile.isConnected)).toBe(true);
-    expect([...pane.querySelectorAll('img.leaflet-tile')]).toEqual(tiles);
-    // La interfaz del mapa queda fuera del tintado (8.6).
-    for (const outside of container.querySelectorAll('.leaflet-control-container, .leaflet-marker-pane')) {
-      expect(getComputedStyle(outside).filter).toBe('none');
+    const { map } = await mount(BLOCK);
+    expect(getComputedStyle(map).backgroundColor).toBe(computed('var(--background)'));
+    const plates = [...map.querySelectorAll<SVGCircleElement>('.game-map__plate')];
+    expect(plates).toHaveLength(1);
+    expect(getComputedStyle(plates[0]!).fill).toBe(computed('var(--surface)'));
+    expect(getComputedStyle(plates[0]!).stroke).toBe(computed('var(--line)'));
+    for (const name of map.querySelectorAll('.game-map__name')) expect(getComputedStyle(name).color).toBe(computed('var(--text)'));
+    expect(map.querySelectorAll('img, image, .leaflet-container')).toHaveLength(0);
+  });
+
+  it('RF-4 (021) · 4.2: dibujar y mover el mapa no pide nada a otros orígenes', async () => {
+    document.documentElement.dataset['theme'] = theme;
+    const since = performance.now();
+    const { map } = await mount(FAR);
+    await userEvent.click(map.querySelector<HTMLElement>('.game-map__group')!);
+    await settle();
+    await drag(map, { x: map.clientWidth / 2, y: map.clientHeight / 2 }, { x: 60, y: 30 });
+    await settle();
+    const foreign = performance
+      .getEntriesByType('resource')
+      .filter((entry) => entry.startTime >= since && new URL(entry.name).origin !== location.origin);
+    expect(foreign.map((entry) => entry.name)).toEqual([]);
+  });
+
+  it('RF-4 (021) · 4.3, 4.4, RF-5 (019), RF-8 (021) · 8.5: el norte, la escala y el nombre de cada edificio están a la vista; el nombre accesible lleva la etapa', async () => {
+    document.documentElement.dataset['theme'] = theme;
+    const { map } = await mount(BLOCK);
+    const north = map.querySelector<HTMLElement>('[aria-label="Norte arriba"]')!;
+    expect(north.textContent).toBe('N');
+    const scale = map.querySelector<HTMLElement>('.game-map__scale')!;
+    expect(scale.textContent).toMatch(/^\d+ (km|m)$/);
+    expect(scale.getBoundingClientRect().width).toBeGreaterThan(20);
+    const box = map.getBoundingClientRect();
+    for (const [index, name] of ['Huerta', 'Cocina', 'Panel solar'].entries()) {
+      const button = building(map, name);
+      expect(button, name).toBeDefined();
+      const label = button.querySelector<HTMLElement>('.game-map__name')!;
+      expect(label.textContent).toBe(name);
+      const area = label.getBoundingClientRect();
+      expect(area.width, `${index}`).toBeGreaterThan(0);
+      expect(area.left).toBeGreaterThanOrEqual(box.left);
+      expect(area.right).toBeLessThanOrEqual(box.right);
     }
   });
 
-  it('RF-8 (002) · 8.1: con las teselas bloqueadas el mapa muestra el fondo del tema', async () => {
+  it('RF-8 (021) · 8.2, RF-2 (020) · 2.1: acercar, alejar y ver todo miden al menos 44 × 44 px', async () => {
     document.documentElement.dataset['theme'] = theme;
-    const container = await mount([]);
-    for (const tile of container.querySelectorAll<HTMLImageElement>('img.leaflet-tile')) tile.src = '/test-tiles/bloqueada.png';
-    await waitFor(() => [...container.querySelectorAll<HTMLImageElement>('img.leaflet-tile')].every((tile) => tile.complete));
-    expect(getComputedStyle(container).backgroundColor).toBe(computed('backgroundColor', 'var(--background)'));
-    expect(await centerPixel(container)).toBe(hex(computed('backgroundColor', 'var(--background)')));
-  });
-
-  it('RF-8 (002) · 8.6: la atribución va sobre surface con text y alcanza 4,5:1', async () => {
-    document.documentElement.dataset['theme'] = theme;
-    const container = await mount(LISTED);
-    const attribution = container.querySelector<HTMLElement>('.leaflet-control-attribution')!;
-    const style = getComputedStyle(attribution);
-    expect(style.backgroundColor).toBe(computed('backgroundColor', 'var(--surface)'));
-    expect(style.color).toBe(computed('color', 'var(--text)'));
-    expect(contrastRatio(hex(style.color), hex(style.backgroundColor))).toBeGreaterThanOrEqual(4.5);
-    const link = attribution.querySelector('a')!;
-    expect(contrastRatio(hex(getComputedStyle(link).color), hex(style.backgroundColor))).toBeGreaterThanOrEqual(4.5);
-  });
-
-  it('RF-2 (020) · 2.1, D-T3 (020): acercar y alejar miden al menos 44 × 44 px', async () => {
-    document.documentElement.dataset['theme'] = theme;
-    const container = await mount(LISTED);
-    for (const control of container.querySelectorAll<HTMLElement>('.leaflet-control-zoom-in, .leaflet-control-zoom-out')) {
-      const box = control.getBoundingClientRect();
-      expect(box.width, control.className).toBeGreaterThanOrEqual(44);
-      expect(box.height, control.className).toBeGreaterThanOrEqual(44);
+    const { map } = await mount(BLOCK);
+    const controls = [...map.querySelectorAll<HTMLElement>('.game-map__control')];
+    expect(controls.map((control) => control.getAttribute('aria-label'))).toEqual(['Acercar', 'Alejar', 'Ver todo']);
+    for (const control of controls) {
+      const { width, height } = control.getBoundingClientRect();
+      expect(width).toBeGreaterThanOrEqual(44);
+      expect(height).toBeGreaterThanOrEqual(44);
     }
-    expect(container.querySelectorAll('.leaflet-control-zoom-in, .leaflet-control-zoom-out')).toHaveLength(2);
   });
 
-  it('RF-2 (002) · 2.1, D-T20 (002): los colores de leaflet.css (atribución, zoom, emergentes) quedan sobrescritos por tokens', async () => {
-    document.documentElement.dataset['theme'] = theme;
-    const container = await mount(LISTED);
-    const surface = computed('backgroundColor', 'var(--surface)');
-    const text = computed('color', 'var(--text)');
-    // Un emergente de prueba con la estructura de Leaflet.
-    const popup = document.createElement('div');
-    popup.className = 'leaflet-popup';
-    popup.innerHTML = '<div class="leaflet-popup-content-wrapper"></div><div class="leaflet-popup-tip"></div><a class="leaflet-popup-close-button" href="#">×</a>';
-    container.append(popup);
-    const zoom = container.querySelector('.leaflet-control-zoom')!;
-    expect(zoom.classList.contains('block')).toBe(true);
-    for (const element of [
-      container.querySelector('.leaflet-control-attribution')!,
-      ...zoom.querySelectorAll('a'),
-      popup.querySelector('.leaflet-popup-content-wrapper')!,
-      popup.querySelector('.leaflet-popup-tip')!,
-    ]) {
-      expect(getComputedStyle(element).backgroundColor, element.className).toBe(surface);
-    }
-    for (const element of [...zoom.querySelectorAll('a'), popup.querySelector('.leaflet-popup-content-wrapper')!, popup.querySelector('.leaflet-popup-close-button')!]) {
-      expect(getComputedStyle(element).color, element.className).toBe(text);
-    }
-    expect(getComputedStyle(container).backgroundColor).toBe(computed('backgroundColor', 'var(--background)'));
-  });
-
-  it('RF-8 (002) · 8.3, 8.5: los pines se alcanzan con Tab en el orden de la lista; el foco usa focus y sube de z-index', async () => {
-    document.documentElement.dataset['theme'] = theme;
-    const container = await mount(LISTED);
-    const pins = [...container.querySelectorAll<HTMLElement>('.apicca-pin')];
-    expect(pins).toHaveLength(3);
-    for (const pin of pins) expect(getComputedStyle(pin).backgroundColor).toBe(computed('backgroundColor', 'var(--charcoal)'));
-    host!.querySelector('button')!.focus();
-    const reached: string[] = [];
-    for (let stop = 0; stop < 10; stop += 1) {
-      await userEvent.tab();
-      const active = document.activeElement as HTMLElement;
-      if (!container.contains(active)) break;
-      if (!active.classList.contains('apicca-pin')) continue;
-      reached.push(active.getAttribute('aria-label')!);
-      const style = getComputedStyle(active);
-      expect(active.matches(':focus-visible')).toBe(true);
-      expect(style.outlineStyle).not.toBe('none');
-      expect(style.outlineColor).toBe(computed('color', 'var(--focus)'));
-      const others = pins.filter((pin) => pin !== active).map((pin) => Number(getComputedStyle(pin).zIndex));
-      expect(Number(style.zIndex)).toBeGreaterThan(Math.max(...others));
-    }
-    expect(reached).toEqual(EXPECTED_ORDER);
-  });
-
-  it('RNF-1 (002), RF-8 (002) · 8.5: con colores forzados no hay tintado y el pin usa Canvas y CanvasText', async () => {
+  it('RNF-1 (021), RNF-1 (002): con colores forzados las placas y el lienzo usan los colores del sistema', async () => {
     document.documentElement.dataset['theme'] = theme;
     await forcedColors(true);
     expect(matchMedia('(forced-colors: active)').matches).toBe(true);
-    const container = await mount(LISTED);
-    expect(getComputedStyle(container.querySelector('.leaflet-tile-pane')!).filter).toBe('none');
-    const pin = container.querySelector<HTMLElement>('.apicca-pin')!;
-    expect(getComputedStyle(pin).backgroundColor).toBe(computed('backgroundColor', 'Canvas'));
-    expect(getComputedStyle(pin).borderTopColor).toBe(computed('color', 'CanvasText'));
-    for (const icon of pin.querySelectorAll('.axis-icon')) {
-      expect(getComputedStyle(icon).color).toBe(computed('color', 'CanvasText'));
-    }
-  });
-
-  it('RF-8 (002) · 8.7: sin ápices el mapa se pinta sin errores y sin pines', async () => {
-    document.documentElement.dataset['theme'] = theme;
-    const errors: unknown[] = [];
-    const original = console.error;
-    const onError = (event: ErrorEvent) => errors.push(event.error ?? event.message);
-    console.error = (...args: unknown[]) => errors.push(args);
-    addEventListener('error', onError);
-    try {
-      const container = await mount([]);
-      expect(container.querySelectorAll('.apicca-pin')).toHaveLength(0);
-      expect(container.querySelector('.leaflet-control-attribution')).not.toBeNull();
-    } finally {
-      console.error = original;
-      removeEventListener('error', onError);
-    }
-    expect(errors).toEqual([]);
+    const { map } = await mount(BLOCK);
+    const plate = map.querySelector<SVGCircleElement>('.game-map__plate')!;
+    expect(getComputedStyle(plate).fill).toBe(computed('Canvas'));
+    expect(getComputedStyle(plate).stroke).toBe(computed('CanvasText'));
+    expect(getComputedStyle(map).borderTopColor).toBe(computed('CanvasText'));
   });
 });
 
-describe('inicio con mapa y lista', () => {
+describe('moverse por el mapa', () => {
+  let spacer: HTMLDivElement | undefined;
+
+  beforeAll(async () => {
+    await page.viewport(1280, 800);
+  });
+
+  afterEach(async () => {
+    spacer?.remove();
+    spacer = undefined;
+    await userEvent.keyboard('{/Control}');
+    scrollTo(0, 0);
+  });
+
+  it('RF-8 (021) · 8.1: arrastrar mueve el lienzo con el puntero y no elige ningún edificio', async () => {
+    const { map, onSelect } = await mount(BLOCK);
+    const before = center(building(map, 'Cocina'));
+    await drag(map, { x: 24, y: 24 }, { x: 100, y: 50 });
+    const after = center(building(map, 'Cocina'));
+    expect(after.x - before.x).toBeCloseTo(100, 0);
+    expect(after.y - before.y).toBeCloseTo(50, 0);
+    // Empezar el arrastre sobre un edificio tampoco lo elige.
+    await drag(map, within(map, building(map, 'Huerta')), { x: -60, y: 0 });
+    expect(onSelect).not.toHaveBeenCalled();
+    // Un clic sí lo elige.
+    await userEvent.click(building(map, 'Huerta'));
+    expect(onSelect).toHaveBeenCalledWith('a');
+  });
+
+  it('RF-8 (021) · 8.3, RF-7 (021) · 7.1: con el foco en el lienzo, las flechas lo mueven y + y - cambian el nivel', async () => {
+    const { map } = await mount(BLOCK);
+    expect(map.dataset['level']).toBe('0');
+    host!.querySelector('button')!.focus();
+    await userEvent.tab();
+    expect(document.activeElement).toBe(map);
+    const before = center(building(map, 'Cocina'));
+    await userEvent.keyboard('{ArrowRight}');
+    expect(center(building(map, 'Cocina')).x).toBeCloseTo(before.x - 80, 0);
+    await userEvent.keyboard('-');
+    await settle();
+    expect(map.dataset['level']).toBe('1');
+    await userEvent.keyboard('-');
+    await settle();
+    expect(map.dataset['level']).toBe('2');
+    await userEvent.keyboard('+');
+    await userEvent.keyboard('+');
+    await settle();
+    expect(map.dataset['level']).toBe('0');
+  });
+
+  it('RF-8 (021) · 8.4, 8.5: un solo edificio está en el orden del tabulador; las flechas pasan al vecino y el foco usa focus', async () => {
+    const { map } = await mount(BLOCK);
+    expect(buildings(map).filter((button) => button.tabIndex === 0)).toHaveLength(1);
+    host!.querySelector('button')!.focus();
+    await userEvent.tab();
+    await userEvent.tab();
+    const first = document.activeElement as HTMLElement;
+    expect(first.classList.contains('game-map__building')).toBe(true);
+    expect(first.matches(':focus-visible')).toBe(true);
+    expect(getComputedStyle(first).outlineColor).toBe(computed('var(--focus)'));
+    const reached = new Set([first.getAttribute('aria-label')]);
+    for (const key of ['{ArrowRight}', '{ArrowDown}', '{ArrowLeft}', '{ArrowUp}']) {
+      await userEvent.keyboard(key);
+      reached.add((document.activeElement as HTMLElement).getAttribute('aria-label'));
+    }
+    expect(reached.size).toBeGreaterThan(1);
+    for (const label of reached) expect(label).toMatch(/, Idea$/);
+    // Tab sale del mapa sin pasar por los otros edificios.
+    await userEvent.tab();
+    expect((document.activeElement as HTMLElement).classList.contains('game-map__building')).toBe(false);
+  });
+
+  it('RF-8 (021) · 8.6: con el puntero sobre el mapa, la rueda sola desplaza la página y con Ctrl cambia el nivel', async () => {
+    const { map } = await mount(BLOCK);
+    spacer = document.createElement('div');
+    spacer.style.height = '3000px';
+    document.body.append(spacer);
+    scrollTo(0, 0);
+    await userEvent.wheel(map, { delta: { y: 300 }, times: 3 });
+    await waitFor(() => scrollY > 0);
+    await pause(300);
+    expect(map.dataset['level']).toBe('0');
+    scrollTo(0, 0);
+    await pause(100);
+    await userEvent.keyboard('{Control>}');
+    await userEvent.wheel(map, { delta: { y: 100 } });
+    await waitFor(() => map.dataset['level'] === '1');
+    await pause(400);
+    await userEvent.wheel(map, { delta: { y: -100 } });
+    await waitFor(() => map.dataset['level'] === '0');
+    await userEvent.keyboard('{/Control}');
+    expect(scrollY).toBe(0);
+  });
+
+  it('RF-7 (021) · 7.2, 7.3, 7.4: con dos ciudades el mapa abre alejado y elegir un grupo acerca hasta sus manzanas', async () => {
+    const { map } = await mount(FAR);
+    expect(Number(map.dataset['level'])).toBeGreaterThan(0);
+    const groups = [...map.querySelectorAll<HTMLButtonElement>('.game-map__group')];
+    expect(groups.map((group) => group.getAttribute('aria-label')).sort()).toEqual(['1 ápice, acercar', '1 ápice, acercar']);
+    const box = map.getBoundingClientRect();
+    for (const group of groups) {
+      const spot = center(group);
+      expect(spot.x).toBeGreaterThan(box.left);
+      expect(spot.x).toBeLessThan(box.right);
+      expect(spot.y).toBeGreaterThan(box.top);
+      expect(spot.y).toBeLessThan(box.bottom);
+    }
+    await userEvent.click(groups[0]!);
+    await settle();
+    expect(map.dataset['level']).toBe('0');
+    expect(buildings(map).length).toBeGreaterThan(0);
+    expect((document.activeElement as HTMLElement).classList.contains('game-map__building')).toBe(true);
+  });
+});
+
+describe('el mapa en Jugar', () => {
   let app: Root | undefined;
   let appHost: HTMLDivElement | undefined;
   let previousPath: string;
@@ -292,202 +360,26 @@ describe('inicio con mapa y lista', () => {
     history.replaceState(null, '', previousPath);
   });
 
-  it.each(THEMES)('RF-8 (002) · 8.7: en el tema %s la lista de ápices sigue presente junto al mapa', async (theme) => {
-    document.documentElement.dataset['theme'] = theme;
-    if (app === undefined) {
-      // El mapa y la lista viven en /prototipado (RF-18 (003), D-19 (003)); la lista es la vista `?vista=lista` (RF-6 (019) · 6.2).
-      history.replaceState(null, '', '/prototipado?vista=lista');
-      appHost = document.createElement('div');
-      document.body.append(appHost);
-      const created = createRoot(appHost);
-      app = created;
-      await actNow(() =>
-        created.render(
-          <SessionProvider source={firebaseSessionSource}>
-            <App />
-          </SessionProvider>,
-        ),
-      );
-      // El mapa se pide con «Ver en el mapa» (RF-10 (019) · 10.5).
-      const toggle = await waitFor(() => [...appHost!.querySelectorAll('button')].find((button) => button.textContent === 'Ver en el mapa'));
-      await actNow(() => toggle.click());
-    }
-    await waitFor(() => appHost!.querySelector('section[aria-label="Mapa de ápices"] .leaflet-container'));
-    const listed = await waitFor(() => [...appHost!.querySelectorAll('main h3')].find((heading) => heading.textContent === LONG_NAME));
-    expect(listed.closest('section[aria-label="Mapa de ápices"]')).toBeNull();
-  });
-});
-
-/** Centro de un elemento en la ventana. */
-function center(element: Element): { x: number; y: number } {
-  const box = element.getBoundingClientRect();
-  return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-}
-
-/** Distancia horizontal entre los dos pines: crece al acercar y baja al alejar. */
-function pinSpan(container: HTMLElement): number {
-  const pins = [...container.querySelectorAll('.leaflet-marker-icon')];
-  expect(pins).toHaveLength(2);
-  return Math.abs(center(pins[0]!).x - center(pins[1]!).x);
-}
-
-const pause = (ms: number) => new Promise((done) => setTimeout(done, ms));
-
-describe('mapa a pedido · RF-10 (019)', () => {
-  /** Dos pines lejanos en longitud, para medir el zoom por su distancia. */
-  const FAR = [apice('a', 'Bogotá', 4.6, -74, ['agua']), apice('b', 'Atlántico', 4.6, -40, ['energía'])];
-  let spacer: HTMLDivElement | undefined;
-
-  // La rueda llega al punto central del mapa: la ventana debe contenerlo (el marco de pruebas mide 414 px).
-  beforeAll(async () => {
-    await page.viewport(1280, 800);
-  });
-
-  afterEach(async () => {
-    spacer?.remove();
-    spacer = undefined;
-    await userEvent.keyboard('{/Control}');
-    scrollTo(0, 0);
-    // Leaflet 1.9.4 falla si el mapa se desmonta a mitad de una animación de zoom (su temporizador es de 250 ms): antes
-    // del desmontaje común se espera a que ninguna quede en curso.
-    for (let quiet = 0, tries = 0; quiet < 4 && tries < 30; tries++) {
-      await pause(100);
-      quiet = document.querySelector('.leaflet-zoom-anim') === null ? quiet + 1 : 0;
-    }
-  });
-
-  /** Espera a que el mapa termine el encuadre inicial: una rueda en plena animación se pierde. Corta a los 5 s. */
-  async function settled(container: HTMLElement): Promise<void> {
-    let last = -1;
-    for (let stable = 0, tries = 0; stable < 3 && tries < 25; tries++) {
-      await pause(200);
-      const span = container.classList.contains('leaflet-zoom-anim') ? -2 : pinSpan(container);
-      stable = span >= 0 && span === last ? stable + 1 : 0;
-      last = span;
-    }
-  }
-
-  /** El mapa sobre una página más alta que la ventana, para que la rueda pueda desplazarla. */
-  async function mountScrollable(): Promise<HTMLElement> {
-    const container = await mount(FAR);
-    spacer = document.createElement('div');
-    spacer.style.height = '3000px';
-    document.body.append(spacer);
-    scrollTo(0, 0);
-    await settled(container);
-    return container;
-  }
-
-  it('RF-10 (019) · 10.3, D-T25 (019): con el puntero sobre el mapa, la rueda sin teclas desplaza la página y no cambia el zoom', async () => {
-    const container = await mountScrollable();
-    const before = pinSpan(container);
-    await userEvent.wheel(container, { delta: { y: 300 }, times: 3 });
-    await waitFor(() => scrollY > 0);
-    await pause(400);
-    expect(pinSpan(container)).toBeCloseTo(before, 0);
-  });
-
-  it('RF-10 (019) · 10.3, D-T25 (019): con Ctrl y la rueda, el mapa acerca y aleja sin desplazar la página', async () => {
-    const container = await mountScrollable();
-    const before = pinSpan(container);
-    await userEvent.keyboard('{Control>}');
-    await userEvent.wheel(container, { delta: { y: -100 } });
-    await waitFor(() => pinSpan(container) > before * 1.5);
-    // Leaflet descarta la rueda que llega en plena animación: se espera a que el zoom termine.
-    await settled(container);
-    const closer = pinSpan(container);
-    await userEvent.wheel(container, { delta: { y: 100 } });
-    await waitFor(() => pinSpan(container) < closer / 1.5);
-    await userEvent.keyboard('{/Control}');
-    expect(scrollY).toBe(0);
-  });
-
-  it('RF-10 (019) · 10.4, D-T25 (019): a 1100 px el mapa no se aleja más allá de donde el mundo cubre su ancho, sin copias a los lados', async () => {
-    host = document.createElement('div');
-    host.style.width = '1100px';
-    document.body.append(host);
-    const created = createRoot(host);
-    root = created;
-    await actNow(() => created.render(<ApiceMap apices={FAR} />));
-    const container = await waitFor(() => host!.querySelector<HTMLElement>('.leaflet-container'));
-    await waitFor(() => container.querySelectorAll('img.leaflet-tile').length > 0);
-    // Al cargar, el mapa encuadra los pines; desde ahí, «−» aleja hasta el mínimo y se desactiva.
-    const zoomOut = container.querySelector<HTMLElement>('.leaflet-control-zoom-out')!;
-    for (let clicks = 0; clicks < 20 && !zoomOut.classList.contains('leaflet-disabled'); clicks++) {
-      await userEvent.click(zoomOut);
-      await pause(300);
-    }
-    expect(zoomOut.classList.contains('leaflet-disabled')).toBe(true);
-    // Ni Ctrl con la rueda lo aleja más.
-    await userEvent.keyboard('{Control>}');
-    await userEvent.wheel(container, { delta: { y: 100 }, times: 3 });
-    await userEvent.keyboard('{/Control}');
-    await pause(400);
-    // Zoom 3 (2048 px de mundo) es el mínimo para 1100 px: cada columna de teselas es única y caben en 8 columnas.
-    const tiles = [...container.querySelectorAll<HTMLImageElement>('img.leaflet-tile-loaded, img.leaflet-tile')];
-    const columns = [...new Set(tiles.map((tile) => Math.round(tile.getBoundingClientRect().left)))];
-    expect(columns.length).toBeGreaterThan(0);
-    expect(columns.length).toBeLessThanOrEqual(8);
-    expect(Math.max(...columns) - Math.min(...columns) + 256).toBeLessThanOrEqual(2048);
-    // El zoom mínimo es 3: los dos pines, a 34° de longitud, quedan a 2048 · 34 / 360 ≈ 193 px (a zoom 0 serían 24 px y el
-    // mundo, de 256 px, se repetiría a lo ancho de los 1100 px).
-    expect(pinSpan(container)).toBeGreaterThanOrEqual((2048 * 34) / 360 - 2);
-    // El mundo cubre todo el ancho del mapa: ninguna franja vacía a los lados.
-    const box = container.getBoundingClientRect();
-    expect(Math.min(...columns)).toBeLessThanOrEqual(box.left + 1);
-    expect(Math.max(...columns) + 256).toBeGreaterThanOrEqual(box.right - 1);
-  });
-
-  it('RF-10 (019) · 10.4, D-T25 (019): si la ventana se ensancha con el mapa abierto, el zoom mínimo sube con ella', async () => {
-    await page.viewport(400, 800);
-    host = document.createElement('div');
-    host.style.width = '100%';
-    document.body.append(host);
-    const created = createRoot(host);
-    root = created;
-    await actNow(() => created.render(<ApiceMap apices={FAR} />));
-    const container = await waitFor(() => host!.querySelector<HTMLElement>('.leaflet-container'));
-    await waitFor(() => container.querySelectorAll('.leaflet-marker-icon').length === 2);
-    await settled(container);
-    await page.viewport(1280, 800);
-    await waitFor(() => container.clientWidth > 1000);
-    await pause(400);
-    // Con más de 1024 px, el mínimo es 3: «−» se desactiva allí y los pines quedan a unos 193 px (a zoom 1, a 48 px).
-    const zoomOut = container.querySelector<HTMLElement>('.leaflet-control-zoom-out')!;
-    for (let clicks = 0; clicks < 20 && !zoomOut.classList.contains('leaflet-disabled'); clicks++) {
-      await userEvent.click(zoomOut);
-      await pause(300);
-    }
-    expect(zoomOut.classList.contains('leaflet-disabled')).toBe(true);
-    expect(pinSpan(container)).toBeGreaterThanOrEqual((2048 * 34) / 360 - 2);
-  });
-
-  it('RF-10 (019) · 10.1, 10.5, D-T25 (019): en Prototipado el mapa no está hasta pulsar «Ver en el mapa», y va después del terreno', async () => {
-    const previous = location.pathname + location.search;
-    history.replaceState(null, '', '/prototipado');
-    host = document.createElement('div');
-    document.body.append(host);
-    const created = createRoot(host);
-    root = created;
-    try {
-      await actNow(() =>
-        created.render(
-          <SessionProvider source={firebaseSessionSource}>
-            <App />
-          </SessionProvider>,
-        ),
-      );
-      const toggle = await waitFor(() => [...host!.querySelectorAll('button')].find((button) => button.textContent === 'Ver en el mapa'));
-      const building = await waitFor(() => host!.querySelector('.apice-lot__building'));
-      expect(host.querySelector('.leaflet-container')).toBeNull();
-      expect(toggle.getAttribute('aria-expanded')).toBe('false');
-      await actNow(() => toggle.click());
-      const map = await waitFor(() => host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"] .leaflet-container'));
-      expect(toggle.getAttribute('aria-expanded')).toBe('true');
-      expect(document.getElementById(toggle.getAttribute('aria-controls')!)!.contains(map)).toBe(true);
-      expect(building.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    } finally {
-      history.replaceState(null, '', previous);
-    }
+  it('RF-17 (021) · 17.1, RF-10 (021) · 10.2, 10.3, RF-9 (021) · 9.1: /prototipado?vista=mapa lleva al mapa, sin lista ni teselas, y el ápice sin ubicación va aparte', async () => {
+    history.replaceState(null, '', '/prototipado?vista=mapa');
+    appHost = document.createElement('div');
+    document.body.append(appHost);
+    const created = createRoot(appHost);
+    app = created;
+    await actNow(() =>
+      created.render(
+        <SessionProvider source={firebaseSessionSource}>
+          <App />
+        </SessionProvider>,
+      ),
+    );
+    const map = await waitFor(() => appHost!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]'));
+    const seeded = await waitFor(() => map.querySelector<HTMLElement>(`[aria-label="${LONG_NAME}, Idea"]`));
+    expect(seeded.closest('[role="group"][aria-label="Sin ubicación"]')).not.toBeNull();
+    expect(appHost.querySelector('.apice-lot, .leaflet-container')).toBeNull();
+    expect([...appHost.querySelectorAll('main h3')].some((heading) => heading.textContent === LONG_NAME)).toBe(false);
+    expect(location.pathname).toBe('/');
+    expect([...appHost.querySelectorAll('button')].map((button) => button.textContent)).toEqual(expect.arrayContaining(['Ver como lista']));
+    expect([...appHost.querySelectorAll('button')].map((button) => button.textContent)).not.toContain('Ver como terreno');
   });
 });

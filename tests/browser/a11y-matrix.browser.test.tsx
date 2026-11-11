@@ -1,5 +1,5 @@
 // RNF-1 (002), D-T21 (002), plan §9.4: matriz de accesibilidad en Chromium real:
-// recorre '/', '/entrar', '/prototipado', '/tablero' (con la sesión de la autora), '/documentacion', '/constitucion' y las otras cinco rutas de la constitución común (RNF-4 (004)) en la matriz de colores forzados y contraste aumentado × dos temas (claro y oscuro),
+// recorre '/', '/entrar', la lista del mapa, «Lo mío» (con la sesión de la autora), '/documentacion', '/constitucion' y las otras cinco rutas de la constitución común (RNF-4 (004)) en la matriz de colores forzados y contraste aumentado × dos temas (claro y oscuro),
 // verificando que cada control navegable con el tabulador muestra un indicador de foco visible.
 // RNF-1 (019): las pantallas de la fase 1 (cabecera con «Menú», formularios del ápice, Facilitación y Foro) a 360 px, en los
 // dos temas, con colores normales y forzados, también con «Menú» abierto.
@@ -70,14 +70,14 @@ const CONSTITUTION_ROUTES: readonly { path: string; as?: typeof AUTHOR }[] = [
   { path: `/constitucion/propuestas/${CONSTITUTION_IDS.amendments.openChange}`, as: AUTHOR },
 ];
 
-/** `/tablero` pide la sesión de la autora (RNF-1 (003), T-7.4). */
+/** «Lo mío» pide la sesión de la autora (RNF-1 (003), RF-15 (021)). */
 const ROUTES: readonly { path: string; as?: typeof AUTHOR }[] = [
   { path: '/' },
   { path: '/entrar' },
-  { path: '/prototipado' },
+  { path: '/?vista=lista' },
   { path: '/documentacion' },
   ...CONSTITUTION_ROUTES,
-  { path: '/tablero', as: AUTHOR },
+  { path: '/?mio=1', as: AUTHOR },
 ];
 
 let signedInAs: string | null = null;
@@ -215,7 +215,7 @@ describe.each(MATRIX)('matriz de accesibilidad · $label', ({ feature, value, is
       await page.viewport(1280, 800);
       await useAccount(as);
       await show(path);
-      if (as !== undefined) expect(location.pathname).toBe(path);
+      if (as !== undefined) expect(location.pathname + location.search).toBe(path);
       (document.activeElement as HTMLElement | null)?.blur();
 
       const expectedColor = isForced
@@ -234,7 +234,7 @@ describe.each(['light', 'dark'] as const)('constitución común a 360 px · tema
     await page.viewport(360, 800);
     await useAccount(as);
     await show(path);
-    if (as !== undefined) expect(location.pathname).toBe(path);
+    if (as !== undefined) expect(location.pathname + location.search).toBe(path);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
     (document.activeElement as HTMLElement | null)?.blur();
     await expectFocusRings(computed('color', 'focus'));
@@ -244,7 +244,7 @@ describe.each(['light', 'dark'] as const)('constitución común a 360 px · tema
 /** Las pantallas que cambia la fase 1 de la 019, con la cuenta que las abre. */
 const ROUTES_019: readonly { path: string; as?: Account }[] = [
   { path: '/' },
-  { path: '/prototipado' },
+  { path: '/?vista=lista' },
   { path: '/foro' },
   { path: '/apices/nuevo', as: AUTHOR },
   { path: `/apices/${APICE_IDS.withImage}/editar`, as: AUTHOR },
@@ -259,19 +259,23 @@ describe.each(['light', 'dark'] as const)('fase 1 de la 019 a 360 px · tema %s'
       await page.viewport(360, 800);
       await useAccount(as);
       await show(path);
-      if (as !== undefined) expect(location.pathname).toBe(path);
+      if (as !== undefined) expect(location.pathname + location.search).toBe(path);
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
       const expectedColor = isForced ? resolveSystemColor('Highlight', 'outlineColor') : computed('color', 'focus');
       (document.activeElement as HTMLElement | null)?.blur();
       await expectFocusRings(expectedColor);
       // Con «Menú» abierto, los destinos también muestran el foco y la página sigue sin desplazarse a los lados.
-      const toggle = [...host!.querySelectorAll<HTMLButtonElement>('header button')].find((button) => button.textContent?.trim() === 'Menú')!;
+      // El menú de juego es un diálogo modal (RF-13 (021) · 13.7): el tabulador recorre solo su contenido.
+      const toggle = host!.querySelector<HTMLButtonElement>('button.game-menu__toggle')!;
       await actNow(() => toggle.click());
-      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      const menu = host!.querySelector<HTMLDialogElement>('dialog.game-menu')!;
+      expect(menu.open).toBe(true);
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
       (document.activeElement as HTMLElement | null)?.blur();
       await expectFocusRings(expectedColor);
-      await actNow(() => toggle.click());
+      const close = [...menu.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.trim() === 'Cerrar')!;
+      await actNow(() => close.click());
+      expect(menu.open).toBe(false);
     });
   });
 });

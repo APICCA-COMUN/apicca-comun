@@ -4,8 +4,8 @@ Con una cuenta activa puedes proponer un [ápice](/documentacion/apice) en pocos
 
 ## Paso a paso
 
-1. Entra y abre [Mi tablero](/documentacion/mi-tablero).
-2. Pulsa **Nuevo ápice** (también aparece en [Prototipado](/prototipado)).
+1. Entra y abre el [mapa](/).
+2. Pulsa **Construir ápice**, en la barra de arriba. El formulario se abre sobre el mapa, y mientras lo llenas el mapa muestra cómo quedará el edificio.
 3. Escribe un **nombre** de hasta 120 caracteres.
 4. Escribe una **descripción**: qué es y qué busca.
 5. Elige uno o más [ejes](/documentacion/ejes).
@@ -14,7 +14,7 @@ Con una cuenta activa puedes proponer un [ápice](/documentacion/apice) en pocos
 
 ## Cómo queda al nacer
 
-- En estado **idea**. Más adelante puede pasar a **prototipo** y a **en marcha**.
+- En la etapa **Idea**. Más adelante puede pasar a **Prototipo** y a **En marcha**, y su edificio crece con ella.
 - **Privado**: solo lo ven las personas inscritas, hasta que tú o la facilitación lo hagan público.
 - Con tu nombre de usuario como autoría, que no cambia aunque otras personas lo editen.
 
@@ -22,6 +22,6 @@ Si falta el nombre, la descripción o el eje, el sitio no guarda y te indica qu�
 
 ## Y después
 
-Ya en la [ficha](/documentacion/ficha-del-apice) puedes subir referencias y generar una [imagen pixelada](/documentacion/imagen-pixelada). Cualquier persona inscrita puede co-editar tu ápice, y cada cambio queda en su [historial](/documentacion/historial).
+Ya en la [ficha](/documentacion/ficha-del-apice), cualquier persona inscrita puede co-editar tu ápice, y cada cambio queda en su [historial](/documentacion/historial).
 
 Si la sesión termina mientras escribes, el sitio te pide entrar de nuevo y conserva lo escrito mientras la página siga abierta.

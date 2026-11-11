@@ -1,5 +1,5 @@
 // Uso del color en Chromium real (T-4.16, plan §9.4): en las rutas que la siembra completa permite
-// montar (con la sesión de la autora en `/tablero`), solo `.action-destructive` y `[role=alert]` calculan `brand-red` (RF-2 (002) · 2.3), solo
+// montar (con la sesión de la autora en «Lo mío», `/?mio=1`), solo `.action-destructive` y `[role=alert]` calculan `brand-red` (RF-2 (002) · 2.3), solo
 // `.action-primary` y los enlaces calculan `action-blue` (RF-2 (002) · 2.4) y solo el interior de
 // `.logo` calcula un `logo-*` (RF-2 (002) · 2.3). Se miran el color, el fondo y los cuatro bordes.
 // RF-15 (019) · 15.2, D-15 (019), D-T9 (019): los colores de eje (`axis-*`) solo los calculan los íconos de eje, los
@@ -23,7 +23,7 @@ import { firebaseSessionSource } from '../../src/data/sessionSource';
 import { signInAs, signOutNow } from './session';
 import { AUTHOR, LONG_APICE_ID } from './seed-data';
 
-/** Rutas que la siembra deja con contenido, con la cuenta que piden (`/tablero` pide la de la autora, T-7.3); la desconocida va antes. */
+/** Rutas que la siembra deja con contenido, con la cuenta que piden («Lo mío» pide la de la autora, RF-15 (021)); la desconocida va antes. */
 const PATHS: { path: string; as?: typeof AUTHOR }[] = [
   { path: '/' },
   { path: '/entrar' },
@@ -31,11 +31,11 @@ const PATHS: { path: string; as?: typeof AUTHOR }[] = [
   { path: '/registro' },
   { path: '/solicitar' },
   { path: `/apices/${LONG_APICE_ID}` },
-  { path: '/prototipado' },
+  { path: '/?vista=lista' },
   { path: '/documentacion' },
   { path: '/constitucion' },
   { path: '/ruta-que-no-existe' },
-  { path: '/tablero', as: AUTHOR },
+  { path: '/?mio=1', as: AUTHOR },
   { path: '/foro' },
 ];
 
@@ -173,7 +173,7 @@ describe.each(THEMES)('uso del color en el tema %s', (theme) => {
     document.documentElement.dataset['theme'] = theme;
     await useAccount(as);
     await show(path);
-    if (as !== undefined) expect(location.pathname).toBe(path);
+    if (as !== undefined) expect(location.pathname + location.search).toBe(path);
     expect(misuses(host!)).toEqual([]);
   });
 

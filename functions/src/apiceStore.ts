@@ -1,13 +1,15 @@
 // RF-12 (001) · Escritura transaccional del ápice y su versión (D-T5 (001)): cada guardado crea `versions/{n}` con el
 // contenido completo y sube `version` del ápice en la misma transacción. Las ops reutilizan estas dos funciones.
+// RF-5 (021) · 5.1, D-T13 (021): la ubicación publicada lleva la zona H3 del punto guardado.
 // RF-2 (018), D-T7 (018): `saveVersion` cobra el cupo de ediciones como última lectura y lo escribe con el resto.
 import type { Transaction } from 'firebase-admin/firestore';
 import { writeApiceNotice } from './noticeStore';
 import type { ApiceContent, ApiceStatus, Visibility } from '../../shared/domain/apice';
-import { displayLocation, type Location, type Point, type Precision } from '../../shared/domain/location';
+import type { Location, Point, Precision } from '../../shared/domain/location';
 import type { Ctx } from './context';
 import type { SlotCharge } from './rateLimit';
 import { ApiError } from './errors';
+import { publishedLocation } from './zone';
 
 /** Lo que guarda cada versión: el contenido de la ficha y su estado. */
 export type StoredContent = ApiceContent & { status: ApiceStatus };
@@ -88,7 +90,7 @@ export async function createApiceDoc(
   const id = newId(ctx);
   const now = ctx.now();
   const { content, author } = input;
-  const location = input.location === undefined ? null : displayLocation(input.location.point, input.location.precision);
+  const location = input.location === undefined ? null : publishedLocation(input.location.point, input.location.precision);
   await ctx.db.runTransaction(async (tx) => {
     const charge = input.charge === undefined ? null : await input.charge(tx);
     charge?.();
@@ -166,9 +168,9 @@ export async function saveVersion(ctx: Ctx, id: string, input: SaveVersionInput)
     if (change.mode === 'remove') location = null;
     else if (change.mode === 'set') {
       exact = pointOf(change.point);
-      location = displayLocation(exact, change.precision);
+      location = publishedLocation(exact, change.precision);
     } else if (exact === null) location = null;
-    else location = displayLocation(exact, change.mode === 'precision' ? change.precision : current.location?.precision);
+    else location = publishedLocation(exact, change.mode === 'precision' ? change.precision : current.location?.precision);
     const applyCharge = input.charge === undefined ? null : await input.charge(tx); // última lectura (D-T7 (018))
     const n = current.version + 1;
     const now = ctx.now();

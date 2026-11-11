@@ -1,23 +1,20 @@
-// RF-7 (003) · 7.2–7.4, 7.9 y RF-11 (003) · 11.8 · D-T7 (003): el menú, la sección vigente y el destino de retorno son
-// datos y reglas puras del dominio; se prueban sin navegador.
+// RF-7 (003) · 7.4, 7.9, RF-11 (003) · 11.8, RF-13 (021) · 13.1 · D-T7 (003), D-T24 (021): el menú, la sección vigente y el
+// destino de retorno son datos y reglas puras del dominio; se prueban sin navegador.
 import { describe, expect, it } from 'vitest';
 import { FACILITATION_MENU, MAIN_MENU, isCurrentSection, returnTarget } from './navigation';
 
 describe('MAIN_MENU', () => {
-  it('RF-7 (003) · 7.2, RF-8 (009): el menú trae Prototipado, Foro, Documentación y Constitución con sus rutas', () => {
-    const links = MAIN_MENU.filter((item) => item.label !== 'Mi tablero').map((item) => [item.label, item.href]);
-    expect(links).toEqual([
-      ['Prototipado', '/prototipado'],
-      ['Foro', '/foro'],
-      ['Documentación', '/documentacion'],
-      ['Constitución', '/constitucion'],
+  it('RF-13 (021) · 13.1, D-10 (021), RF-8 (009): el menú de juego trae el mapa, la documentación, la constitución y el foro con los nombres de D-10 (021)', () => {
+    expect(MAIN_MENU.map((item) => [item.label, item.href])).toEqual([
+      ['Jugar', '/'],
+      ['Cómo se juega', '/documentacion'],
+      ['Reglas', '/constitucion'],
+      ['Plaza', '/foro'],
     ]);
   });
 
-  it('RF-7 (003) · 7.3: «Mi tablero» va primero y es el único enlace que pide sesión de persona', () => {
-    expect(MAIN_MENU.map((item) => item.label)).toEqual(['Mi tablero', 'Prototipado', 'Foro', 'Documentación', 'Constitución']);
-    expect(MAIN_MENU[0]).toMatchObject({ href: '/tablero', requiresSession: true });
-    expect(MAIN_MENU.slice(1).every((item) => item.requiresSession === false)).toBe(true);
+  it('RF-13 (021) · 13.1, D-T24 (021): ningún destino del menú pide sesión; lo que la pide va aparte (RF-13 (021) · 13.3)', () => {
+    expect(MAIN_MENU.every((item) => item.requiresSession === false)).toBe(true);
   });
 });
 
@@ -50,7 +47,7 @@ describe('isCurrentSection', () => {
     expect(isCurrentSection('/documentacion', '/documentaciones/etica')).toBe(false);
   });
 
-  it('RF-7 (003) · 7.4: las rutas de ápices y el inicio no marcan ninguna sección del menú', () => {
+  it('RF-7 (003) · 7.4, D-T24 (021): por su ruta, las de ápices y el inicio no marcan ninguna sección; «Jugar» la marca el menú según la página', () => {
     for (const item of MAIN_MENU) {
       expect(isCurrentSection(item.href, '/apices/x'), item.label).toBe(false);
       expect(isCurrentSection(item.href, '/'), item.label).toBe(false);

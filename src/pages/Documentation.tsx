@@ -76,7 +76,8 @@ export function Documentation({ slug, index = indexData as DocsIndex, loadArticl
       <nav aria-label="Índice de la documentación" className="documentation__index">
         {index.secciones.map((section) => (
           <section key={section.titulo} className="documentation__section">
-            <p className="documentation__section-title">{section.titulo}</p>
+            {/* Un rótulo de la sección, no un párrafo: conserva los 14 px de RF-10 (008) · 10.3 sin chocar con RF-5 (002) · 5.5. */}
+            <span className="documentation__section-title">{section.titulo}</span>
             <ul>
               {section.articulos.map((a) => (
                 <li key={a.slug}>

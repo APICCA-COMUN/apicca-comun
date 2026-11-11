@@ -1,0 +1,203 @@
+/* RF-11 (021) · 11.2, RF-12 (021) · 12.1, D-T22 (021): la página del mapa ocupa la ventana (`100dvh`) y no se desplaza:
+   la barra de juego va arriba, en flujo, y el mapa llena el resto. La barra tiene dos filas: la de identidad (logo,
+   contador, avisos, tema, cuenta y «Menú») y la de juego («Construir ápice» o «Unirme», «Lo mío», filtros, vista y aviso
+   de propuestas). Por debajo de 1024 px los filtros quedan tras «Filtros». Solo tokens. */
+/* El mapa no va en la columna de lectura de `main` (lots.css): ocupa todo el ancho. */
+main.main--play {
+  max-inline-size: none;
+  padding-inline: 0;
+}
+
+.play {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  block-size: 100dvh;
+  overflow: hidden;
+  background-color: var(--background);
+}
+
+.play__hud {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px clamp(12px, 3vw, 24px);
+  border-block-end: 1px solid var(--line);
+  background-color: var(--background);
+}
+
+.play__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.play__row a.block,
+.play__row button.block:not(.icon-button, .filter-axis) {
+  min-block-size: var(--size-icon-control);
+  padding-inline: 18px;
+  font-weight: 800;
+}
+
+.play__row a.block {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* «Lo mío» activo: el mismo anillo del color del texto que los filtros de eje, no solo el color (RF-12 (003) · 12.3). */
+.play__row button.block[aria-pressed='true']:not(.filter-axis) {
+  box-shadow: inset 0 0 0 3px var(--text), var(--shadow-block);
+  background-color: var(--background);
+}
+
+/* A 360 px la barra pierde relleno para que «Unirme», «Filtros» y la vista quepan en una fila. */
+@media (max-width: 639.98px) {
+  .play__hud {
+    padding-inline: 12px;
+  }
+
+  .play__row,
+  .play__tools {
+    gap: 6px;
+  }
+
+  .play__row a.block,
+  .play__row button.block:not(.icon-button, .filter-axis) {
+    padding-inline: 12px;
+  }
+}
+
+.play__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background-color: var(--surface);
+  /* Es un párrafo: 16 px como mínimo (RF-5 (002) · 5.5). */
+  font-size: var(--type-body-size);
+  font-weight: 800;
+}
+
+.play__count-icon {
+  flex: none;
+}
+
+.play__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+
+/* Filtros: tras «Filtros» por debajo de 1024 px; desde ahí, siempre a la vista. Siempre en el DOM. */
+.play__filters {
+  display: none;
+  flex: 1 0 100%;
+  order: 5;
+}
+
+.play__filters[data-open='true'] {
+  display: block;
+}
+
+/* Abiertos en una ventana angosta, los filtros no se comen el mapa: se desplazan dentro de su caja. La barra no lleva
+   `overflow`, porque el panel de avisos cuelga de ella. */
+@media (max-width: 1023.98px) {
+  .play__filters[data-open='true'] {
+    max-block-size: 40dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* En una ventana baja (un teléfono acostado, zoom al 200 %) la página deja de estar fija: la barra va arriba y el
+   escenario conserva el alto de la ventana debajo de ella, así nada queda recortado (RNF-1 (021), RF-14 (021) · 14.7). */
+@media (max-height: 499.98px) {
+  .play {
+    grid-template-rows: auto 100dvh;
+    block-size: auto;
+    min-block-size: 100dvh;
+    overflow: visible;
+  }
+}
+
+.play__filters form,
+.play__filters fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.play__filters legend {
+  float: left;
+  margin-inline-end: 4px;
+  font-weight: 700;
+}
+
+@media (min-width: 1024px) {
+  .play__filters-toggle {
+    display: none;
+  }
+
+  .play__filters,
+  .play__filters[data-open='true'] {
+    display: block;
+    flex: 0 1 auto;
+    order: 0;
+  }
+}
+
+.play__view {
+  margin-inline-start: auto;
+}
+
+/* El escenario: el mapa a todo el alto, la lista con su propio desplazamiento y el panel encima. */
+.play__stage {
+  position: relative;
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+/* Envuelve el mapa o la lista solo para volverlos inertes bajo el panel ampliado: no ocupa caja. */
+.play__board {
+  display: contents;
+}
+
+.play__board > [role='alert'] {
+  margin: 12px;
+}
+
+.play__list {
+  box-sizing: border-box;
+  block-size: 100%;
+  overflow: auto;
+  padding: 16px clamp(16px, 4vw, 48px) 32px;
+}
+
+.play__list > * {
+  max-inline-size: 800px;
+  margin-inline: auto;
+}
+
+.play__discard {
+  margin-block-end: 16px;
+}
+
+.play__discard p {
+  margin-block-start: 0;
+}
+
+.play__discard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

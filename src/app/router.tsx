@@ -1,10 +1,12 @@
 // Enrutador mínimo del sitio: una tabla de rutas, `matchRoute` para resolverlas sin DOM,
 // `navigate`/`useRoute` sobre la History API y un `Link` interno. Aún no hay control de
 // acceso: toda ruta es pública hasta que una spec defina quién puede abrir qué.
+// RF-11 (021), RF-14 (021) · 14.5, 14.8, D-T21 (021): `isMapPage` dice qué rutas pinta el mapa, y `keepFocus` deja el foco
+// a los paneles.
 import { useEffect, useRef, useSyncExternalStore, type AnchorHTMLAttributes, type MouseEvent } from 'react';
 
 /** Identificador de cada página, más la página no encontrada. */
-export type PageId = 'home' | 'notFound' | 'login' | 'forgot' | 'action' | 'register' | 'registerInfo' | 'request' | 'facilitationInvitations' | 'facilitationEnrollments' | 'facilitationAccounts' | 'apiceHistory' | 'apiceNew' | 'apiceEdit' | 'archived' | 'apiceView' | 'prototyping' | 'dashboard' | 'documentation' | 'constitution' | 'constitutionHistory' | 'constitutionSection' | 'constitutionDocument' | 'amendments' | 'amendmentDetail' | 'forum' | 'forumThread';
+export type PageId = 'home' | 'notFound' | 'login' | 'forgot' | 'action' | 'register' | 'registerInfo' | 'request' | 'facilitationInvitations' | 'facilitationEnrollments' | 'facilitationAccounts' | 'apiceHistory' | 'apiceNew' | 'apiceEdit' | 'archived' | 'apiceView' | 'prototyping' | 'dashboard' | 'documentation' | 'constitution' | 'constitutionHistory' | 'constitutionSection' | 'constitutionDocument' | 'amendments' | 'amendmentDetail' | 'forum' | 'forumThread' | 'actions' | 'actionNew' | 'actionView' | 'sketch';
 
 export interface PageRoute {
   /** Patrón con segmentos literales y parámetros `:nombre`. */
@@ -44,7 +46,20 @@ export const ROUTES: readonly PageRoute[] = [
   // Rutas de la 009: el foro y un hilo.
   { pattern: '/foro', page: 'forum' },
   { pattern: '/foro/:id', page: 'forumThread' },
+  // RF-20 (021) · 20.5, D-T29 (021): los caminos; la fija va antes de `:id`.
+  { pattern: '/acciones', page: 'actions' },
+  { pattern: '/acciones/nueva', page: 'actionNew' },
+  { pattern: '/acciones/:id', page: 'actionView' },
+  // RF-23 (021) · 23.1, D-T39 (021): el boceto del visitante.
+  { pattern: '/boceto', page: 'sketch' },
 ];
+
+/** Páginas que pinta el mapa a pantalla completa, sin cabecera ni pie de sitio (RF-11 (021), RF-14 (021) · 14.5, D-T21 (021), D-T29 (021), D-T39 (021)). */
+const MAP_PAGES: ReadonlySet<PageId> = new Set<PageId>(['home', 'apiceView', 'apiceNew', 'apiceEdit', 'actions', 'actionNew', 'actionView', 'sketch']);
+
+export function isMapPage(page: PageId): boolean {
+  return MAP_PAGES.has(page);
+}
 
 export interface MatchedRoute {
   page: PageId;
@@ -105,18 +120,23 @@ export function readLocation(location: Location = window.location): CurrentRoute
 // Suscripción a los cambios de ruta: `navigate` y `popstate` avisan a los oyentes.
 const listeners = new Set<() => void>();
 let current: CurrentRoute | null = null;
+/** La ruta a la que se llegó con `keepFocus`: su cambio no mueve el foco (D-T21 (021)). */
+let quiet: CurrentRoute | null = null;
 
-function notify(): void {
+function notify(keepFocus = false): void {
   current = readLocation();
+  quiet = keepFocus ? current : null;
   for (const listener of listeners) listener();
 }
 
+const onPopState = () => notify();
+
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
-  if (listeners.size === 1) window.addEventListener('popstate', notify);
+  if (listeners.size === 1) window.addEventListener('popstate', onPopState);
   return () => {
     listeners.delete(listener);
-    if (listeners.size === 0) window.removeEventListener('popstate', notify);
+    if (listeners.size === 0) window.removeEventListener('popstate', onPopState);
   };
 }
 
@@ -137,13 +157,15 @@ function getSnapshot(): CurrentRoute {
 
 export interface NavigateOptions {
   replace?: boolean;
+  /** El cambio de ruta no lleva el foco al contenido: quien navega lo mueve (los paneles del mapa, D-T21 (021)). */
+  keepFocus?: boolean;
 }
 
 /** Cambia de ruta con `pushState` (o `replaceState`) y avisa a `useRoute`; `to` puede llevar `?query` y `#hash`. */
-export function navigate(to: string, { replace = false }: NavigateOptions = {}): void {
+export function navigate(to: string, { replace = false, keepFocus = false }: NavigateOptions = {}): void {
   if (replace) window.history.replaceState(null, '', to);
   else window.history.pushState(null, '', to);
-  notify();
+  notify(keepFocus);
 }
 
 /** Desplaza la vista al elemento cuyo `id` es el `#hash` de la ruta, si existe, y le lleva el foco. */
@@ -168,11 +190,21 @@ export function useRoute(): CurrentRoute {
   useEffect(() => {
     const first = !mounted.current;
     mounted.current = true;
-    if (scrollToHash(route.hash) || first) return;
+    if (scrollToHash(route.hash) || first || route === quiet) return;
     window.scrollTo(0, 0);
     document.querySelector('main')?.focus();
   }, [route]);
   return route;
+}
+
+const readSearch = () => window.location.search;
+
+/**
+ * La consulta de la dirección (`?…`); cambia con `navigate` y con `popstate`, aunque la ruta siga igual. El mapa la usa
+ * para sus filtros, «Lo mío» y la vista (RF-15 (021), D-T25 (021)).
+ */
+export function useSearch(): string {
+  return useSyncExternalStore(subscribe, readSearch, readSearch);
 }
 
 type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & { href: string };

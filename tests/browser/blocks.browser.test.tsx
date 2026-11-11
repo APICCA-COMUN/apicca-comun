@@ -3,7 +3,7 @@
 // hacia abajo y a la derecha (RF-3 (003) · 3.1, 3.4); con piezas de prueba, el lote lleva borde `line` y ninguna
 // sombra (3.2), los botones, el diálogo abierto y los campos siguen RF-4 (003) y RF-5 (003), y con colores forzados y contraste
 // aumentado los bordes se mantienen. Siguen vigentes de la 002: el foco de teclado se pinta con `focus` (6.4), a 360 px no hay desplazamiento horizontal (6.6) y
-// el nombre de 120 caracteres y el usuario de 24 se ajustan sin cortarse ni desbordar (6.7; en Prototipado, bajo su edificio, RF-5 (019)). Con la siembra
+// el nombre de 120 caracteres y el usuario de 24 se ajustan sin cortarse ni desbordar (6.7; en la lista del mapa y en la ficha). Con la siembra
 // completa (T-8.1, RNF-5 (002)) los 360 px recorren todas las rutas de la app, con sesión donde la ruta la pide.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { cdp, commands, page, userEvent } from 'vitest/browser';
@@ -22,7 +22,7 @@ import { firebaseSessionSource } from '../../src/data/sessionSource';
 import { signInAs, signOutNow } from './session';
 import { APICE_IDS, AUTHOR, FACILITATOR, LONG_APICE_ID, LONG_NAME, LONG_USERNAME } from './seed-data';
 
-/** Rutas que la siembra deja con contenido, con la cuenta que piden (`/tablero` pide la de la autora, T-7.3); la desconocida va antes. */
+/** Rutas que la siembra deja con contenido, con la cuenta que piden («Lo mío» pide la de la autora, RF-15 (021)); la desconocida va antes. */
 const PATHS: { path: string; as?: typeof AUTHOR }[] = [
   { path: '/' },
   { path: '/entrar' },
@@ -30,11 +30,11 @@ const PATHS: { path: string; as?: typeof AUTHOR }[] = [
   { path: '/registro' },
   { path: '/solicitar' },
   { path: `/apices/${LONG_APICE_ID}` },
-  { path: '/prototipado' },
+  { path: '/?vista=lista' },
   { path: '/documentacion' },
   { path: '/constitucion' },
   { path: '/ruta-que-no-existe' },
-  { path: '/tablero', as: AUTHOR },
+  { path: '/?mio=1', as: AUTHOR },
 ];
 
 /** Todas las rutas de `ROUTES` (src/app/router.tsx) más una desconocida, con la cuenta que cada una pide (RF-6 (002) · 6.6). */
@@ -49,10 +49,10 @@ const ALL_ROUTES: { path: string; as?: typeof AUTHOR | typeof FACILITATOR }[] = 
   { path: `/apices/${LONG_APICE_ID}` },
   { path: `/apices/${APICE_IDS.withImage}` },
   { path: '/ruta-que-no-existe' },
-  { path: '/prototipado' },
   { path: '/documentacion' },
   { path: '/constitucion' },
-  { path: '/tablero', as: AUTHOR },
+  { path: '/?mio=1', as: AUTHOR },
+  { path: '/?vista=lista' },
   { path: '/archivados', as: AUTHOR },
   { path: '/apices/nuevo', as: AUTHOR },
   { path: `/apices/${APICE_IDS.withImage}/editar`, as: AUTHOR },
@@ -138,10 +138,21 @@ function visibleRight(element: Element): number {
 /** El ojo de Entrar va dentro del campo, sin sombra propia (RF-5 (005) · 5.1). */
 // Fuera queda también el que está bajo el puntero: con `:hover` sube a `shadow-raised` (blocks.css). Desde la 019 el
 // primer edificio del terreno puede quedar donde el puntero dejó la prueba anterior.
+// Los edificios del recorrido quedan fuera: llevan `shadow-raised`, la sombra de los edificios (§4.0 de la 003, RF-5 (019),
+// D-T12 (021)). Sin esta excepción la prueba dependía de medir Prototipado antes de que el recorrido se dibujara.
+// Los grupos del mapa son marcadores con anillo, como los nodos (D-T17 (021)); los diálogos cerrados (el menú de juego,
+// RF-13 (021)) no se pintan.
+// El botón presionado («Lo mío») suma un anillo a la sombra, como los filtros de eje (RF-12 (003) · 12.3): no se mide aquí.
+// Los edificios del mapa no son tarjetas: van sin sombra y con radius-building, porque la placa es su suelo (RF-4 (021) · 4.4).
+// El rótulo del camino lleva el borde node-ring de su trazo (D-T30 (021)). Al elegir un ápice, el mapa lo encuadra
+// (RF-20 (021) · 20.4) y los dos quedan a la vista detrás del panel.
 const activeBlocks = () =>
   [...host!.querySelectorAll<HTMLElement>('.block')].filter(
     (el) =>
-      !el.matches(':disabled, [aria-disabled="true"], [aria-busy="true"], :hover, input, select, textarea, .action-destructive, .sign-in-form__reveal'),
+      el.getClientRects().length > 0 &&
+      !el.matches(
+        ':disabled, [aria-disabled="true"], [aria-busy="true"], :hover, input, select, textarea, .action-destructive, .sign-in-form__reveal, .game-map__group, .game-map__building, .game-map__path-label, button[aria-pressed="true"]',
+      ),
   );
 
 /** El elemento con el texto exacto más interno dentro de `main`. */
@@ -196,7 +207,7 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
     await page.viewport(1280, 800);
     await useAccount(as);
     await show(path);
-    if (as !== undefined) expect(location.pathname).toBe(path);
+    if (as !== undefined) expect(location.pathname + location.search).toBe(path);
     const shadow = computed('boxShadow', 'shadow-block');
     const [x, y] = [...shadow.matchAll(/(-?[\d.]+)px/g)].map((match) => parseFloat(match[1]!));
     expect(x).toBeGreaterThan(0);
@@ -206,7 +217,8 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
     const odd = blocks
       .filter((el) => {
         const style = getComputedStyle(el);
-        const pill = el.matches('button, a');
+        // El contador del mapa es una píldora, como los botones (D-T22 (021)).
+        const pill = el.matches('button, a, .play__count');
         const sides = [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth];
         return (
           (pill ? parseFloat(style.borderTopLeftRadius) < el.getBoundingClientRect().height / 2 : style.borderRadius !== TOKENS[theme]['radius-block']) ||
@@ -223,7 +235,7 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
     await page.viewport(1280, 800);
     await useAccount(as);
     await show(path);
-    if (as !== undefined) expect(location.pathname).toBe(path);
+    if (as !== undefined) expect(location.pathname + location.search).toBe(path);
     (document.activeElement as HTMLElement | null)?.blur();
     // El punto de partida del tabulador queda donde estaba el último foco de la ruta anterior; con rutas de más
     // de 12 paradas (la constitución sembrada, RNF-4 (004)) caería fuera de `host`. Se devuelve al inicio del documento.
@@ -253,7 +265,7 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
     await useAccount(as);
     await show(path);
     // Con cuenta, la ruta se monta sin redirigir ni caer en la pantalla de acceso.
-    if (as !== undefined) expect(location.pathname).toBe(path);
+    if (as !== undefined) expect(location.pathname + location.search).toBe(path);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
     const wide = [...host!.querySelectorAll<HTMLElement>('*')]
       .filter((el) => visibleRight(el) > innerWidth + 0.5)
@@ -261,20 +273,20 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
     expect(wide).toEqual([]);
   });
 
-  // La lista se mudó de / a /prototipado (RF-18 (003), D-19 (003)).
-  it.each(['/prototipado', `/apices/${LONG_APICE_ID}`])('RF-6 (002) · 6.7: en %s a 360 px el nombre de 120 caracteres se ajusta sin cortarse ni desbordar su bloque', async (path) => {
+  // La lista es la vista de lista del mapa (RF-10 (021)).
+  it.each(['/?vista=lista', `/apices/${LONG_APICE_ID}`])('RF-6 (002) · 6.7: en %s a 360 px el nombre de 120 caracteres se ajusta sin cortarse ni desbordar su bloque', async (path) => {
     document.documentElement.dataset['theme'] = theme;
     await page.viewport(360, 800);
     await show(path);
-    // En Prototipado el nombre se ve bajo su edificio del terreno (RF-5 (019), RF-6 (019)); en la ficha, en el h1.
+    // En la lista el nombre va en su tarjeta; en la ficha, en el h1.
     const heading = await waitFor(() =>
-      [...host!.querySelectorAll<HTMLElement>('main h1, main h2, main h3, main .apice-lot__name')].find((el) => el.textContent === LONG_NAME),
+      [...host!.querySelectorAll<HTMLElement>('main h1, main h2, main h3')].find((el) => el.textContent === LONG_NAME),
     );
     expect(getComputedStyle(heading).textOverflow).not.toBe('ellipsis');
     expectWrappedInside(heading, LONG_NAME, 2);
   });
 
-  it.each(['/prototipado', `/apices/${LONG_APICE_ID}`])('RF-7 (002) · 7.1, 7.2, D-T10 (002), RF-4 (019) · 4.1: en %s a 360 px todo edificio deja al menos 64 px para la imagen', async (path) => {
+  it.each(['/?vista=lista', `/apices/${LONG_APICE_ID}`])('RF-7 (002) · 7.2, D-T10 (002), RF-2 (021) · 2.1, D-T4 (021): en %s a 360 px todo edificio deja al menos 64 px para su dibujo', async (path) => {
     document.documentElement.dataset['theme'] = theme;
     await page.viewport(360, 800);
     await show(path);
@@ -286,14 +298,12 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
       const style = getComputedStyle(building);
       const inner = building.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       expect(inner).toBeGreaterThanOrEqual(64);
-      // Una idea es solo la base, sin imagen (RF-4 (019) · 4.1, D-14 (019)); el edificio del terreno es compacto, de
-      // escala 1 (D-T19 (019)).
-      const picture = building.querySelector<HTMLElement>('.pixel-image');
-      if (building.dataset['stage'] === 'idea') {
-        expect(picture).toBeNull();
-        continue;
-      }
-      expect(picture!.getBoundingClientRect().width).toBe(64 * Math.min(Math.floor(inner / 64), path === '/prototipado' ? 1 : 4));
+      // El dibujo mide 64·n en toda etapa, con el tope de su lugar (D-T10 (002)): 1 en el mapa (D-T17 (021)); 4 en la
+      // ficha; 2 en las tarjetas.
+      const max = building.closest('.game-map__building, .game-map__dialog') !== null ? 1 : building.closest('.apice-view__head') !== null ? 4 : 2;
+      const drawing = building.querySelector<SVGElement>('svg.building__drawing')!;
+      expect(drawing.getBoundingClientRect().width).toBe(64 * Math.min(Math.floor(inner / 64), max));
+      expect(building.querySelector('img, canvas')).toBeNull();
     }
   });
 

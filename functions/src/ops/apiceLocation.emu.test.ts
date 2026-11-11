@@ -14,7 +14,9 @@ let fabi: string;
 let id: string;
 
 const EXACT = { lat: 4.3567891, lng: -74.1234567 };
-const ZONE = { lat: 4.355, lng: -74.125 };
+/** La celda H3 de resolución 7 que contiene a EXACT, con su centro (RF-5 (021) · 5.1). */
+const CELL = { cell: '8766e08e4ffffff', lat: 4.367389, lng: -74.124852 };
+const ZONE = { lat: CELL.lat, lng: CELL.lng, zone: CELL };
 
 const create = (location?: unknown) => handleCreateApice(ctx, { ...VALID, ...(location === undefined ? {} : { location }) }, ana);
 const edit = (uid: string, baseVersion: number, location?: unknown, patch: Record<string, unknown> = {}) =>
@@ -56,9 +58,32 @@ describe('createApice con ubicación', () => {
     expect(await exactOf(1)).toEqual(EXACT);
   });
 
+  it('RF-5 (021) · 5.1, 5.2: al guardar la ubicación el servidor calcula la celda y publica la zona en el ápice y en la versión', async () => {
+    id = ((await create({ mode: 'set', ...EXACT })) as { id: string }).id;
+    for (const doc of [await apice(), await version(1)]) {
+      expect(doc['location']).toEqual({ lat: CELL.lat, lng: CELL.lng, precision: 'approximate', zone: CELL });
+    }
+    const other = { lat: -12.0464, lng: -77.0428 };
+    await edit(ana, 1, { mode: 'set', ...other, precision: 'exact' });
+    const zone = { cell: '878e62c01ffffff', lat: -12.043621, lng: -77.054062 };
+    expect((await apice())['location']).toEqual({ ...other, precision: 'exact', zone });
+    expect((await version(2))['location']).toEqual({ ...other, precision: 'exact', zone });
+  });
+
+  it('RF-5 (021) · 5.4: un ápice que tenía la zona anterior recibe su celda al guardarse, aunque no cambie la ubicación', async () => {
+    id = ((await create({ mode: 'set', ...EXACT })) as { id: string }).id;
+    const before = { lat: 4.355, lng: -74.125, precision: 'approximate' };
+    await ctx.db.doc(`apices/${id}`).update({ location: before });
+    await ctx.db.doc(`apices/${id}/versions/1`).update({ location: before });
+    expect(await edit(ana, 1, undefined, { name: 'Otro nombre' })).toEqual({ ok: true, version: 2 });
+    expect((await apice())['location']).toEqual({ ...ZONE, precision: 'approximate' });
+    // La versión anterior conserva lo que mostraba (RF-5 (021) · 5.5).
+    expect((await version(1))['location']).toEqual(before);
+  });
+
   it('RF-9 (001): con precisión exacta la ubicación de pantalla es el punto', async () => {
     id = ((await create({ mode: 'set', ...EXACT, precision: 'exact' })) as { id: string }).id;
-    expect((await apice())['location']).toEqual({ ...EXACT, precision: 'exact' });
+    expect((await apice())['location']).toEqual({ ...EXACT, precision: 'exact', zone: CELL });
     expect(await exactOf(1)).toEqual(EXACT);
   });
 
@@ -149,11 +174,11 @@ describe('editApice con ubicación', () => {
   it('RF-9 (001): cambiar la precisión es una versión nueva que usa el punto guardado', async () => {
     await edit(ana, 1, { mode: 'set', ...EXACT });
     expect(await edit(ana, 2, { mode: 'precision', precision: 'exact' })).toEqual({ ok: true, version: 3 });
-    expect((await apice())['location']).toEqual({ ...EXACT, precision: 'exact' });
+    expect((await apice())['location']).toEqual({ ...EXACT, precision: 'exact', zone: CELL });
     expect(await exactOf(3)).toEqual(EXACT);
     expect(await edit(ana, 3, { mode: 'precision', precision: 'approximate' })).toEqual({ ok: true, version: 4 });
     expect((await apice())['location']).toEqual({ ...ZONE, precision: 'approximate' });
-    expect((await version(3))['location']).toEqual({ ...EXACT, precision: 'exact' });
+    expect((await version(3))['location']).toEqual({ ...EXACT, precision: 'exact', zone: CELL });
   });
 
   it('RF-9 (001): pedir la precisión que ya tiene no crea versión', async () => {
@@ -169,7 +194,7 @@ describe('editApice con ubicación', () => {
     const result = await edit(fabi, 2, { mode: 'precision', precision: 'exact' });
     expect(result).toEqual({ ok: true, version: 3 });
     expect(JSON.stringify(result)).not.toContain(String(EXACT.lat));
-    expect((await apice())['location']).toEqual({ ...EXACT, precision: 'exact' });
+    expect((await apice())['location']).toEqual({ ...EXACT, precision: 'exact', zone: CELL });
   });
 
   it('RF-1 (016) · 1.1: un miembro que no es la autora no puede fijar ni cambiar el punto, ni con otros cambios', async () => {
@@ -244,7 +269,12 @@ describe('restoreVersion con ubicación', () => {
     expect((await apice())['location']).toBeNull();
     await edit(ana, 4, { mode: 'set', lat: 1, lng: 1 });
     expect(await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 5 }, fabi)).toEqual({ ok: true, version: 6 });
-    expect((await apice())['location']).toEqual({ lat: 1.005, lng: 1.005, precision: 'approximate' });
+    expect((await apice())['location']).toEqual({
+      lat: 1.004383,
+      lng: 0.993594,
+      precision: 'approximate',
+      zone: { cell: '877541ad5ffffff', lat: 1.004383, lng: 0.993594 },
+    });
     expect(await exactOf(6)).toEqual({ lat: 1, lng: 1 });
   });
 

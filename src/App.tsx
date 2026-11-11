@@ -1,7 +1,11 @@
 // Componente raíz: elige la página según la ruta y deja fijos el aviso de suspensión y la reautenticación.
-// La cabecera va fuera de `<main>` para que esté en toda ruta, incluida la desconocida (D-T16 (002)).
-import type { ReactElement } from 'react';
-import { useRoute, type PageId } from './app/router';
+// En las páginas de texto la cabecera y el pie van fuera de `<main>`, también en la ruta desconocida (D-T16 (002)).
+// RF-11 (021), RF-16 (021) · 16.1, RF-17 (021) · 17.1–17.3, D-T21 (021): `/` y los paneles del ápice pintan el mapa (`Play`),
+// sin cabecera ni pie de sitio, y siempre el mismo elemento, para que el mapa no se vuelva a montar al abrir un panel.
+// `/prototipado` y `/tablero` llevan al mapa sin quedar en el historial.
+import { useEffect, type ReactElement } from 'react';
+import { isMapPage, navigate, useRoute, type PageId } from './app/router';
+import { useSession } from './app/session';
 import { ReauthDialog } from './components/ReauthDialog';
 import { SiteFooter } from './components/SiteFooter';
 import { SiteHeader } from './components/SiteHeader';
@@ -9,24 +13,19 @@ import { SuspendedNotice } from './components/SuspendedNotice';
 import { ActionPage } from './pages/Action';
 import { AmendmentView } from './pages/AmendmentView';
 import { Amendments } from './pages/Amendments';
-import { ApiceEdit } from './pages/ApiceEdit';
 import { ApiceHistory } from './pages/ApiceHistory';
-import { ApiceNew } from './pages/ApiceNew';
 import { ArchivedApices } from './pages/ArchivedApices';
 import { ConstitutionDocument } from './pages/ConstitutionDocument';
 import { ConstitutionHistory } from './pages/ConstitutionHistory';
 import { ConstitutionSection } from './pages/ConstitutionSection';
-import { ApiceView } from './pages/ApiceView';
 import { LazyBoundary, lazyPage } from './components/LazyBoundary';
-import { Dashboard } from './pages/Dashboard';
 import { FacilitationAccounts } from './pages/FacilitationAccounts';
 import { FacilitationEnrollments } from './pages/FacilitationEnrollments';
 import { FacilitationInvitations } from './pages/FacilitationInvitations';
 import { ForgotPage } from './pages/Forgot';
-import { Home } from './pages/Home';
 import { LoginPage } from './pages/Login';
 import { NotFound } from './pages/NotFound';
-import { Prototyping } from './pages/Prototyping';
+import { Play } from './pages/Play';
 import { RegisterInfoPage } from './pages/RegisterInfoPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { RequestPage } from './pages/RequestPage';
@@ -38,12 +37,27 @@ const ConstitutionPage = lazyPage<object>(() => import('./pages/ConstitutionPage
 const Forum = lazyPage<object>(() => import('./pages/Forum').then((m) => ({ default: m.Forum })));
 const ForumThread = lazyPage<object>(() => import('./pages/ForumThread').then((m) => ({ default: m.ForumThread })));
 
-/** Página de cada ruta; la de inicio y la no encontrada se resuelven aparte. Cada tarea agrega la suya aquí. */
+/** `/prototipado` lleva al mapa con la misma consulta (RF-17 (021) · 17.1). */
+function PrototypingRedirect() {
+  useEffect(() => navigate(`/${window.location.search}`, { replace: true }), []);
+  return null;
+}
+
+/** `/tablero` lleva a «Lo mío» con sesión, a entrar sin ella y al mapa con la cuenta suspendida (RF-17 (021) · 17.2, 17.3). */
+function DashboardRedirect() {
+  const session = useSession();
+  useEffect(() => {
+    if (session.status === 'person') navigate('/?mio=1', { replace: true });
+    else if (session.status === 'visitor') navigate('/entrar?volver=%2Ftablero', { replace: true });
+    else if (session.status === 'suspended') navigate('/', { replace: true });
+  }, [session.status]);
+  return session.status === 'loading' ? <p>Cargando…</p> : null;
+}
+
+/** Página de cada ruta de texto; las del mapa y la no encontrada se resuelven aparte. Cada tarea agrega la suya aquí. */
 const PAGES: Partial<Record<PageId, (params: Record<string, string>) => ReactElement>> = {
-  home: () => <Home />,
-  // RF-18 (003), RF-11 (003): el mapa y la lista viven en Prototipado; Mi tablero junta lo propio.
-  prototyping: () => <Prototyping />,
-  dashboard: () => <Dashboard />,
+  prototyping: () => <PrototypingRedirect />,
+  dashboard: () => <DashboardRedirect />,
   archived: () => <ArchivedApices />,
   login: () => <LoginPage />,
   forgot: () => <ForgotPage />,
@@ -55,9 +69,6 @@ const PAGES: Partial<Record<PageId, (params: Record<string, string>) => ReactEle
   facilitationEnrollments: () => <FacilitationEnrollments />,
   facilitationAccounts: () => <FacilitationAccounts />,
   apiceHistory: (params) => <ApiceHistory id={params['id'] ?? ''} />,
-  apiceNew: () => <ApiceNew />,
-  apiceEdit: (params) => <ApiceEdit id={params['id'] ?? ''} />,
-  apiceView: (params) => <ApiceView id={params['id'] ?? ''} />,
   // Constitución común (004): historiales, documentos y propuestas (T-10.21 (004), D-T13 (004)).
   constitutionHistory: () => <ConstitutionHistory />,
   constitutionSection: (params) => <ConstitutionSection id={params['id'] ?? ''} />,
@@ -89,20 +100,17 @@ const PAGES: Partial<Record<PageId, (params: Record<string, string>) => ReactEle
 
 export function App() {
   const route = useRoute();
+  const map = isMapPage(route.page);
   const page = PAGES[route.page];
   return (
     <>
-      <SiteHeader />
-      <main>
+      {!map && <SiteHeader />}
+      <main className={map ? 'main--play' : undefined}>
         <SuspendedNotice />
         <ReauthDialog />
-        {page ? (
-          page(route.params)
-        ) : (
-          <NotFound />
-        )}
+        {map ? <Play /> : page ? page(route.params) : <NotFound />}
       </main>
-      <SiteFooter />
+      {!map && <SiteFooter />}
     </>
   );
 }
