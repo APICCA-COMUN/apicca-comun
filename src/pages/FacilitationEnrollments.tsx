@@ -71,7 +71,7 @@ function Enrollments({ source, client }: Required<Props>) {
           renderActions={(request) =>
             discarding === request.id ? (
               <span className="facilitation-row__actions">
-                <label>
+                <label className="rotulo-campo">
                   Motivo
                   <textarea className="block" value={reason} onChange={(event) => setReason(event.target.value)} />
                 </label>

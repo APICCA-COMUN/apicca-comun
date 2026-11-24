@@ -54,13 +54,18 @@ describe.each(['light', 'dark'] as const)('pie en el tema %s (003)', (theme) => 
     document.documentElement.dataset['theme'] = theme;
   });
 
-  it('RF-8 (003) · 8.1, 8.4, RF-5 (008) · 5.1, RNF-2 (015): fondo footer-bg y «Apoyado por» en on-charcoal-muted, de 16 px', async () => {
+  it('RF-8 (003) · 8.1, 8.4, RF-5 (008) · 5.1, RNF-2 (015): el pie es tinta llena con «Apoyado por» en papel (en oscuro, papel oscuro con texto claro), de 16 px', async () => {
     await mount(<SiteFooter />);
     const footer = host.querySelector<HTMLElement>('footer')!;
-    expect(getComputedStyle(footer).backgroundColor).toBe(token('footer-bg', 'backgroundColor'));
+    // El logo de MangleRojo es un negativo y pide fondo oscuro: en el tema oscuro la tinta es clara y el pie va en papel oscuro.
+    expect(getComputedStyle(footer).backgroundColor).toBe(token(theme === 'light' ? 'charcoal' : 'background', 'backgroundColor'));
     const support = getComputedStyle(footer.querySelector('.site-footer__support')!);
-    expect(support.color).toBe(token('on-charcoal-muted', 'color'));
+    expect(support.color).toBe(token(theme === 'light' ? 'on-charcoal' : 'text', 'color'));
     expect(support.fontSize).toBe('16px');
+    const edge = getComputedStyle(footer);
+    expect(edge.borderBlockStartWidth).toBe('3px');
+    expect(edge.borderBlockStartColor).toBe(token('text', 'color'));
+    expect(edge.boxShadow).toBe('none');
   });
 
   it('RF-16 (003) · 16.2: a 360 px no hay desplazamiento horizontal', async () => {

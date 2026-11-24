@@ -1,11 +1,41 @@
-/* RF-8 (003) · 8.1, 8.4, RF-16 (003) · 16.2, RF-5 (008) · 5.1–5.2, RF-3 (015), RNF-1 (015) · 1.2–1.3, RNF-2 (015),
-   D-T4 (015) · Pie sobre `footer-bg`, en una columna de `content-max` con 28 px arriba y abajo. Solo el apoyo,
-   centrado: «Apoyado por» en `on-charcoal-muted` y el logo de 28 px de alto, con 8 px libres alrededor dentro del
-   enlace de 44 px (zona de protección: 20 % del alto). El foco de 3 px viene de `base.css`. Solo tokens. */
+/* Sistema «APICCA · Mapa»: el pie es tinta llena con texto en papel y un borde superior de 3 px en tinta, como la
+   cabecera es papel con borde inferior de 3 px: los dos cierran la página con el mismo trazo. Solo el apoyo, centrado:
+   «Apoyado por» y el logo de 28 px de alto, con 8 px libres alrededor dentro del enlace de 44 px (zona de protección:
+   20 % del alto). El logo de MangleRojo es el negativo (blanco y rojo) y se conserva tal cual: exige fondo oscuro. En
+   tema oscuro la tinta es clara, así que el pie pasa a papel oscuro con su borde de tinta, y el logo se sigue leyendo.
+   El foco de 3 px viene de `base.css`. Solo tokens. */
 .site-footer {
-  background-color: var(--footer-bg);
+  border-block-start: var(--stroke-border) solid var(--text);
+  background-color: var(--charcoal);
   color: var(--on-charcoal);
   line-height: 1.5;
+}
+
+:root[data-theme='dark'] .site-footer {
+  background-color: var(--background);
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .site-footer {
+    background-color: var(--background);
+    color: var(--text);
+  }
+}
+
+/* El foco de tinta no se vería sobre la tinta llena: sobre ella va en papel. */
+.site-footer__support-link:focus-visible {
+  outline-color: var(--on-charcoal);
+}
+
+:root[data-theme='dark'] .site-footer__support-link:focus-visible {
+  outline-color: var(--focus);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .site-footer__support-link:focus-visible {
+    outline-color: var(--focus);
+  }
 }
 
 .site-footer__inner {
@@ -22,7 +52,6 @@
   align-items: center;
   gap: 4px;
   margin: 0;
-  color: var(--on-charcoal-muted);
   font-size: var(--type-body-size); /* RF-5 (002) · 5.5, RF-2 (019), D-T3 (019): cuerpo de la escala. */
 }
 

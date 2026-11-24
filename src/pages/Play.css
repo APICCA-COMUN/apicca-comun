@@ -1,14 +1,19 @@
-/* RF-11 (021) · 11.2, RF-12 (021) · 12.1, D-T22 (021): la página del mapa ocupa la ventana (`100dvh`) y no se desplaza:
-   la barra de juego va arriba, en flujo, y el mapa llena el resto. La barra tiene dos filas: la de identidad (logo,
-   contador, avisos, tema, cuenta y «Menú») y la de juego («Construir ápice» o «Unirme», «Lo mío», filtros, vista y aviso
-   de propuestas). Por debajo de 1024 px los filtros quedan tras «Filtros». Solo tokens. */
+/* Sistema «APICCA · Mapa», composición de Inicio (P1): la página del mapa ocupa la ventana (`100dvh`) y no se desplaza.
+   Arriba, la cabecera del sitio (64 px); debajo, el mapa a lo ancho menos un panel de 430 px a la derecha, separado por un
+   borde de 3 px en tinta. El panel se desplaza por dentro y lleva el título, las acciones, el contador, las herramientas,
+   las leyendas y la lista de Ápices en filas, o el panel abierto en su lugar. En un teléfono (menos de 900 px) el mapa va
+   arriba y el panel debajo, a todo el ancho, y la página se desplaza. Solo tokens. */
 /* El mapa no va en la columna de lectura de `main` (lots.css): ocupa todo el ancho. */
 main.main--play {
+  box-sizing: border-box;
+  inline-size: 100%;
   max-inline-size: none;
+  margin-inline: 0;
   padding-inline: 0;
 }
 
 .play {
+  --ancho-panel: 430px;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   block-size: 100dvh;
@@ -16,147 +21,121 @@ main.main--play {
   background-color: var(--background);
 }
 
-.play__hud {
+.play__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--ancho-panel);
+  min-block-size: 0;
+}
+
+/* El escenario: el mapa a todo el alto, o la lista con su propio desplazamiento. */
+.play__stage {
   position: relative;
-  z-index: 4;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+}
+
+.play__panel {
+  box-sizing: border-box;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  border-inline-start: var(--stroke-border) solid var(--text);
+  background-color: var(--surface);
+}
+
+/* El contenido por defecto del panel. */
+.play__home {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px clamp(12px, 3vw, 24px);
-  border-block-end: 1px solid var(--line);
-  background-color: var(--background);
+  gap: 16px;
+  box-sizing: border-box;
+  block-size: 100%;
+  overflow: auto;
+  padding: 20px 16px 32px;
+  overscroll-behavior: contain;
+  /* El contorno de foco de las filas (3 px, separado 3 px) no se recorta al llegar al borde de la columna. */
+  scroll-padding-block: 12px;
 }
 
-.play__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.play__row a.block,
-.play__row button.block:not(.icon-button, .filter-axis) {
-  min-block-size: var(--size-icon-control);
-  padding-inline: 18px;
-  font-weight: 800;
-}
-
-.play__row a.block {
-  display: inline-flex;
-  align-items: center;
-}
-
-/* «Lo mío» activo: el mismo anillo del color del texto que los filtros de eje, no solo el color (RF-12 (003) · 12.3). */
-.play__row button.block[aria-pressed='true']:not(.filter-axis) {
-  box-shadow: inset 0 0 0 3px var(--text), var(--shadow-block);
-  background-color: var(--background);
-}
-
-/* A 360 px la barra pierde relleno para que «Unirme», «Filtros» y la vista quepan en una fila. */
-@media (max-width: 639.98px) {
-  .play__hud {
-    padding-inline: 12px;
-  }
-
-  .play__row,
-  .play__tools {
-    gap: 6px;
-  }
-
-  .play__row a.block,
-  .play__row button.block:not(.icon-button, .filter-axis) {
-    padding-inline: 12px;
-  }
-}
-
-.play__count {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 8px 14px;
-  border-radius: var(--radius-pill);
-  background-color: var(--surface);
-  /* Es un párrafo: 16 px como mínimo (RF-5 (002) · 5.5). */
-  font-size: var(--type-body-size);
-  font-weight: 800;
-}
-
-.play__count-icon {
+.play__home > * {
+  margin-block: 0;
   flex: none;
 }
 
+/* El título de la pantalla y su entradilla (`titulo-pantalla`). */
+.play__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.play__intro :is(h1, h2) {
+  margin: 0;
+  font-size: var(--type-heading-size);
+  line-height: var(--type-heading-line);
+}
+
+/* La entradilla (`entradilla`): peso 400, en suave. A 16 px y no a los 15 del sistema: los párrafos del sitio no bajan
+   de 16 px (RF-5 (002) · 5.5). */
+.play__intro p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+}
+
+.play__actions,
 .play__tools {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.play__actions a.block,
+.play__tools button.block {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-block-size: var(--size-control);
+  padding-inline: 18px;
+  font-weight: 800;
+}
+
+.play__tools button.block {
+  min-block-size: var(--size-icon-control);
+  padding-inline: 14px;
+}
+
+/* «Lo mío» y «Filtros» abiertos van en tinta llena, no solo con otro color (RF-12 (003) · 12.3). */
+.play__tools button.block[aria-pressed='true'],
+.play__tools button.block[aria-expanded='true'] {
+  background-color: var(--text);
+  color: var(--surface);
+}
+
+.play__view {
   margin-inline-start: auto;
 }
 
-/* RF-10 (024) · 10.1 a 10.4, D-T13 (024): en un teléfono (menos de 640 px de ancho y 800 px o más de alto), el aviso de propuestas
-   abiertas es una sola fila compacta (el texto a la izquierda, «Ver propuestas» a la derecha) y el contador no se parte en dos
-   líneas, para que el mapa conserve al menos el 60 % del alto de la ventana. El marcado del aviso no cambia: se le da forma
-   desde aquí. Los controles conservan 48 px y los de ícono, 44 px; por debajo de 800 px de alto no se exige nada. */
-@media (max-width: 639.98px) and (min-height: 800px) {
-  /* `p.block` (blocks.css) pesa más que `.play__count`: se sube la especificidad para que el relleno compacto cuente. */
-  .play__hud .play__count {
-    padding: 4px 12px;
-    white-space: nowrap;
-  }
-
-  .play__hud .amendment-notice {
-    display: flex;
-    flex: 1 0 100%;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 4px 4px 4px 12px;
-  }
-
-  .play__hud .amendment-notice p {
-    flex: 1 1 0;
-    min-inline-size: 0;
-    margin: 0;
-    line-height: 1.25;
-  }
-
-  .play__hud .amendment-notice a.block {
-    flex: none;
-    padding-inline: 12px;
-  }
+/* El contador (`meta`): una línea en suave, sin recuadro («19 Ápices · 4 Acciones Comunes · 5 zonas»). Es un párrafo:
+   a 16 px como mínimo (RF-5 (002) · 5.5), no a los 13 del sistema. */
+.play__count {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-meta-weight);
 }
 
-/* Filtros: tras «Filtros» por debajo de 1024 px; desde ahí, siempre a la vista. Siempre en el DOM. */
+/* Filtros: tras «Filtros»; siempre en el DOM. */
 .play__filters {
   display: none;
-  flex: 1 0 100%;
-  order: 5;
 }
 
 .play__filters[data-open='true'] {
   display: block;
-}
-
-/* Abiertos en una ventana angosta, los filtros no se comen el mapa: se desplazan dentro de su caja. La barra no lleva
-   `overflow`, porque el panel de avisos cuelga de ella. */
-@media (max-width: 1023.98px) {
-  .play__filters[data-open='true'] {
-    max-block-size: 40dvh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-}
-
-/* En una ventana baja (un teléfono acostado, zoom al 200 %) la página deja de estar fija: la barra va arriba y el
-   escenario conserva el alto de la ventana debajo de ella, así nada queda recortado (RNF-1 (021), RF-14 (021) · 14.7). */
-@media (max-height: 499.98px) {
-  .play {
-    grid-template-rows: auto 100dvh;
-    block-size: auto;
-    min-block-size: 100dvh;
-    overflow: visible;
-  }
 }
 
 .play__filters form,
@@ -170,43 +149,44 @@ main.main--play {
   border: 0;
 }
 
+.play__filters form {
+  gap: 12px;
+}
+
 .play__filters legend {
   float: left;
   margin-inline-end: 4px;
   font-weight: 700;
 }
 
-@media (min-width: 1024px) {
-  .play__filters-toggle {
-    display: none;
+/* Las leyendas de Etapa y de ejes, una sobre otra. */
+.play__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-block: 12px;
+  border-block: var(--stroke-divider) solid var(--line);
+}
+
+.play__legend .leyenda-etapa {
+  flex-wrap: wrap;
+}
+
+/* Con el panel a todo el ancho de un teléfono (menos de 400 px), las tres muestras de Etapa caben en una fila: cada una
+   se reparte el ancho y su superficie se encoge hasta él (`max-inline-size` gana al ancho fijo de la superficie). */
+@media (max-width: 399.98px) {
+  .play__legend .leyenda-etapa {
+    flex-wrap: nowrap;
   }
 
-  .play__filters,
-  .play__filters[data-open='true'] {
-    display: block;
-    flex: 0 1 auto;
-    order: 0;
+  .play__legend .leyenda-etapa__item {
+    flex: 1 1 0;
+    max-inline-size: 116px;
   }
-}
 
-.play__view {
-  margin-inline-start: auto;
-}
-
-/* El escenario: el mapa a todo el alto, la lista con su propio desplazamiento y el panel encima. */
-.play__stage {
-  position: relative;
-  min-block-size: 0;
-  overflow: hidden;
-}
-
-/* Envuelve el mapa o la lista solo para volverlos inertes bajo el panel ampliado: no ocupa caja. */
-.play__board {
-  display: contents;
-}
-
-.play__board > [role='alert'] {
-  margin: 12px;
+  .play__legend .leyenda-etapa__item > .superficie {
+    max-inline-size: 100%;
+  }
 }
 
 .play__list {
@@ -221,6 +201,11 @@ main.main--play {
   margin-inline: auto;
 }
 
+/* Las Acciones Comunes y los Ápices de la lista, una sección tras otra. */
+.play__list > * + * {
+  margin-block-start: 24px;
+}
+
 .play__discard {
   margin-block-end: 16px;
 }
@@ -233,4 +218,68 @@ main.main--play {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* Teléfono y ventanas angostas: el mapa arriba (el 62 % del alto de la ventana, con un mínimo; ha de ocupar al menos el 60 %) y
+   el panel debajo, a todo el ancho; la página se desplaza. El panel pierde su alto fijo y su borde pasa de la izquierda al borde de arriba. */
+@media (max-width: 899.98px) {
+  .play {
+    grid-template-rows: auto auto;
+    block-size: auto;
+    min-block-size: 100dvh;
+    overflow: visible;
+  }
+
+  .play__body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+
+  /* Al menos el 60 % del alto en un teléfono; con tope, para que en una ventana muy alta (o en una captura de página
+     entera, que agranda la ventana hasta que la página quepa) el alto no persiga al de la ventana. */
+  .play__stage {
+    block-size: min(max(62dvh, 22rem), 40rem);
+  }
+
+  .play__panel {
+    overflow: visible;
+    border-inline-start: 0;
+    border-block-start: var(--stroke-border) solid var(--text);
+  }
+
+  .play__home,
+  .game-panel {
+    block-size: auto;
+    overflow: visible;
+  }
+
+  .game-panel__body {
+    overflow: visible;
+  }
+}
+
+/* A 360 px el panel pierde un poco de relleno. */
+@media (max-width: 639.98px) {
+  .play__home {
+    padding-inline: 12px;
+  }
+
+  .play__actions a.block {
+    padding-inline: 14px;
+  }
+}
+
+/* En una ventana baja (un teléfono acostado, zoom al 200 %) la página deja de estar fija: el escenario conserva el alto de
+   la ventana y el panel va debajo, así nada queda recortado (RNF-1 (021), RF-14 (021) · 14.7). */
+@media (min-width: 900px) and (max-height: 499.98px) {
+  .play {
+    grid-template-rows: auto auto;
+    block-size: auto;
+    min-block-size: 100dvh;
+    overflow: visible;
+  }
+
+  .play__body {
+    grid-template-rows: 100dvh;
+  }
 }

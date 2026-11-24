@@ -27,30 +27,51 @@
   filter: var(--map-tint);
 }
 
-/* Atribución (RF-8 (002) · 8.6): fuera del panel tintado, sobre `surface`. */
+/* Atribución (RF-8 (002) · 8.6): fuera del panel tintado, sobre `surface`, a 14 px como mínimo (QA #4). El crédito de
+   OpenStreetMap es obligatorio y se conserva; el prefijo de Leaflet (con su bandera) lo reemplaza `PointPickerMap`. */
 .leaflet-container .leaflet-control-attribution {
   background: var(--surface);
   color: var(--text);
-  border-top-left-radius: var(--radius-block);
+  border-top-left-radius: 0;
   padding: 2px 8px;
+  font-family: inherit;
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line);
 }
 
-/* Controles de zoom (RF-6 (002) · 6.1): el contenedor lleva la clase `block`. */
-.leaflet-bar.block {
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius-block);
-  box-shadow: var(--shadow-block);
+/* Controles de zoom (RF-6 (002) · 6.1): el contenedor lleva la clase `block`. Sin el relleno de 1 rem de `.block` (QA #4):
+   el marco de 3 px en tinta rodea a los dos botones sin aire. */
+.leaflet-container .leaflet-bar.block {
+  box-sizing: border-box;
+  padding: 0;
+  border: var(--stroke-border) solid var(--field-border);
+  border-radius: 0;
   overflow: hidden;
 }
 
 /* RF-2 (020) · 2.1, D-T3 (020): acercar y alejar miden 44 × 44 en todo mapa, como `.icon-button` (RF-2 (008) · 2.2).
-   La especificidad (0,3,1) gana a la de `leaflet.css` sin depender del orden de las hojas; `border-box` cuenta el
-   borde de «+» dentro de los 44 px. */
-.leaflet-container .leaflet-bar.block a {
+   La especificidad (0,4,1) gana a la de `leaflet.css` (incluidos sus `:first-child` y `.leaflet-touch`) sin depender del
+   orden de las hojas; `border-box` cuenta el borde dentro de los 44 px. QA #4: radio 0, Jost y un divisor de 3 px entre
+   «+» y «−». */
+.leaflet-container .leaflet-bar.block a.leaflet-control-zoom-in,
+.leaflet-container .leaflet-bar.block a.leaflet-control-zoom-out {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-sizing: border-box;
   inline-size: var(--size-icon-control);
   block-size: var(--size-icon-control);
-  line-height: var(--size-icon-control);
+  line-height: 1;
+  border: 0;
+  border-radius: 0;
+  font-family: inherit;
+  font-size: var(--type-lead-size);
+  font-weight: 800;
+  text-indent: 0;
+}
+
+.leaflet-container .leaflet-bar.block a.leaflet-control-zoom-out {
+  border-block-start: var(--stroke-border) solid var(--field-border);
 }
 
 .leaflet-bar a,
@@ -71,23 +92,21 @@
 .leaflet-popup-tip {
   background: var(--surface);
   color: var(--text);
-  box-shadow: var(--shadow-block);
 }
 
 .leaflet-container a.leaflet-popup-close-button {
   color: var(--text);
 }
 
-/* Pin (RF-8 (002) · 8.3, D-T9 (002), RF-3 (019), D-T4 (019)): `6 + 14·n` por 20 px, con íconos de 12 px y radio de edificio. Leaflet pone el tamaño. */
+/* Pin (RF-8 (002) · 8.3, D-T9 (002), RF-3 (019), D-T4 (019)): `6 + 14·n` por 20 px, con íconos de 12 px, sin radio. Leaflet pone el tamaño. */
 .apicca-pin {
   box-sizing: border-box;
   display: flex;
   align-items: center;
   padding: 3px 2px;
-  border: 1px solid var(--charcoal);
-  border-radius: var(--radius-building);
+  border: var(--stroke-border) solid var(--field-border);
+  border-radius: 0;
   background: var(--charcoal);
-  box-shadow: var(--shadow-block);
 }
 
 .apicca-pin .axis-icon {

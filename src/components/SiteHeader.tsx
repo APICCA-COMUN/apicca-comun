@@ -1,27 +1,49 @@
-// RF-1 (002) · 1.1, RF-10 (002) · 10.1, RF-7 (003) · 7.1, 7.5–7.7, 7.10 (D-27 (003)), RF-4 (008) · 4.1–4.6 y RF-16 (021) ·
-// 16.2, D-T24 (021): cabecera delgada de las páginas de texto, fuera de `<main>` (D-T16 (002)). Lleva el logo, «Volver al
-// mapa», el conmutador de tema, la cuenta (RF-3 (005)) y «Menú»; los destinos están en el menú de juego. Sin sombra ni
-// recuadro; cabe en una fila desde 360 px y se ajusta al 200 %. Las páginas del mapa no la pintan: tienen su barra.
-import { Link } from '../app/router';
+// RF-1 (002) · 1.1, RF-7 (003) · 7.1, RF-4 (008) · 4.1–4.6, RF-16 (021) · 16.2: la cabecera del sitio, con el logo, el tema y «Menú».
+// Sistema «APICCA · Mapa» (`.ap-cabecera`): la cabecera de todo el sitio, también la de Inicio (la monta `Play`). 64 px
+// de alto con borde inferior de 3 px en tinta, sobre papel: el logo, la navegación principal en mayúsculas con la
+// entrada vigente subrayada, y a la derecha el tema, la campana de avisos (con sesión), «Entrar» o la cuenta y «Menú».
+// Por debajo de 1100 px la navegación se pliega en «Menú» (`GameMenu`), con las mismas cinco entradas. Los datos de
+// los avisos entran por `noticesSource` y `client`, como en `NoticeBell` (las pruebas de `Play` los inyectan).
+import { MAIN_MENU } from '../../shared/domain/navigation';
+import { isCurrentEntry } from '../app/currentSection';
+import { Link, useRoute } from '../app/router';
+import type { ApiOps, OpClient } from '../data/api';
+import type { NoticesSource } from '../data/notices';
 import { GameMenu } from './GameMenu';
 import { Logo } from './Logo';
+import { NoticeBell } from './NoticeBell';
 import { SessionEntry } from './SessionEntry';
 import { ThemeToggle } from './ThemeToggle';
 import './SiteHeader.css';
 
-export function SiteHeader() {
+export interface SiteHeaderProps {
+  /** Fuente de los avisos de la campana; por defecto, Firestore. */
+  noticesSource?: NoticesSource;
+  /** Cliente de las operaciones («Marcar como leídos»); por defecto, el de la API. */
+  client?: OpClient<ApiOps>;
+}
+
+export function SiteHeader({ noticesSource, client }: SiteHeaderProps = {}) {
+  const { path } = useRoute();
   return (
     <header className="site-header">
       <div className="site-header__inner">
         <Logo />
-        <Link href="/" className="block action-secondary site-header__back">
-          <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden="true" focusable="false">
-            <path d="M14 6 L8 12 L14 18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span className="site-header__back-text">Volver al mapa</span>
-        </Link>
+        <nav aria-label="Principal" className="site-nav">
+          {MAIN_MENU.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="menu-link site-nav__link"
+              {...(isCurrentEntry(item.href, path) ? { 'aria-current': 'page' as const } : {})}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
         <div className="site-header__actions">
           <ThemeToggle />
+          <NoticeBell {...(noticesSource === undefined ? {} : { source: noticesSource })} {...(client === undefined ? {} : { client })} />
           <SessionEntry />
           <GameMenu />
         </div>

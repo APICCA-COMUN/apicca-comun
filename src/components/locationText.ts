@@ -13,3 +13,12 @@ export function describeLocation(location: Location | null | undefined): string 
   const at = `${formatDegrees(location.lat)}, ${formatDegrees(location.lng)}`;
   return location.precision === 'exact' ? `Punto exacto: ${at}` : `Zona de ≈ 5 km² alrededor de ${at}`;
 }
+
+/**
+ * El código corto de la zona de una ubicación («092A»), en mayúsculas, para rótulos y filas; `null` si el ápice aún no
+ * tiene zona (RF-5 (021) · 5.4). Son las últimas cuatro cifras de la celda H3 antes del relleno `f`, las que distinguen una zona de sus vecinas.
+ */
+export function zoneCode(location: Location | null | undefined): string | null {
+  const cell = location?.zone?.cell;
+  return cell === undefined ? null : cell.replace(/f+$/, '').slice(-4).toUpperCase();
+}

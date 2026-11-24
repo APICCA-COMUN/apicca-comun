@@ -1,5 +1,6 @@
 // RF-11 (021), RF-12 (021), RF-14 (021), RF-15 (021), RF-10 (021), D-T21 (021) a D-T25 (021) · La página del mapa: el sitio
-// comienza en el mapa, con sus controles encima y los paneles del ápice sobre él. Muchas pruebas vienen de Prototipado y
+// comienza en el mapa, con la cabecera arriba y, a la derecha, un panel con sus controles; los paneles del ápice, de
+// «Prototipar un Ápice» y de «Conectar» ocupan el lugar de ese panel (composición P1 del sistema «APICCA · Mapa»). Muchas pruebas vienen de Prototipado y
 // de Mi tablero, que esta página reemplaza (RF-11 (021) sustituye RF-18 (003); RF-15 (021), RF-11 (003)).
 // T-13 (024) · RF-3 (024): el recorrido de bienvenida mueve el mapa a lo que señala cada paso.
 import fs from 'node:fs';
@@ -56,7 +57,7 @@ const quietBell: NoticesSource = { fetchNotices: async () => ({ notices: [], see
 /** Una Acción Común de prueba que une `apiceIds` (RF-18 (021)). */
 const summary = (id: string, apiceIds: string[], extra: Partial<CommonActionSummary> = {}): CommonActionSummary => ({
   id,
-  title: `Camino ${id}`,
+  title: `Acción ${id}`,
   description: 'Una descripción larga.',
   axis: null,
   status: 'abierta',
@@ -111,8 +112,10 @@ function setup(
 
 const map = () => screen.findByRole('region', { name: 'Mapa de ápices' });
 const counter = () => document.querySelector('.play__count')!;
-const building = (n: number) => ({ name: `Ápice ${n}, Idea` });
-const panel = () => screen.queryByRole('complementary');
+const building = (n: number, axis = 'agua') => ({ name: `Ápice ${n}, ${axis}, Idea` });
+/** El panel abierto: la región complementaria que no es el panel de Inicio. */
+const panel = () => screen.queryAllByRole('complementary').find((element) => element.getAttribute('aria-label') !== 'Inicio') ?? null;
+const home = () => screen.getByRole('complementary', { name: 'Inicio' });
 const cleanupAndReset = () => {
   cleanup();
   window.history.replaceState(null, '', '/');
@@ -125,7 +128,10 @@ describe('Play · el sitio comienza en el mapa', () => {
     const region = await map();
     expect(await within(region).findByRole('button', building(1))).toBeTruthy();
     expect(requests[0]?.audience).toBe('visitor');
-    expect(screen.getByRole('heading', { level: 1, name: 'Mapa de ápices' }).className).toBe('visually-hidden');
+    const aside = home();
+    within(aside).getByRole('heading', { level: 1, name: 'API para crear y conectar Acciones Comunes' });
+    within(aside).getByText('Apoyo mutuo, commoning y economías recíprocas no monetarias.');
+    expect(screen.queryByRole('heading', { level: 1, name: 'Mapa de ápices' })).toBeNull();
   });
 
   it('RF-11 (021) · 11.1, RF-21 (001): una persona inscrita pide la lista de inscritas', async () => {
@@ -135,52 +141,90 @@ describe('Play · el sitio comienza en el mapa', () => {
     expect(requests[0]?.audience).toBe('member');
   });
 
-  it('RF-11 (021) · 11.2: el mapa va sin pie de sitio y la página no se desplaza', async () => {
+  it('RF-11 (021) · 11.2: el mapa va sin pie de sitio, con la cabecera arriba y el panel a su lado', async () => {
     const { container } = setup(VISITOR);
-    await map();
+    const region = await map();
     expect(screen.queryByRole('contentinfo')).toBeNull();
-    expect(container.querySelector('.play')).not.toBeNull();
+    const body = container.querySelector('.play__body')!;
+    expect(container.querySelector('.play > .site-header')).not.toBeNull();
+    expect(body.querySelector('.play__stage')!.contains(region)).toBe(true);
+    expect(body.querySelector('.play__panel')!.contains(home())).toBe(true);
+  });
+
+  it('P1: el panel lleva el título, las acciones, el contador, las leyendas y la lista de Ápices en filas, en ese orden', async () => {
+    setup(PERSON);
+    await map();
+    const aside = home();
+    const names = [
+      within(aside).getByRole('heading', { level: 1 }),
+      within(aside).getByRole('link', { name: 'Prototipar un Ápice' }),
+      within(aside).getByRole('link', { name: 'Conectar' }),
+      within(aside).getByRole('list', { name: 'Etapas' }),
+      within(aside).getByRole('list', { name: 'Ejes' }),
+      within(aside).getByRole('list', { name: 'Ápices' }),
+    ];
+    names.slice(1).forEach((element, index) => {
+      expect(names[index]!.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING, `posición ${index + 1}`).toBeTruthy();
+    });
+    expect(within(within(aside).getByRole('list', { name: 'Ápices' })).getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('P1: elegir una fila de la lista abre la ficha en el mismo panel, y «Cerrar» devuelve el panel de Inicio', async () => {
+    setup(VISITOR);
+    await map();
+    fireEvent.click(within(home()).getByRole('link', { name: 'Ápice 2' }));
+    expect(window.location.pathname).toBe('/apices/a2');
+    const aside = await screen.findByRole('complementary', { name: 'Ápice' });
+    within(aside).getByRole('heading', { level: 1, name: 'Ápice 2' });
+    expect(screen.queryByRole('complementary', { name: 'Inicio' })).toBeNull();
+    fireEvent.click(within(aside).getByRole('button', { name: 'Cerrar' }));
+    expect(window.location.pathname).toBe('/');
+    home();
   });
 
   it('RF-11 (021) · 11.1, D-T21 (021): en la vista de mapa pide tandas hasta tener todos los ápices', async () => {
     const { source, fetchPage } = fakeListSource(60);
     setup(VISITOR, { source });
     await map();
-    await waitFor(() => expect(counter().textContent).toBe('60 ápices'));
+    await waitFor(() => expect(counter().textContent).toBe('60 Ápices'));
     expect(fetchPage).toHaveBeenCalledTimes(3);
   });
 
   it('RF-2 (017), D-T21 (021): sin panel, el título del documento es el del mapa', async () => {
     setup(VISITOR);
     await map();
-    await waitFor(() => expect(document.title).toMatch(/^Jugar/));
+    await waitFor(() => expect(document.title).toMatch(/^Ápices/));
   });
 });
 
 describe('Play · controles sobre el mapa', () => {
-  it('RF-12 (021) · 12.1: sobre el mapa van el logo, el contador, los filtros, el cambio de vista, el tema, la cuenta y «Menú»', async () => {
+  it('RF-12 (021) · 12.1: la cabecera lleva el logo, el tema, la cuenta y «Menú»; el panel, el contador, los filtros y el cambio de vista', async () => {
     setup(PERSON);
     await map();
-    const hud = document.querySelector('.play__hud') as HTMLElement;
-    within(hud).getByRole('link', { name: 'APICCA COMÚN, ir al inicio' });
-    await waitFor(() => expect(counter().textContent).toBe('3 ápices'));
-    within(hud).getByRole('form', { name: 'Filtros' });
-    within(hud).getByRole('button', { name: 'Ver como lista' });
-    within(hud).getByRole('button', { name: /^Cambiar a tema/ });
-    within(hud).getByRole('link', { name: 'Lo mío, @ana, Persona inscrita' });
-    within(hud).getByRole('button', { name: 'Menú' });
+    const header = screen.getByRole('banner');
+    within(header).getByRole('link', { name: 'APICCA COMÚN, ir al inicio' });
+    within(header).getByRole('button', { name: /^Cambiar a tema/ });
+    within(header).getByRole('link', { name: 'Lo mío, @ana, Persona inscrita' });
+    within(header).getByRole('button', { name: 'Menú' });
+    await waitFor(() => expect(counter().textContent).toBe('3 Ápices'));
+    const aside = home();
+    within(aside).getByRole('form', { name: 'Filtros' });
+    within(aside).getByRole('button', { name: 'Ver como lista' });
+    expect(aside.contains(counter())).toBe(true);
+    expect(document.querySelector('.play__hud')).toBeNull();
   });
 
-  it('RF-12 (021) · 12.1, RF-12 (003) · 12.4: el contador dice «1 ápice» con un solo resultado y tiene rol de estado', async () => {
+  it('RF-12 (021) · 12.1, RF-12 (003) · 12.4: el contador dice «1 Ápice» con un solo resultado y es una región viva, sin recuadro (metadato)', async () => {
     setup(VISITOR, { source: fakeListSource(1).source });
-    await waitFor(() => expect(counter().textContent).toBe('1 ápice'));
-    expect(counter().getAttribute('role')).toBe('status');
+    await waitFor(() => expect(counter().textContent).toBe('1 Ápice'));
+    expect(counter().getAttribute('aria-live')).toBe('polite');
+    expect(counter().classList.contains('block')).toBe(false);
   });
 
   it('RF-12 (021) · 12.2, RF-7 (019) · 7.3: mientras los ápices cargan, el contador dice «Cargando ápices…» y nada dice que no hay', async () => {
     const source: ListSource = { fetchPage: () => new Promise(() => {}) };
     setup(VISITOR, { source });
-    expect(counter().textContent).toBe('Cargando ápices…');
+    expect(counter().textContent).toBe('Cargando Ápices…');
     expect(screen.queryByText(/Aún no hay ápices/)).toBeNull();
   });
 
@@ -191,7 +235,7 @@ describe('Play · controles sobre el mapa', () => {
     await within(region).findByRole('button', building(1));
     fireEvent.click(within(screen.getByRole('form', { name: 'Filtros' })).getByRole('button', { name: 'Cobijo' }));
     expect(window.location.search).toBe('?ejes=cobijo');
-    await within(region).findByRole('button', building(7));
+    await within(region).findByRole('button', building(7, 'cobijo'));
     expect(within(region).queryByRole('button', building(1))).toBeNull();
     expect(requests.at(-1)?.filters.axes).toEqual(['cobijo']);
   });
@@ -223,26 +267,28 @@ describe('Play · controles sobre el mapa', () => {
     expect(screen.queryByRole('button', { name: /^Avisos/ })).toBeNull();
   });
 
-  it('RF-12 (021) · 12.1, RF-4 (003) · 4.2: con sesión, «Construir ápice» es la única acción azul y lleva a su panel', async () => {
+  it('RF-12 (021) · 12.1, RF-4 (003) · 4.2: con sesión, «Prototipar un Ápice» es la única acción azul y lleva a su panel', async () => {
     const { container } = setup(PERSON);
     await map();
-    expectOnePrimary(container, 'Construir ápice');
-    const build = screen.getByRole('link', { name: 'Construir ápice' });
+    expectOnePrimary(container, 'Prototipar un Ápice');
+    const build = screen.getByRole('link', { name: 'Prototipar un Ápice' });
     expect(build.getAttribute('href')).toBe('/apices/nuevo');
     expect(primaryActions(container)).toEqual([build]);
   });
 
-  it('RF-12 (021) · 12.1, D-10 (021), RF-23 (021) · 23.1: sin sesión, «Unirme» (la acción azul) lleva a pedir la inscripción y «Construir ápice» abre el boceto', async () => {
-    setup(VISITOR);
+  it('RF-12 (021) · 12.1, D-10 (021), RF-23 (021) · 23.1: sin sesión, «Prototipar un Ápice» (la acción principal) abre el boceto y «Unirme» lleva a pedir la inscripción', async () => {
+    const { container } = setup(VISITOR);
     await map();
-    expect(screen.getByRole('link', { name: 'Construir ápice' }).getAttribute('href')).toBe('/boceto');
-    expect(screen.getByRole('link', { name: 'Construir ápice' }).className).toContain('action-secondary');
-    const join = screen.getByRole('link', { name: 'Unirme' });
+    expect(screen.getByRole('link', { name: 'Prototipar un Ápice' }).getAttribute('href')).toBe('/boceto');
+    expect(screen.getByRole('link', { name: 'Prototipar un Ápice' }).className).toContain('action-primary');
+    const join = within(home()).getByRole('link', { name: 'Unirme' });
     expect(join.getAttribute('href')).toBe('/solicitar');
-    expect(join.className).toContain('action-primary');
+    expect(join.className).toContain('action-secondary');
+    expect(primaryActions(container).map((element) => element.textContent)).toContain('Prototipar un Ápice');
+    expect(screen.getAllByRole('link', { name: 'Prototipar un Ápice' })[0]!.querySelector('svg.icono--avanzar')).not.toBeNull();
   });
 
-  it('RF-12 (021) · 12.1, D-T22 (021): por debajo de 1024 px, los filtros quedan tras «Filtros», que dice si están abiertos', async () => {
+  it('RF-12 (021) · 12.1, D-T22 (021): los filtros quedan tras «Filtros», que dice si están abiertos', async () => {
     setup(VISITOR);
     await map();
     const toggle = screen.getByRole('button', { name: 'Filtros' });
@@ -316,7 +362,7 @@ describe('Play · vistas', () => {
 });
 
 describe('Play · paneles sobre el mapa', () => {
-  it('RF-14 (021) · 14.1, 14.2, 14.5: elegir un edificio abre su panel en /apices/:id, con la consulta del mapa, sin salir del mapa', async () => {
+  it('RF-14 (021) · 14.1, 14.2, 14.5: elegir un Ápice en el mapa abre su panel en /apices/:id, con la consulta del mapa, sin salir del mapa', async () => {
     window.history.replaceState(null, '', '/?ejes=agua');
     setup(VISITOR);
     const region = await map();
@@ -326,7 +372,7 @@ describe('Play · paneles sobre el mapa', () => {
     within(aside).getByRole('heading', { level: 1, name: 'Ápice 2' });
     expect(screen.getByRole('region', { name: 'Mapa de ápices' })).toBe(region);
     expect(within(region).getByRole('button', building(2)).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.queryByRole('heading', { level: 1, name: 'Mapa de ápices' })).toBeNull();
+    expect(screen.queryByRole('complementary', { name: 'Inicio' })).toBeNull();
   });
 
   it('RF-14 (021) · 14.6: abrir /apices/:id muestra el mapa con ese panel abierto', async () => {
@@ -334,10 +380,10 @@ describe('Play · paneles sobre el mapa', () => {
     setup(VISITOR);
     const region = await map();
     expect(await screen.findByRole('complementary', { name: 'Ápice' })).toBeTruthy();
-    expect((await within(region).findByRole('button', { name: 'Ápice 3, Idea' })).getAttribute('aria-pressed')).toBe('true');
+    expect((await within(region).findByRole('button', { name: 'Ápice 3, agua, Idea' })).getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('RF-14 (021) · 14.8: «Cerrar» vuelve al mapa con su consulta y el foco al edificio que abrió el panel', async () => {
+  it('RF-14 (021) · 14.8: «Cerrar» vuelve al mapa con su consulta y el foco al Ápice que abrió el panel', async () => {
     window.history.replaceState(null, '', '/?estado=idea');
     setup(VISITOR);
     const region = await map();
@@ -352,12 +398,12 @@ describe('Play · paneles sobre el mapa', () => {
     await waitFor(() => expect(document.activeElement).toBe(within(region).getByRole('button', building(1))));
   });
 
-  it('RF-14 (021) · 14.3, 14.5: con sesión, «Construir ápice» abre el formulario en su panel, sobre el mapa', async () => {
+  it('RF-14 (021) · 14.3, 14.5: con sesión, «Prototipar un Ápice» abre el formulario en su panel, junto al mapa', async () => {
     setup(PERSON);
     await map();
-    fireEvent.click(screen.getByRole('link', { name: 'Construir ápice' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Prototipar un Ápice' }));
     expect(window.location.pathname).toBe('/apices/nuevo');
-    const aside = await screen.findByRole('complementary', { name: 'Construir ápice' });
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
     within(aside).getByRole('heading', { level: 1, name: 'Proponer un ápice' });
     within(aside).getByRole('button', { name: 'Crear ápice' });
     screen.getByRole('region', { name: 'Mapa de ápices' });
@@ -371,32 +417,32 @@ describe('Play · paneles sobre el mapa', () => {
     within(aside).getByRole('button', { name: 'Guardar cambios' });
   });
 
-  it('RF-14 (021) · 14.4: mientras se llena el formulario, el mapa muestra el edificio en construcción', async () => {
+  it('RF-14 (021) · 14.4: mientras se llena el formulario, el mapa muestra el Ápice tal como quedará', async () => {
     window.history.replaceState(null, '', '/apices/nuevo');
     setup(PERSON);
     const region = await map();
-    const aside = await screen.findByRole('complementary', { name: 'Construir ápice' });
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
     fireEvent.change(within(aside).getByLabelText('Nombre'), { target: { value: 'Biblioteca' } });
     fireEvent.click(within(aside).getByRole('button', { name: 'Comunicación' }));
-    const draft = await within(region).findByRole('button', { name: 'Biblioteca, Idea' });
+    const draft = await within(region).findByRole('button', { name: 'Biblioteca, comunicación, Idea' });
     expect(draft.closest('[role="group"]')?.getAttribute('aria-label')).toBe('Sin ubicación');
     expect(draft.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('RF-14 (021) · 14.4: al editar, el edificio del mapa toma la etapa elegida en el formulario', async () => {
+  it('RF-14 (021) · 14.4: al editar, el Ápice del mapa toma la etapa elegida en el formulario', async () => {
     window.history.replaceState(null, '', '/apices/a1/editar');
     setup(PERSON);
     const region = await map();
     const aside = await screen.findByRole('complementary', { name: 'Editar ápice' });
     fireEvent.change(within(aside).getByLabelText('Etapa'), { target: { value: 'en marcha' } });
-    expect(await within(region).findByRole('button', { name: 'Ápice 1, En marcha' })).toBeTruthy();
+    expect(await within(region).findByRole('button', { name: 'Ápice 1, agua, En marcha' })).toBeTruthy();
   });
 
   it('RF-14 (021) · 14.9: cerrar el formulario con cambios sin guardar pide confirmación; «Seguir editando» se queda y «Descartar cambios» cierra y borra el borrador', async () => {
     window.history.replaceState(null, '', '/apices/nuevo');
     const { drafts } = setup(PERSON);
     await map();
-    const aside = await screen.findByRole('complementary', { name: 'Construir ápice' });
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
     fireEvent.change(within(aside).getByLabelText('Nombre'), { target: { value: 'Biblioteca' } });
     fireEvent.click(within(aside).getByRole('button', { name: 'Cerrar' }));
     expect(within(aside).getByRole('alert').textContent).toMatch('Tienes cambios sin guardar. ¿Quieres descartarlos?');
@@ -409,7 +455,7 @@ describe('Play · paneles sobre el mapa', () => {
     expect(drafts.get('apice:new')).toBeUndefined();
   });
 
-  it('RF-14 (021) · 14.9: elegir otro edificio con cambios sin guardar también pide confirmación', async () => {
+  it('RF-14 (021) · 14.9: elegir otro Ápice con cambios sin guardar también pide confirmación', async () => {
     window.history.replaceState(null, '', '/apices/a1/editar');
     setup(PERSON);
     const region = await map();
@@ -425,7 +471,7 @@ describe('Play · paneles sobre el mapa', () => {
     window.history.replaceState(null, '', '/apices/nuevo');
     setup(PERSON);
     await map();
-    const aside = await screen.findByRole('complementary', { name: 'Construir ápice' });
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
     fireEvent.click(within(aside).getByRole('button', { name: 'Cerrar' }));
     expect(window.location.pathname).toBe('/');
   });
@@ -479,7 +525,7 @@ describe('Play · Lo mío', () => {
     const { source, requests } = fakeListSource(2, () => items);
     setup(PERSON, { source });
     const region = await map();
-    await within(region).findByRole('button', building(1));
+    await within(region).findByRole('button', building(1, 'cobijo'));
     expect(within(region).queryByRole('button', building(2))).toBeNull();
     expect(requests[0]).toMatchObject({ audience: 'mine', uid: 'u-ana' });
   });
@@ -553,83 +599,82 @@ describe('Play · Lo mío', () => {
     expect(await screen.findByRole('complementary', { name: 'Editar ápice' })).toBeTruthy();
   });
 
-  it('RNF-1 (021), RF-14 (021) · 14.7: con el panel ampliado, el mapa tapado sale del orden del teclado', async () => {
+  it('RF-14 (021) · 14.7: el panel abierto ocupa el lugar del de Inicio, ya no se amplía y el mapa sigue a la vista y fuera de `inert`', async () => {
     window.history.replaceState(null, '', '/apices/a1');
     setup(VISITOR);
     const region = await map();
     const aside = await screen.findByRole('complementary', { name: 'Ápice' });
-    expect(region.closest('[inert]')).toBeNull();
-    fireEvent.click(within(aside).getByRole('button', { name: 'Ampliar' }));
-    expect(region.closest('[inert]')).not.toBeNull();
-    fireEvent.click(within(aside).getByRole('button', { name: 'Reducir' }));
+    expect(aside.closest('.play__panel')).not.toBeNull();
+    expect(screen.queryByRole('complementary', { name: 'Inicio' })).toBeNull();
+    expect(within(aside).queryByRole('button', { name: /Ampliar|Reducir/ })).toBeNull();
     expect(region.closest('[inert]')).toBeNull();
   });
 });
 
-describe('Play · caminos', () => {
+describe('Play · Acciones Comunes', () => {
   const ONE = () => fakeActions([summary('c1', ['a1', 'a2', 'a3'])]);
-  const pathLabel = () => screen.findByRole('button', { name: 'Camino: Camino c1' });
+  const pathLabel = () => screen.findByRole('button', { name: /: Acción c1$/ });
 
-  it('RF-18 (021) · 18.1, D-T33 (021): el mapa dibuja los caminos y el contador dice «n ápices · m caminos»', async () => {
+  it('RF-18 (021) · 18.1, D-T33 (021): el mapa dibuja las Acciones Comunes y el contador dice «n Ápices · m Acciones Comunes»', async () => {
     setup(VISITOR, { actionSource: ONE().source });
     await map();
     expect(await pathLabel()).toBeTruthy();
-    await waitFor(() => expect(counter().textContent).toBe('3 ápices · 1 camino'));
+    await waitFor(() => expect(counter().textContent).toBe('3 Ápices · 1 Acción Común'));
   });
 
-  it('RF-20 (021) · 20.1, 20.5: elegir un camino abre su panel en /acciones/:id, con la consulta del mapa', async () => {
+  it('RF-20 (021) · 20.1, 20.5: elegir una Acción Común abre su panel en /acciones/:id, con la consulta del mapa', async () => {
     window.history.replaceState(null, '', '/?estado=idea');
     setup(VISITOR, { actionSource: ONE().source });
     await map();
     fireEvent.click(await pathLabel());
     expect(window.location.pathname + window.location.search).toBe('/acciones/c1?estado=idea');
-    const aside = await screen.findByRole('complementary', { name: 'Camino' });
-    expect(await within(aside).findByRole('heading', { level: 1, name: 'Camino c1' })).toBeTruthy();
+    const aside = await screen.findByRole('complementary', { name: 'Acción Común' });
+    expect(await within(aside).findByRole('heading', { level: 1, name: 'Acción c1' })).toBeTruthy();
     expect((await pathLabel()).getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('RF-20 (021) · 20.5: /acciones abre la vista de lista con la sección «Caminos» antes que los ápices', async () => {
+  it('RF-20 (021) · 20.5: /acciones abre la vista de lista con la sección «Acciones Comunes» antes que los Ápices', async () => {
     window.history.replaceState(null, '', '/acciones');
     setup(VISITOR, { actionSource: ONE().source });
-    const section = await screen.findByRole('region', { name: 'Caminos' });
-    expect(within(section).getByRole('link', { name: 'Camino c1' }).getAttribute('href')).toBe('/acciones/c1');
+    const section = await screen.findByRole('region', { name: 'Acciones Comunes' });
+    expect(within(section).getByRole('link', { name: 'Acción c1' }).getAttribute('href')).toBe('/acciones/c1');
     const apices = screen.getByRole('region', { name: 'Ápices' });
     expect(section.compareDocumentPosition(apices) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('RF-5 (010), D-T33 (021): sin caminos, la lista lo dice', async () => {
+  it('RF-5 (010), D-T33 (021): sin Acciones Comunes, la lista lo dice', async () => {
     window.history.replaceState(null, '', '/?vista=lista');
     setup(VISITOR);
-    expect(await screen.findByText('Todavía no hay caminos.')).toBeTruthy();
+    expect(await screen.findByText('Todavía no hay Acciones Comunes.')).toBeTruthy();
   });
 
-  it('RF-6 (010), D-T34 (021): con «Lo mío», pide solo los caminos en los que participa y, si no hay, lo dice', async () => {
+  it('RF-6 (010), D-T34 (021): con «Lo mío», pide solo las Acciones Comunes en las que participa y, si no hay, lo dice', async () => {
     window.history.replaceState(null, '', '/?mio=1&vista=lista');
     const { source, lists } = fakeActions();
     setup(PERSON, { actionSource: source });
-    expect(await screen.findByText('Todavía no participas en ningún camino.')).toBeTruthy();
+    expect(await screen.findByText('Todavía no participas en ninguna Acción Común.')).toBeTruthy();
     expect(lists).toContain('u-ana');
-    expect(screen.getByRole('link', { name: 'Ver todos los caminos' }).getAttribute('href')).toBe('/acciones');
+    expect(screen.getByRole('link', { name: 'Ver todas las Acciones Comunes' }).getAttribute('href')).toBe('/acciones');
   });
 
-  it('RF-19 (021) · 19.1, D-10 (021): sin sesión no hay «Trazar camino»; con sesión abre su panel', async () => {
+  it('RF-19 (021) · 19.1, D-10 (021): sin sesión no hay «Conectar»; con sesión abre su panel', async () => {
     setup(VISITOR);
     await map();
-    expect(screen.queryByRole('link', { name: 'Trazar camino' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Conectar' })).toBeNull();
     cleanupAndReset();
     setup(PERSON);
     await map();
-    fireEvent.click(screen.getByRole('link', { name: 'Trazar camino' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Conectar' }));
     expect(window.location.pathname).toBe('/acciones/nueva');
-    const aside = await screen.findByRole('complementary', { name: 'Trazar camino' });
-    within(aside).getByText('Elige en el mapa los ápices que une este camino.');
+    const aside = await screen.findByRole('complementary', { name: 'Conectar' });
+    within(aside).getByText('Elige en el mapa los Ápices que conecta esta Acción Común.');
   });
 
-  it('RF-19 (021) · 19.1 a 19.3: mientras traza, elegir un edificio lo suma (o lo quita) y el panel dice cuántos faltan; con tres, el formulario', async () => {
+  it('RF-19 (021) · 19.1 a 19.3: mientras conecta, elegir un Ápice lo suma (o lo quita) y el panel dice cuántos faltan; con tres, el formulario', async () => {
     window.history.replaceState(null, '', '/acciones/nueva');
     setup(PERSON);
     const region = await map();
-    const aside = await screen.findByRole('complementary', { name: 'Trazar camino' });
+    const aside = await screen.findByRole('complementary', { name: 'Conectar' });
     expect(within(aside).getByRole('status').textContent).toBe('Faltan 3 ápices.');
     fireEvent.click(await within(region).findByRole('button', building(1)));
     expect(window.location.pathname).toBe('/acciones/nueva');
@@ -640,22 +685,22 @@ describe('Play · caminos', () => {
     expect(within(aside).queryByRole('textbox', { name: 'Título' })).toBeNull();
     fireEvent.click(within(region).getByRole('button', building(3)));
     fireEvent.click(within(region).getByRole('button', building(2)));
-    expect(within(aside).getByRole('status').textContent).toBe('Puedes proponerlo.');
+    expect(within(aside).getByRole('status').textContent).toBe('Puedes proponerla.');
     expect(within(within(aside).getByRole('list', { name: 'Ápices elegidos' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       'Ápice 1Quitar',
       'Ápice 3Quitar',
       'Ápice 2Quitar',
     ]);
     within(aside).getByRole('textbox', { name: 'Título' });
-    expect(region.querySelector('polyline.game-map__path[data-draft="true"]')).not.toBeNull();
+    expect(region.querySelector('.game-map__ground [data-draft="true"]')).not.toBeNull();
   });
 
-  it('RF-19 (021) · 19.3, RF-1 (010): «Proponer» manda los ápices en orden y abre el panel del camino nuevo', async () => {
+  it('RF-19 (021) · 19.3, RF-1 (010): «Proponer» manda los ápices en orden y abre el panel de la Acción Común nueva', async () => {
     window.history.replaceState(null, '', '/acciones/nueva');
     const { calls } = setup(PERSON, { handlers: { proposeCommonAction: () => ({ id: 'c9' }) } });
     const region = await map();
     for (const n of [2, 1, 3]) fireEvent.click(await within(region).findByRole('button', building(n)));
-    const aside = await screen.findByRole('complementary', { name: 'Trazar camino' });
+    const aside = await screen.findByRole('complementary', { name: 'Conectar' });
     await userEvent.type(within(aside).getByRole('textbox', { name: 'Título' }), 'Agua lluvia');
     await userEvent.type(within(aside).getByRole('textbox', { name: 'Descripción' }), 'Juntemos el agua lluvia del barrio.');
     await userEvent.click(within(aside).getByRole('button', { name: 'Proponer' }));
@@ -677,11 +722,11 @@ describe('Play · caminos', () => {
     });
     const region = await map();
     for (const n of [1, 2, 3]) fireEvent.click(await within(region).findByRole('button', building(n)));
-    const aside = await screen.findByRole('complementary', { name: 'Trazar camino' });
+    const aside = await screen.findByRole('complementary', { name: 'Conectar' });
     await userEvent.type(within(aside).getByRole('textbox', { name: 'Título' }), 'Agua lluvia');
     await userEvent.type(within(aside).getByRole('textbox', { name: 'Descripción' }), 'Juntemos el agua lluvia del barrio.');
     await userEvent.click(within(aside).getByRole('button', { name: 'Proponer' }));
-    expect((await within(aside).findByRole('alert')).textContent).toMatch(/20 caminos abiertos/);
+    expect((await within(aside).findByRole('alert')).textContent).toMatch(/20 Acciones Comunes abiertas/);
     expect((within(aside).getByRole('textbox', { name: 'Título' }) as HTMLInputElement).value).toBe('Agua lluvia');
     expect(within(within(aside).getByRole('list', { name: 'Ápices elegidos' })).getAllByRole('listitem')).toHaveLength(3);
   });
@@ -691,9 +736,9 @@ describe('Play · caminos', () => {
     setup(PERSON, { source: fakeListSource(11).source });
     const region = await map();
     for (let n = 1; n <= 11; n += 1) fireEvent.click(await within(region).findByRole('button', building(n)));
-    const aside = await screen.findByRole('complementary', { name: 'Trazar camino' });
+    const aside = await screen.findByRole('complementary', { name: 'Conectar' });
     expect(within(within(aside).getByRole('list', { name: 'Ápices elegidos' })).getAllByRole('listitem')).toHaveLength(10);
-    expect(within(aside).getByRole('alert').textContent).toBe('Un camino une como máximo 10 ápices.');
+    expect(within(aside).getByRole('alert').textContent).toBe('Una Acción Común une como máximo 10 ápices.');
   });
 
   it('RF-19 (021) · 19.6: «Cancelar» cierra sin guardar nada y el mapa vuelve a abrir fichas', async () => {
@@ -701,22 +746,22 @@ describe('Play · caminos', () => {
     const { calls } = setup(PERSON);
     const region = await map();
     fireEvent.click(await within(region).findByRole('button', building(1)));
-    const aside = await screen.findByRole('complementary', { name: 'Trazar camino' });
+    const aside = await screen.findByRole('complementary', { name: 'Conectar' });
     fireEvent.click(within(aside).getByRole('button', { name: 'Cancelar' }));
     expect(window.location.pathname).toBe('/');
-    expect(region.querySelector('polyline.game-map__path')).toBeNull();
+    expect(region.querySelector('.game-map__ground [data-draft="true"]')).toBeNull();
     expect(calls.filter((call) => call.op === 'proposeCommonAction')).toHaveLength(0);
     fireEvent.click(within(region).getByRole('button', building(1)));
     expect(window.location.pathname).toBe('/apices/a1');
   });
 
-  it('RF-19 (021) · 19.5, RNF-1 (021): en la vista de lista, cada tarjeta tiene la casilla «Sumar al camino»', async () => {
+  it('RF-19 (021) · 19.5, RNF-1 (021): en la vista de lista, cada tarjeta tiene la casilla «Sumar a la Acción Común»', async () => {
     window.history.replaceState(null, '', '/acciones/nueva?vista=lista');
     setup(PERSON);
-    const boxes = await screen.findAllByRole('checkbox', { name: 'Sumar al camino' });
+    const boxes = await screen.findAllByRole('checkbox', { name: 'Sumar a la Acción Común' });
     expect(boxes).toHaveLength(3);
     fireEvent.click(boxes[0]!);
-    const aside = screen.getByRole('complementary', { name: 'Trazar camino' });
+    const aside = screen.getByRole('complementary', { name: 'Conectar' });
     expect(within(aside).getByRole('status').textContent).toBe('Faltan 2 ápices.');
     expect((boxes[0] as HTMLInputElement).checked).toBe(true);
   });
@@ -729,12 +774,13 @@ describe('Play · bienvenida', () => {
     window.localStorage.removeItem('apicca:bienvenida');
   });
 
-  it('RF-21 (021) · 21.1, 21.2: la primera vez, el mapa muestra la invitación sin taparlo: los edificios siguen a la vista', async () => {
+  it('RF-21 (021) · 21.1, 21.2: la primera vez, el panel muestra la invitación sin taparlo: los Ápices siguen a la vista en el mapa', async () => {
     setup(VISITOR);
     const region = await map();
     expect(await screen.findByRole('region', { name: 'Bienvenida' })).toBeTruthy();
     expect(within(region).getByRole('button', building(1))).toBeTruthy();
-    expect(screen.getByRole('region', { name: 'Bienvenida' }).closest('.play__board')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Bienvenida' }).closest('.play__panel')).not.toBeNull();
+    expect(region.contains(screen.getByRole('region', { name: 'Bienvenida' }))).toBe(false);
   });
 
   it('RF-21 (021) · 21.3: tras «Cerrar» no vuelve a mostrarse en este navegador', async () => {
@@ -748,19 +794,19 @@ describe('Play · bienvenida', () => {
     expect(welcome()).toBeNull();
   });
 
-  it('RF-22 (021) · 22.1, 22.3: «Jugar» abre el recorrido; sin caminos tiene dos pasos', async () => {
+  it('RF-22 (021) · 22.1, 22.3: «Ver el recorrido» abre el recorrido; sin Acciones Comunes tiene dos pasos', async () => {
     setup(PERSON);
     await map();
-    fireEvent.click(within((await screen.findByRole('region', { name: 'Bienvenida' }))).getByRole('button', { name: 'Jugar' }));
+    fireEvent.click(within((await screen.findByRole('region', { name: 'Bienvenida' }))).getByRole('button', { name: 'Ver el recorrido' }));
     expect(welcome()!.textContent).toContain('Paso 1 de 2');
     expect(window.localStorage.getItem('apicca:bienvenida')).not.toBeNull();
   });
 
-  it('RF-22 (021) · 22.1: con un camino a la vista, el recorrido tiene tres pasos', async () => {
+  it('RF-22 (021) · 22.1: con una Acción Común a la vista, el recorrido tiene tres pasos', async () => {
     setup(VISITOR, { actionSource: fakeActions([summary('c1', ['a1', 'a2', 'a3'])]).source });
     await map();
-    await screen.findByRole('button', { name: 'Camino: Camino c1' });
-    fireEvent.click(within((await screen.findByRole('region', { name: 'Bienvenida' }))).getByRole('button', { name: 'Jugar' }));
+    await screen.findByRole('button', { name: /: Acción c1$/ });
+    fireEvent.click(within((await screen.findByRole('region', { name: 'Bienvenida' }))).getByRole('button', { name: 'Ver el recorrido' }));
     expect(welcome()!.textContent).toContain('Paso 1 de 3');
   });
 
@@ -801,49 +847,49 @@ describe('Play · el recorrido mueve el mapa (RF-3 (024))', () => {
   beforeEach(() => {
     window.localStorage.removeItem('apicca:bienvenida');
   });
-  /** Espera a que lleguen los caminos: el recorrido cuenta con ellos al abrirse. */
+  /** Espera a que lleguen las Acciones Comunes: el recorrido cuenta con ellos al abrirse. */
   const loaded = async (lists: unknown[]) => {
     await waitFor(() => expect(lists.length).toBeGreaterThan(0));
     await act(async () => {});
   };
 
-  it('RF-3 (024) · 3.1: «Jugar» lleva el mapa a un ápice, con su edificio a la vista', async () => {
+  it('RF-3 (024) · 3.1: «Ver el recorrido» lleva el mapa a un Ápice, con su superficie a la vista', async () => {
     setup(PERSON, { source: located() });
     await map();
     expect(level()).toBe('2');
-    next('Jugar');
+    next('Ver el recorrido');
     await waitFor(() => expect(level()).toBe('0'));
-    expect(document.querySelectorAll('.game-map button.game-map__building').length).toBeGreaterThan(0);
+    expect(document.querySelectorAll('.game-map button.game-map__apice').length).toBeGreaterThan(0);
   });
 
-  it('RF-3 (024) · 3.2: «Siguiente» lleva el mapa a un camino que se dibuja, con su rótulo a la vista', async () => {
+  it('RF-3 (024) · 3.2: «Siguiente» lleva el mapa a una Acción Común que se dibuja, con su rótulo a la vista', async () => {
     const actions = fakeActions([summary('c1', ['a1', 'a2'])]);
     setup(PERSON, { source: located(), actionSource: actions.source });
     await map();
     await loaded(actions.lists);
-    next('Jugar');
+    next('Ver el recorrido');
     next('Siguiente');
-    expect(await screen.findByRole('button', { name: 'Camino: Camino c1' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: /: Acción c1$/ })).toBeTruthy();
     expect(level()).toBe('0');
   });
 
-  it('RF-3 (024) · 3.2: si el camino une ápices lejanos, el mapa se aleja hasta que caben', async () => {
+  it('RF-3 (024) · 3.2: si la Acción Común une Ápices lejanos, el mapa se aleja hasta que caben', async () => {
     const actions = fakeActions([summary('c1', ['a1', 'a3'])]);
     setup(PERSON, { source: located(), actionSource: actions.source });
     await map();
     await loaded(actions.lists);
-    next('Jugar');
+    next('Ver el recorrido');
     next('Siguiente');
     expect(Number(level())).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Camino: Camino c1' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /: Acción c1$/ })).toBeTruthy();
   });
 
-  it('RF-3 (024): el paso de construir no mueve el mapa', async () => {
+  it('RF-3 (024): el paso de prototipar no mueve el mapa', async () => {
     const actions = fakeActions([summary('c1', ['a1', 'a2'])]);
     setup(PERSON, { source: located(), actionSource: actions.source });
     await map();
     await loaded(actions.lists);
-    next('Jugar');
+    next('Ver el recorrido');
     next('Siguiente');
     const before = world();
     next('Siguiente');
@@ -851,45 +897,35 @@ describe('Play · el recorrido mueve el mapa (RF-3 (024))', () => {
     expect(world()).toBe(before);
   });
 
-  it('RF-3 (024) · 3.2, RF-22 (021) · 22.3: un camino con un solo ápice a la vista no se dibuja y el recorrido omite ese paso', async () => {
+  it('RF-3 (024) · 3.2, RF-22 (021) · 22.3: una Acción Común con un solo Ápice a la vista no se dibuja y el recorrido omite ese paso', async () => {
     const actions = fakeActions([summary('c1', ['a1', 'a-oculto'])]);
     setup(PERSON, { source: located(), actionSource: actions.source });
     await map();
     await loaded(actions.lists);
-    next('Jugar');
+    next('Ver el recorrido');
     expect(screen.getByRole('region', { name: 'Bienvenida' }).textContent).toContain('Paso 1 de 2');
   });
 
-  it('RF-3 (024) · D-12 (024): si la tarjeta cruza el centro del mapa, el encuadre del paso reserva su área; si no, no cambia', async () => {
+  it('RF-3 (024) · D-12 (024): la tarjeta va en el panel, no sobre el mapa: el encuadre del paso no reserva ningún área', async () => {
     const offsetY = () => Number(/translate\((-?\d+)px, (-?\d+)px\)/.exec(world())![2]);
-    const rects = (card: { left: number; right: number; top: number }) => {
-      const original = HTMLElement.prototype.getBoundingClientRect;
-      const box = (left: number, top: number, right: number, bottom: number): DOMRect =>
-        ({ left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) }) as DOMRect;
-      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-        if (this.classList.contains('game-map')) return box(0, 0, 390, 559);
-        if (this.classList.contains('welcome-card')) return box(card.left, card.top, card.right, 559 - 12);
-        return original.call(this);
-      });
-    };
     const run = async () => {
       window.localStorage.removeItem('apicca:bienvenida');
       setup(PERSON, { source: located() });
       await map();
-      next('Jugar');
+      next('Ver el recorrido');
       await waitFor(() => expect(level()).toBe('0'));
       return offsetY();
     };
     const free = await run();
     cleanupAndReset();
-    rects({ left: 12, right: 310, top: 274 });
-    const covered = await run();
-    // El mapa mide 960 × 560 en jsdom, pero la reserva sale de lo medido con `getBoundingClientRect`: 559 − 274 = 285 px.
-    expect(Math.abs(free - covered - 285 / 2)).toBeLessThanOrEqual(1);
-    cleanupAndReset();
-    vi.restoreAllMocks();
-    rects({ left: 12, right: 120, top: 274 });
-    // Una tarjeta que no llega al centro (195 ± 46 px) tapa lo mismo que nada: el encuadre no cambia.
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    const box = (left: number, top: number, right: number, bottom: number): DOMRect =>
+      ({ left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('game-map')) return box(0, 0, 390, 559);
+      if (this.classList.contains('welcome-card')) return box(12, 274, 310, 547);
+      return original.call(this);
+    });
     expect(await run()).toBe(free);
     vi.restoreAllMocks();
   });
@@ -897,7 +933,7 @@ describe('Play · el recorrido mueve el mapa (RF-3 (024))', () => {
   it('RF-3 (024): «Saltar el recorrido» quita la tarjeta y deja el mapa donde está', async () => {
     setup(PERSON, { source: located() });
     await map();
-    next('Jugar');
+    next('Ver el recorrido');
     const before = world();
     next('Saltar el recorrido');
     expect(screen.queryByRole('region', { name: 'Bienvenida' })).toBeNull();
@@ -910,31 +946,32 @@ describe('Play · boceto', () => {
     window.sessionStorage.clear();
   });
 
-  it('RF-23 (021) · 23.1, 23.2, 23.4: sin sesión, «Construir ápice» abre el boceto; su edificio va al mapa como «Boceto», sin contar ni llamar al servidor', async () => {
+  it('RF-23 (021) · 23.1, 23.2, 23.4: sin sesión, «Prototipar un Ápice» abre el boceto; su Ápice va al mapa como «Boceto», sin contar ni llamar al servidor', async () => {
     const { calls } = setup(VISITOR);
     await map();
-    await waitFor(() => expect(counter().textContent).toBe('3 ápices'));
-    fireEvent.click(screen.getByRole('link', { name: 'Construir ápice' }));
+    await waitFor(() => expect(counter().textContent).toBe('3 Ápices'));
+    fireEvent.click(screen.getByRole('link', { name: 'Prototipar un Ápice' }));
     expect(window.location.pathname).toBe('/boceto');
     const aside = await screen.findByRole('complementary', { name: 'Boceto' });
     fireEvent.click(within(aside).getByRole('button', { name: 'Agua' }));
-    const drawn = await within(await map()).findByRole('button', { name: 'Boceto, Idea' });
+    const drawn = await within(await map()).findByRole('button', { name: 'Boceto, agua, Idea' });
     expect(drawn.getAttribute('data-sketch')).toBe('true');
-    expect(counter().textContent).toBe('3 ápices');
     expect(calls).toHaveLength(0);
     expect(JSON.parse(window.sessionStorage.getItem('apicca:boceto') ?? '{}')).toEqual({ axes: ['agua'], status: 'idea' });
+    fireEvent.click(within(aside).getByRole('button', { name: 'Cerrar' }));
+    expect(counter().textContent).toBe('3 Ápices');
   });
 
   it('RF-23 (021) · 23.2: al cerrar el panel, el boceto sale del mapa', async () => {
     window.sessionStorage.setItem('apicca:boceto', JSON.stringify({ axes: ['agua'], status: 'idea' }));
     window.history.replaceState(null, '', '/boceto');
     setup(VISITOR);
-    expect(await within(await map()).findByRole('button', { name: 'Boceto, Idea' })).toBeTruthy();
+    expect(await within(await map()).findByRole('button', { name: 'Boceto, agua, Idea' })).toBeTruthy();
     fireEvent.click(within(await screen.findByRole('complementary', { name: 'Boceto' })).getByRole('button', { name: 'Cerrar' }));
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Boceto, Idea' })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Boceto, agua, Idea' })).toBeNull());
   });
 
-  it('D-T39 (021): con sesión, /boceto lleva a «Construir ápice»', async () => {
+  it('D-T39 (021): con sesión, /boceto lleva a «Prototipar un Ápice»', async () => {
     window.history.replaceState(null, '', '/boceto');
     setup(PERSON);
     await waitFor(() => expect(window.location.pathname).toBe('/apices/nuevo'));

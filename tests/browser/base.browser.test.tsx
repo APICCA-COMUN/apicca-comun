@@ -39,13 +39,13 @@ describe.each(THEMES)('hoja base en el tema %s', (theme) => {
     expect(style.color).toBe(rgb(TOKENS[theme].text));
   });
 
-  it('RF-5 (002) · 5.5: párrafos y campos de 16 px con la pila de Nunito', () => {
+  it('RF-5 (002) · 5.5: párrafos y campos de 16 px con la pila de Jost', () => {
     root.dataset['theme'] = theme;
     document.body.innerHTML = '<p>Texto</p><input aria-label="Campo"><textarea aria-label="Área"></textarea><select aria-label="Lista"></select><button>Botón</button>';
     for (const selector of ['p', 'input', 'textarea', 'select', 'button']) {
       const style = getComputedStyle(document.querySelector(selector)!);
       expect(parseFloat(style.fontSize), selector).toBeGreaterThanOrEqual(16);
-      expect(style.fontFamily, selector).toMatch(/^Nunito, "Nunito Fallback"/);
+      expect(style.fontFamily, selector).toMatch(/^Jost, "Jost Fallback"/);
     }
   });
 

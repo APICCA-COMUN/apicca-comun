@@ -1,4 +1,5 @@
-// Medidas de la spec 008 en Chromium real: controles de 48 px, botones de ícono de 44 px y foco a 3 px (RF-2 (008),
+// Medidas de la spec 008 en Chromium real (sistema «APICCA · Mapa»: radio 0, bordes de 3 px, escala de texto del sistema):
+// controles de 48 px, botones de ícono de 44 px y foco a 3 px (RF-2 (008),
 // RF-3 (008)), cabecera y pie (RF-4 (008), RF-5 (008)) entrar (RF-7 (008)) Documentación (RF-10 (008)) y Constitución (RF-11 (008)), a 360 y 1280 px. Cada página suma aquí sus medidas al llegar su turno (D-5 (008)).
 // RF-11 (021) sustituye el inicio (RF-6 (008)), Mi tablero (RF-8 (008)) y Prototipado (RF-9 (008)): sus medidas salen con
 // esas páginas, y los enlaces del menú se miden en el menú de juego (RF-13 (021), D-T24 (021)).
@@ -11,7 +12,6 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
-import '../../src/styles/paths.css';
 import { SessionProvider, type SessionState } from '../../src/app/session';
 import { SiteHeader } from '../../src/components/SiteHeader';
 import { SiteFooter } from '../../src/components/SiteFooter';
@@ -57,16 +57,18 @@ describe.each([360, 1280])('controles a %i px', (width) => {
     expect([rect.width, rect.height]).toEqual([44, 44]);
   });
 
-  it.each([['input type="text"'], ['select']])('RF-2 (008) · 2.3: «%s» mide 48 px y redondea 10 px arriba y nada abajo', async (tag) => {
+  it.each([['input type="text"'], ['select']])('RF-2 (008) · 2.3: «%s» mide 48 px, es cuadrado y lleva borde de 3 px', async (tag) => {
     await page.viewport(width, 800);
     const name = tag.split(' ')[0]!;
     const box = mount(`<${tag} class="block" aria-label="Campo">${name === 'input' ? '' : `</${name}>`}`);
     const el = box.querySelector<HTMLElement>(name)!;
     const style = getComputedStyle(el);
     expect(el.getBoundingClientRect().height).toBe(48);
-    expect(style.borderTopLeftRadius).toBe('10px');
-    expect(style.borderTopRightRadius).toBe('10px');
-    expect(style.borderBottomLeftRadius).toBe('0px');
+    for (const corner of ['borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius'] as const) {
+      expect(style[corner]).toBe('0px');
+    }
+    expect(style.borderTopWidth).toBe('3px');
+    expect(style.borderLeftWidth).toBe('3px');
   });
 
   it('RF-2 (008) · 2.3: el área de texto mide 48 px como mínimo', async () => {
@@ -74,7 +76,8 @@ describe.each([360, 1280])('controles a %i px', (width) => {
     const box = mount('<textarea class="block" rows="1" aria-label="Campo"></textarea>');
     const el = box.querySelector('textarea')!;
     expect(el.getBoundingClientRect().height).toBeGreaterThanOrEqual(48);
-    expect(getComputedStyle(el).borderTopLeftRadius).toBe('10px');
+    expect(getComputedStyle(el).borderTopLeftRadius).toBe('0px');
+    expect(getComputedStyle(el).borderTopWidth).toBe('3px');
   });
 
   it('RF-3 (008) · 3.1: el foco de teclado es un contorno de 3 px separado 3 px', async () => {
@@ -119,41 +122,52 @@ async function showChrome(session: SessionState, path = '/foro') {
 }
 
 describe.each([360, 1280])('cabecera y pie a %i px', (width) => {
-  it('RF-4 (008) · 4.1: la cabecera usa una columna de 1200 px como máximo, con 20 px arriba y abajo y margen lateral fluido', async () => {
+  it('RF-4 (008) · 4.1: la cabecera va de lado a lado, mide 64 px como mínimo, lleva un borde inferior de 3 px en tinta y un margen lateral de 12 o 24 px', async () => {
     await page.viewport(width, 800);
     const box = await showChrome(VISITOR);
+    const header = box.querySelector<HTMLElement>('header.site-header')!;
     const inner = box.querySelector<HTMLElement>('header > .site-header__inner')!;
     const style = getComputedStyle(inner);
-    expect(style.maxWidth).toBe('1200px');
-    expect(style.paddingTop).toBe('20px');
-    expect(style.paddingBottom).toBe('20px');
-    expect(style.paddingLeft).toBe(width === 1280 ? '48px' : '16px');
+    const frame = getComputedStyle(header);
+    expect(header.getBoundingClientRect().height).toBeGreaterThanOrEqual(64);
+    expect(frame.borderBottomWidth).toBe('3px');
+    expect(frame.borderBottomColor).toBe(getComputedStyle(header).color);
+    expect(frame.boxShadow).toBe('none');
+    expect(style.maxWidth).toBe('none');
+    expect(style.paddingLeft).toBe(width === 1280 ? '24px' : '12px');
     expect(style.paddingRight).toBe(style.paddingLeft);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width);
   });
 
-  it('RF-4 (008) · 4.2, 4.3, RF-13 (021) · 13.1: enlaces de 16/700 y 44 px de alto; el vigente en 800 con subrayado de 3 px a 8 px', async () => {
+  it('RF-4 (008) · 4.2, 4.3, RF-13 (021) · 13.1: enlaces de 15/700 en mayúsculas y 44 px de alto; el vigente en 800 con borde inferior de 3 px en tinta', async () => {
     await page.viewport(width, 800);
     const box = await showChrome(VISITOR, '/foro');
     // D-T24 (021): los destinos van en el menú de juego, tras «Menú»; se abre para medirlos.
     box.querySelector<HTMLButtonElement>('header button[aria-haspopup="dialog"]')!.click();
     await new Promise((done) => setTimeout(done, 50));
+    // Desde 1100 px la cabecera muestra las secciones y el menú no las repite (su nav se oculta); el resto se mide abajo.
+    if (width >= 1100) {
+      for (const link of box.querySelectorAll<HTMLElement>('dialog nav.game-menu__nav a')) expect(link.getBoundingClientRect().height, link.textContent!).toBe(0);
+      return;
+    }
     const links = [...box.querySelectorAll<HTMLElement>('dialog nav a')];
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) {
       const style = getComputedStyle(link);
-      expect(style.fontSize, link.textContent!).toBe('16px');
+      expect(style.fontSize, link.textContent!).toBe('15px');
+      expect(style.textTransform, link.textContent!).toBe('uppercase');
       expect(link.getBoundingClientRect().height, link.textContent!).toBe(44);
       expect(style.paddingLeft).toBe('10px');
     }
     const current = box.querySelector<HTMLElement>('dialog nav a[aria-current="page"]')!;
     const style = getComputedStyle(current);
     expect(style.fontWeight).toBe('800');
-    expect(style.textDecorationLine).toBe('underline');
-    expect(style.textDecorationThickness).toBe('3px');
-    expect(style.textUnderlineOffset).toBe('8px');
+    expect(style.borderBottomWidth).toBe('3px');
+    expect(style.borderBottomStyle).toBe('solid');
+    expect(style.borderBottomColor).toBe(style.color);
     const other = links.find((l) => l !== current)!;
     expect(getComputedStyle(other).fontWeight).toBe('700');
+    expect(getComputedStyle(other).borderBottomColor).toBe('rgba(0, 0, 0, 0)');
   });
 
   it('RF-4 (008) · 4.4: «Entrar» mide 44 px de alto', async () => {
@@ -164,21 +178,21 @@ describe.each([360, 1280])('cabecera y pie a %i px', (width) => {
   });
 
   // RF-15 (019) · 15.1, D-T9 (019) afina el color: la inicial pasa a `charcoal` con letra `on-charcoal` (antes, `axis-alimento-fill` y `charcoal`).
-  it('RF-4 (008) · 4.5, RF-15 (019) · 15.1: la inicial es un círculo de 44 px, de charcoal, con letra on-charcoal de 18/800', async () => {
+  it('RF-4 (008) · 4.5, RF-15 (019) · 15.1: la inicial es un cuadrado de 44 px, de charcoal, con letra on-charcoal en lead/800', async () => {
     await page.viewport(width, 800);
     const box = await showChrome(PERSON);
     const probe = document.createElement('i');
-    probe.style.cssText = 'background-color:var(--charcoal);color:var(--on-charcoal)';
+    probe.style.cssText = 'background-color:var(--charcoal);color:var(--on-charcoal);font-size:var(--type-lead-size)';
     box.append(probe);
     const expected = getComputedStyle(probe);
     const avatar = box.querySelector<HTMLElement>('header .account-initial')!;
     const rect = avatar.getBoundingClientRect();
     const style = getComputedStyle(avatar);
     expect([rect.width, rect.height]).toEqual([44, 44]);
-    expect(style.borderTopLeftRadius).toMatch(/^(50%|999px)$/); // RF-3 (019) · 3.3: `radius-pill`
+    expect(style.borderTopLeftRadius).toBe('0px'); // RF-3 (019) · 3.3: sin formas redondas
     expect(style.backgroundColor).toBe(expected.backgroundColor);
     expect(style.color).toBe(expected.color);
-    expect(style.fontSize).toBe('18px');
+    expect(style.fontSize).toBe(expected.fontSize);
     expect(style.fontWeight).toBe('800');
   });
 
@@ -239,7 +253,7 @@ describe.each([360, 1280])('entrar a %i px', (width) => {
     expect(style.marginBottom).toBe(expected);
   });
 
-  it('RF-7 (008) · 7.2, RF-2 (019): el título mide clamp(32px, 5vw, 48px) en peso 800 y las etiquetas, 14 px en peso 700', async () => {
+  it('RF-7 (008) · 7.2, RF-2 (019): el título mide clamp(32px, 5vw, 48px) en peso 800 y las etiquetas son rótulos de campo (15 px, 800, mayúsculas)', async () => {
     await page.viewport(width, 800);
     const box = await showLogin();
     const probe = document.createElement('i');
@@ -252,8 +266,9 @@ describe.each([360, 1280])('entrar a %i px', (width) => {
     expect(labels).toHaveLength(2);
     for (const label of labels) {
       const style = getComputedStyle(label);
-      expect(style.fontSize).toBe('14px');
-      expect(style.fontWeight).toBe('700');
+      expect(style.fontSize).toBe('15px');
+      expect(style.fontWeight).toBe('800');
+      expect(style.textTransform).toBe('uppercase');
     }
   });
 
@@ -370,26 +385,27 @@ describe.each([360, 1280])('Documentación a %i px', (width) => {
     expect(getComputedStyle(article).rowGap).toBe('36px');
   });
 
-  it('RF-10 (008) · 10.5, RF-2 (019): migas de 18 px; título display/1,15; primer párrafo lead; subtítulos doc-heading', async () => {
+  it('RF-10 (008) · 10.5, RF-2 (019): migas en lead; título display/1,15; primer párrafo lead; subtítulos doc-heading', async () => {
     const box = await showDocs();
-    expect(getComputedStyle(box.querySelector('.documentation__crumb')!).fontSize).toBe('18px');
+    const lead = resolve(box, 'fontSize', 'var(--type-lead-size)');
+    expect(getComputedStyle(box.querySelector('.documentation__crumb')!).fontSize).toBe(lead);
     const h1 = getComputedStyle(box.querySelector('.documentation__article h1')!);
     const size = resolve(box, 'fontSize', 'var(--type-display-size)'); // RF-2 (019)
     expect(h1.fontSize).toBe(size);
     expect(parseFloat(h1.lineHeight)).toBeCloseTo(parseFloat(size) * 1.15, 1);
-    const lead = getComputedStyle(box.querySelector('.documentation__article h1 ~ p')!);
-    expect(lead.fontSize).toBe('18px');
-    expect(lead.color).toBe(getComputedStyle(box.querySelector('.documentation__crumb')!).color);
+    const intro = getComputedStyle(box.querySelector('.documentation__article h1 ~ p')!);
+    expect(intro.fontSize).toBe(lead);
+    expect(intro.color).toBe(getComputedStyle(box.querySelector('.documentation__crumb')!).color);
     const h2 = getComputedStyle(box.querySelector('.documentation__article h2')!);
-    expect(h2.fontSize).toBe('24px');
+    expect(h2.fontSize).toBe(resolve(box, 'fontSize', 'var(--type-doc-heading-size)'));
     expect(h2.fontWeight).toBe('800');
   });
 
-  it('RF-10 (008) · 10.6: anterior y siguiente van como texto subrayado de 15 px y peso 700, bajo una línea con 24 px de separación', async () => {
+  it('RF-10 (008) · 10.6: anterior y siguiente van como texto subrayado de 15 px y peso 700, bajo una línea de 3 px con 24 px de separación', async () => {
     const box = await showDocs();
     const pager = box.querySelector<HTMLElement>('.documentation__pager')!;
     const style = getComputedStyle(pager);
-    expect(style.borderTopWidth).toBe('1px');
+    expect(style.borderTopWidth).toBe('3px');
     expect(style.paddingTop).toBe('24px');
     const links = [...pager.querySelectorAll<HTMLElement>('a')];
     expect(links.map((a) => a.textContent)).toEqual(['← Uno', 'Tres →']);
@@ -462,7 +478,7 @@ describe.each([360, 1280])('Constitución a %i px', (width) => {
     expect(style.rowGap).toBe('40px');
   });
 
-  it('RF-11 (008) · 11.2, RF-2 (019): el título usa display con línea 1,15; la entrada, lead en text-muted', async () => {
+  it('RF-11 (008) · 11.2, RF-2 (019): el título usa display con línea 1,15; la entrada, lead en text-muted y la cabecera se cierra con un borde de 3 px', async () => {
     const box = await showConstitution();
     const h1 = getComputedStyle(box.querySelector('h1')!);
     const size = resolve(box, 'fontSize', 'var(--type-display-size)'); // RF-2 (019)
@@ -470,54 +486,60 @@ describe.each([360, 1280])('Constitución a %i px', (width) => {
     expect(parseFloat(h1.lineHeight)).toBeCloseTo(parseFloat(size) * 1.15, 1);
     const lead = box.querySelector<HTMLElement>('.constitution__lead')!;
     expect(lead.textContent).toBe('Siete principios mandan sobre todo lo demás: sobre cada función, cada spec y cada línea de código.');
-    expect(getComputedStyle(lead).fontSize).toBe('18px');
+    expect(getComputedStyle(lead).fontSize).toBe(resolve(box, 'fontSize', 'var(--type-lead-size)'));
     expect(getComputedStyle(lead).color).toBe(getComputedStyle(box.querySelector('.constitution__updated')!).color);
+    expect(getComputedStyle(box.querySelector('.constitution__head')!).borderBottomWidth).toBe('3px');
   });
 
-  it('RF-11 (008) · 11.3: las tarjetas tienen radio de 14 px, clamp(20px, 4vw, 28px) de relleno y 28 px de separación', async () => {
+  it('RF-11 (008) · 11.3: las tarjetas son cuadradas con borde de 3 px, clamp(20px, 4vw, 28px) de relleno y 28 px de separación', async () => {
     const box = await showConstitution();
     const cards = [...box.querySelectorAll<HTMLElement>('article.section-block')];
     expect(cards).toHaveLength(3);
     const style = getComputedStyle(cards[0]!);
-    expect(style.borderTopLeftRadius).toBe('14px');
+    expect(style.borderTopLeftRadius).toBe('0px');
+    expect(style.borderTopWidth).toBe('3px');
+    expect(style.boxShadow).toBe('none');
     expect(style.paddingTop).toBe(resolve(box, 'marginTop', 'clamp(20px, 4vw, 28px)'));
     expect(cards[1]!.getBoundingClientRect().top - cards[0]!.getBoundingClientRect().bottom).toBe(28);
   });
 
-  it('RF-11 (008) · 11.4: el numeral es de 34 px y peso 800; el título, 20/800/1,25; el texto, 16 px con línea 1,55', async () => {
+  it('RF-11 (008) · 11.4: el numeral es de 34 px y peso 800; el título, 18/800/1,25; el texto, 16 px con línea 1,55', async () => {
     const box = await showConstitution();
     const card = box.querySelector<HTMLElement>('article.section-block')!;
     const number = getComputedStyle(card.querySelector('.section-block__number')!);
     expect(number.fontSize).toBe('34px');
     expect(number.fontWeight).toBe('800');
     const h2 = getComputedStyle(card.querySelector('h2')!);
-    expect(h2.fontSize).toBe('20px');
+    expect(h2.fontSize).toBe('18px');
     expect(h2.fontWeight).toBe('800');
-    expect(parseFloat(h2.lineHeight)).toBeCloseTo(25, 1);
+    expect(parseFloat(h2.lineHeight)).toBeCloseTo(22.5, 1);
     const text = getComputedStyle(card.querySelector('.section-content p')!);
     expect(text.fontSize).toBe('16px');
     expect(parseFloat(text.lineHeight)).toBeCloseTo(24.8, 1);
   });
 
-  it('RF-11 (008) · 11.5: el camino mide 14 px y deja 50 px a la izquierda; cada tarjeta lleva un nodo de 18 px', async () => {
+  it('RF-11 (008) · 11.5: la línea vertical mide 3 px y deja 36 px a la izquierda; cada tarjeta se une a ella con un tramo de 3 px', async () => {
     const box = await showConstitution();
     const list = box.querySelector<HTMLElement>('.constitution__list')!;
-    expect(getComputedStyle(list).paddingLeft).toBe('50px');
-    const road = getComputedStyle(list, '::before');
-    expect(road.width).toBe('14px');
-    const nodes = [...list.querySelectorAll<HTMLElement>('.constitution__node [data-testid="node"]')];
-    expect(nodes).toHaveLength(3);
-    expect(nodes[0]!.getBoundingClientRect().width).toBe(18);
+    expect(getComputedStyle(list).paddingLeft).toBe('36px');
+    const line = getComputedStyle(list, '::before');
+    expect(line.width).toBe('3px');
+    expect(line.backgroundColor).toBe(getComputedStyle(list).color);
+    const items = [...list.querySelectorAll<HTMLElement>('.constitution__item')];
+    expect(items).toHaveLength(3);
+    const joint = getComputedStyle(items[0]!, '::before');
+    expect(joint.width).toBe('36px');
+    expect(joint.height).toBe('3px');
     const card = list.querySelector('article')!.getBoundingClientRect();
-    expect(card.left - list.getBoundingClientRect().left).toBe(50);
+    expect(card.left - list.getBoundingClientRect().left).toBe(36);
   });
 
-  it('RF-11 (008) · 11.6: el pie va en 14 px y text-muted, con 50 px a la izquierda, después de las tarjetas', async () => {
+  it('RF-11 (008) · 11.6: el pie va en 14 px y text-muted, con 36 px a la izquierda, después de las tarjetas', async () => {
     const box = await showConstitution();
     const foot = box.querySelector<HTMLElement>('.constitution__updated')!;
     const style = getComputedStyle(foot);
     expect(style.fontSize).toBe('14px');
-    expect(style.paddingLeft).toBe('50px');
+    expect(style.paddingLeft).toBe('36px');
     // RF-5 (024) · 5.1: la fecha del pie sale con día, nombre del mes y año, como la ficha.
     expect(foot.textContent).toContain('Última modificación: 3 de septiembre de 2026');
     const list = box.querySelector('.constitution__list')!;

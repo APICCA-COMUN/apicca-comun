@@ -1,6 +1,6 @@
 // RF-3 (024) · 3.1 a 3.4, D-T3 (024), D-12 (024) · El recorrido de bienvenida mueve el mapa en Chromium real, en una ventana ancha y en
-// un teléfono: en el paso del ápice hay un edificio con su nombre dentro del lienzo y fuera de la tarjeta; en el paso del
-// camino, su rótulo está a la vista; y «Ver todo» deshace el movimiento y vuelve al grupo lejano.
+// un teléfono, con el sistema «APICCA · Mapa»: en el paso del Ápice hay una celda con su nombre dentro del lienzo y fuera de la
+// tarjeta; en el paso de la Acción Común, su rótulo está a la vista; y «Ver todo» deshace el movimiento y vuelve al grupo lejano.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { act } from 'react';
@@ -10,7 +10,6 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
-import '../../src/styles/paths.css';
 // La entrada de la cuenta (`SessionEntry`) toma sus estilos de la cabecera, que la aplicación siempre carga.
 import '../../src/components/SiteHeader.css';
 import type { Location } from '../../shared/domain/location';
@@ -27,7 +26,7 @@ const zone = (cell: string, lat: number, lng: number): Location => ({ lat, lng, 
 const CENTRO = zone('8766e092affffff', 4.597156, -74.08474);
 const CHAPINERO = zone('8766e42d2ffffff', 4.649886, -74.060244);
 const MEDELLIN = zone('876619d92ffffff', 6.243305, -75.585547);
-/** Tres ápices en el centro de Bogotá, uno en Chapinero y otro en Medellín: al abrir, el mapa los reúne en grupos. */
+/** Tres Ápices en el centro de Bogotá, uno en Chapinero y otro en Medellín: al abrir, el mapa los reúne en grupos. */
 const ITEMS: ListedApice[] = [
   listed(1, { location: CENTRO, name: 'Huerta del barrio' }),
   listed(2, { location: CENTRO, name: 'Compost común' }),
@@ -38,7 +37,7 @@ const ITEMS: ListedApice[] = [
 
 const road: CommonActionSummary = {
   id: 'c1',
-  title: 'Camino del agua',
+  title: 'Ruta del agua',
   description: 'Una descripción larga.',
   axis: null,
   status: 'abierta',
@@ -90,8 +89,12 @@ async function open(width: number, height: number) {
   );
   await expect.poll(() => bench!.querySelector('.game-map[data-level="2"]')).toBeTruthy();
   await expect.poll(() => bench!.querySelector('.welcome-card')).toBeTruthy();
-  // El recorrido cuenta con los caminos al abrirse: se espera a que el contador los muestre.
-  await expect.poll(() => bench!.querySelector('.play__count')?.textContent ?? '').toMatch(/camino/i);
+}
+
+/** Empieza el recorrido y espera sus tres pasos: el del Ápice, el de la Acción Común y el de prototipar (las Acciones Comunes llegan después del mapa). */
+async function startTour() {
+  await userEvent.click(named('Ver el recorrido'));
+  await expect.poll(() => bench!.querySelector('.welcome-card__step')?.textContent).toBe('Paso 1 de 3');
 }
 
 afterEach(async () => {
@@ -119,18 +122,18 @@ describe.each([
     await open(width, height);
   });
 
-  // D-12 (024): en el teléfono, mientras dura el recorrido, el encuadre corre su centro para que la tarjeta no tape lo que
-  // nombra el paso. Por eso la misma exigencia vale a 1280 × 800 (donde la tarjeta no tapa) y a 390 × 844.
-  it('RF-3 (024) · 3.1: en el paso del ápice, un edificio con su nombre queda dentro del lienzo y fuera de la tarjeta (D-12 (024))', async () => {
-    await userEvent.click(named('Jugar'));
+  // D-12 (024): la tarjeta del recorrido va en el panel, fuera del mapa (a la derecha o debajo), así que no tapa lo que nombra el
+  // paso; la misma exigencia vale a 1280 × 800 y en los teléfonos.
+  it('RF-3 (024) · 3.1: en el paso del Ápice, una celda con su nombre queda dentro del lienzo y fuera de la tarjeta (D-12 (024))', async () => {
+    await startTour();
     await expect.poll(() => bench!.querySelector('.game-map')?.getAttribute('data-level')).toBe('0');
-    await expect.poll(() => bench!.querySelectorAll('.game-map button.game-map__building').length).toBeGreaterThan(0);
+    await expect.poll(() => bench!.querySelectorAll('.game-map button.game-map__apice').length).toBeGreaterThan(0);
     const map = canvas();
     const tourCard = card();
-    // El ápice del paso queda en el centro del lienzo: el edificio más cercano a ese centro es el que se mira.
+    // El Ápice del paso queda en el centro del lienzo: la celda más cercana a ese centro es la que se mira.
     const centre = { x: map.left + map.width / 2, y: map.top + map.height / 2 };
-    const buildings = [...bench!.querySelectorAll<HTMLElement>('.game-map button.game-map__building')];
-    const target = buildings.sort((a, b) => {
+    const targets = [...bench!.querySelectorAll<HTMLElement>('.game-map button.game-map__apice')];
+    const target = targets.sort((a, b) => {
       const da = a.getBoundingClientRect();
       const db = b.getBoundingClientRect();
       return Math.hypot(da.left + da.width / 2 - centre.x, da.top + da.height / 2 - centre.y) - Math.hypot(db.left + db.width / 2 - centre.x, db.top + db.height / 2 - centre.y);
@@ -138,25 +141,27 @@ describe.each([
     const box = target.getBoundingClientRect();
     expect(inside(box, map)).toBe(true);
     expect(apart(box, tourCard)).toBe(true);
-    const label = target.querySelector<HTMLElement>('.game-map__name')!;
+    // El nombre aparece al apuntar la celda (fuera de ella, con papel de fondo) y también queda dentro del lienzo.
+    await userEvent.hover(target.querySelector('.game-map__hex')!);
+    const label = target.querySelector<HTMLElement>('.game-map__tag')!;
     expect(label.textContent!.length).toBeGreaterThan(0);
     expect(inside(label.getBoundingClientRect(), map)).toBe(true);
     expect(apart(label.getBoundingClientRect(), tourCard)).toBe(true);
   });
 
-  it('RF-3 (024) · 3.2: en el paso del camino, su rótulo queda a la vista', async () => {
-    await userEvent.click(named('Jugar'));
+  it('RF-3 (024) · 3.2: en el paso de la Acción Común, su rótulo queda a la vista', async () => {
+    await startTour();
     await userEvent.click(named('Siguiente'));
     const find = () => bench!.querySelector<HTMLElement>('.game-map button.game-map__path-label');
     await expect.poll(find).toBeTruthy();
     const label = find()!.getBoundingClientRect();
     expect(inside(label, canvas())).toBe(true);
-    // D-12 (024): el rótulo del camino tampoco queda bajo la tarjeta.
+    // D-12 (024): el rótulo de la Acción Común tampoco queda bajo la tarjeta.
     expect(apart(label, card())).toBe(true);
   });
 
   it('RF-3 (024): «Ver todo» deshace el movimiento y vuelve al grupo lejano', async () => {
-    await userEvent.click(named('Jugar'));
+    await startTour();
     await expect.poll(() => bench!.querySelector('.game-map')?.getAttribute('data-level')).toBe('0');
     await userEvent.click(named('Ver todo'));
     await expect.poll(() => bench!.querySelector('.game-map')?.getAttribute('data-level')).toBe('2');

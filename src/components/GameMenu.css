@@ -1,10 +1,9 @@
-/* RF-13 (021) · 13.1–13.7, D-T24 (021): el menú de juego. Un diálogo angosto con los destinos en columna, de 44 px y
-   16/700 como los enlaces de menú (RF-4 (008) · 4.2), la cuenta debajo y el apoyo al fondo sobre `footer-bg`, porque el logo es el negativo (RF-3 (015)).
-   Solo tokens. */
+/* RF-13 (021) · 13.1–13.7, D-T24 (021): el menú plegado de la cabecera. Un diálogo angosto con las entradas en columna,
+   de 44 px y en mayúsculas como los enlaces de menú (RF-4 (008) · 4.2), la cuenta debajo, separada por un borde de 3 px,
+   y el apoyo al fondo sobre tinta (tema claro) o papel con borde (tema oscuro), porque el logo es el negativo (RF-3 (015)).
+   Desde 1100 px la cabecera muestra las entradas y el menú las oculta. Solo tokens. */
 button.game-menu__toggle {
   min-block-size: var(--size-icon-control);
-  padding-inline: 18px;
-  font-weight: 800;
 }
 
 .dialog.game-menu {
@@ -40,9 +39,17 @@ button.game-menu__toggle {
   gap: 4px;
 }
 
+/* Desde 1100 px la cabecera ya muestra las entradas. Va después de la regla de arriba (misma especificidad): antes la
+   pisaba y la navegación se repetía en el menú (QA #7). */
+@media (min-width: 1100px) {
+  .game-menu__nav {
+    display: none;
+  }
+}
+
 .game-menu__account {
   padding-block-start: 12px;
-  border-block-start: 1px solid var(--line);
+  border-block-start: var(--stroke-border) solid var(--text);
 }
 
 .game-menu__who {
@@ -75,10 +82,39 @@ button.game-menu__toggle {
   gap: 4px;
   margin: 0;
   padding: 8px 12px;
+  border: var(--stroke-border) solid var(--text);
   border-radius: var(--radius-block);
-  background-color: var(--footer-bg);
-  color: var(--on-charcoal-muted);
+  background-color: var(--charcoal);
+  color: var(--on-charcoal);
   font-size: var(--type-body-size);
+}
+
+/* El logo de MangleRojo es el negativo (blanco y rojo): pide fondo oscuro. En tema oscuro la tinta es clara, así que
+   el apoyo va sobre el papel oscuro, con el borde de tinta. */
+:root[data-theme='dark'] .game-menu__support {
+  background-color: var(--background);
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .game-menu__support {
+    background-color: var(--background);
+    color: var(--text);
+  }
+}
+
+.game-menu__support-link:focus-visible {
+  outline-color: var(--on-charcoal);
+}
+
+:root[data-theme='dark'] .game-menu__support-link:focus-visible {
+  outline-color: var(--focus);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .game-menu__support-link:focus-visible {
+    outline-color: var(--focus);
+  }
 }
 
 .game-menu__support-link {
@@ -93,12 +129,6 @@ button.game-menu__toggle {
   display: block;
   width: auto;
   height: 28px;
-}
-
-@media (forced-colors: active) {
-  .game-menu__support {
-    border: 1px solid CanvasText;
-  }
 }
 
 /* RF-21 (021) · 21.4: «Ver la bienvenida», bajo los destinos. */

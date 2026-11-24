@@ -52,7 +52,7 @@ export function FacilitationShell({ title, children }: { title: string; children
   }
   return (
     <section className="facilitation">
-      <nav aria-label="Facilitación" className="site-nav">
+      <nav aria-label="Facilitación" className="facilitation__nav">
         {FACILITATION_MENU.map((item) => (
           <Link
             key={item.href}

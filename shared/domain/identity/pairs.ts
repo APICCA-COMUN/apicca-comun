@@ -15,7 +15,8 @@ export const REQUIRED_PAIRS: readonly RequiredPair[] = [
   ...pairs(['brand-red'], ['surface'], 4.5),
   ...pairs(['on-accent'], ['action-blue', 'brand-red'], 4.5),
   ...pairs(['focus'], ['surface', 'background'], 3),
-  ...pairs(AXIS_KEYS.map((k) => `axis-${k}-stroke` as const), ['surface', 'charcoal'], 3),
+  // Sistema «APICCA · Mapa»: el glifo (stroke) va sobre el color de su eje, nunca sobre el papel.
+  ...AXIS_KEYS.map((k) => ({ fg: `axis-${k}-stroke` as const, bg: `axis-${k}-fill` as const, threshold: 3 })),
   ...pairs(['field-border'], ['surface', 'background'], 3),
   ...pairs(['on-charcoal', 'on-charcoal-muted'], ['charcoal'], 4.5),
 ];

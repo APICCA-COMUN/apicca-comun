@@ -49,11 +49,11 @@ export interface IndexSnapshot {
   themeColors: Record<string, string | null>;
   /** El `<noscript>` tal como se ve: visible, su texto y el color del texto. */
   noscript: { visible: boolean; text: string; color: string | null };
-  /** La fuente tras `document.fonts.ready`: precarga, estado de Nunito y el texto pintado. */
+  /** La fuente tras `document.fonts.ready`: precarga, estado de Jost y el texto pintado. */
   audit?: TextAudit;
   font: {
     preload: string | null;
-    nunito: string | null;
+    jost: string | null;
     family: string;
     text: string;
     textHeight: number;
@@ -102,21 +102,24 @@ export const openIndex: BrowserCommand<[OpenIndexOptions?], IndexSnapshot> = asy
 
     const font =
       options.javaScript === false
-        ? { preload: null, nunito: null, family: '', text: '', textHeight: 0 }
+        ? { preload: null, jost: null, family: '', text: '', textHeight: 0 }
         : await page.evaluate(async () => {
             await document.fonts.ready;
-            // El primer texto que pinta la aplicación, sea cual sea la página.
+            // El primer texto que pinta la aplicación, sea cual sea la página (el del menú cerrado no pinta).
             const text = await new Promise<HTMLElement | null>((done) => {
-              const find = () => document.querySelector<HTMLElement>('#root h1, #root p');
+              const find = () =>
+                [...document.querySelectorAll<HTMLElement>('#root h1, #root p')].find(
+                  (element) => element.getBoundingClientRect().height > 0,
+                ) ?? null;
               // La hora está fija: se cuenta en intentos, no con `Date.now()`.
               let tries = 100;
               const poll = () => (find() || --tries < 0 ? done(find()) : setTimeout(poll, 50));
               poll();
             });
-            const nunito = [...document.fonts].find((face) => face.family.replace(/["']/g, '') === 'Nunito');
+            const jost = [...document.fonts].find((face) => face.family.replace(/["']/g, '') === 'Jost');
             return {
               preload: document.querySelector<HTMLLinkElement>('link[rel="preload"][as="font"]')?.href ?? null,
-              nunito: nunito?.status ?? null,
+              jost: jost?.status ?? null,
               family: getComputedStyle(document.body).fontFamily,
               text: text?.textContent?.trim() ?? '',
               textHeight: text?.getBoundingClientRect().height ?? 0,

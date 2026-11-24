@@ -4,12 +4,13 @@ import { describe, expect, it } from 'vitest';
 import { FACILITATION_MENU, MAIN_MENU, isCurrentSection, returnTarget } from './navigation';
 
 describe('MAIN_MENU', () => {
-  it('RF-13 (021) · 13.1, D-10 (021), RF-8 (009): el menú de juego trae el mapa, la documentación, la constitución y el foro con los nombres de D-10 (021)', () => {
+  it('RF-13 (021) · 13.1, RF-8 (009): la navegación principal trae Ápices, Acciones Comunes, Documentación, Constitución y Foro', () => {
     expect(MAIN_MENU.map((item) => [item.label, item.href])).toEqual([
-      ['Jugar', '/'],
-      ['Cómo se juega', '/documentacion'],
-      ['Reglas', '/constitucion'],
-      ['Plaza', '/foro'],
+      ['Ápices', '/'],
+      ['Acciones Comunes', '/acciones'],
+      ['Documentación', '/documentacion'],
+      ['Constitución', '/constitucion'],
+      ['Foro', '/foro'],
     ]);
   });
 
@@ -47,7 +48,7 @@ describe('isCurrentSection', () => {
     expect(isCurrentSection('/documentacion', '/documentaciones/etica')).toBe(false);
   });
 
-  it('RF-7 (003) · 7.4, D-T24 (021): por su ruta, las de ápices y el inicio no marcan ninguna sección; «Jugar» la marca el menú según la página', () => {
+  it('RF-7 (003) · 7.4, D-T24 (021): por su ruta, las de ápices y el inicio no marcan ninguna sección; «Ápices» la marca la cabecera según la página', () => {
     for (const item of MAIN_MENU) {
       expect(isCurrentSection(item.href, '/apices/x'), item.label).toBe(false);
       expect(isCurrentSection(item.href, '/'), item.label).toBe(false);

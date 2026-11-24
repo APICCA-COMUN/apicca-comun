@@ -12,7 +12,6 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
-import '../../src/styles/paths.css';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
@@ -184,8 +183,17 @@ afterAll(async () => {
   await page.viewport(1280, 800);
 });
 
-/** Recorre el tabulador y exige un indicador de foco visible, de 2 px o más y del color esperado, en cada parada. */
-async function expectFocusRings(expectedColor: string) {
+/**
+ * Recorre el tabulador y exige un indicador de foco visible, de 2 px o más y del color esperado, en cada parada.
+ * Sobre la tinta llena del apoyo (pie y menú, en tema claro) el foco va en papel (`supportColor`): el de tinta no se vería.
+ */
+async function expectFocusRings(expectedColor: string, supportColor: string = expectedColor) {
+  // El punto de partida del tabulador queda donde estuvo el último foco de la ruta anterior; se devuelve al inicio del documento.
+  const start = document.createElement('span');
+  start.tabIndex = -1;
+  document.body.prepend(start);
+  start.focus();
+  start.remove();
   const seen = new Set<Element>();
   for (let stop = 0; stop < 20; stop += 1) {
     await userEvent.tab();
@@ -199,7 +207,7 @@ async function expectFocusRings(expectedColor: string) {
     expect(active.matches(':focus-visible'), tag).toBe(true);
     expect(style.outlineStyle, tag).not.toBe('none');
     expect(parseFloat(style.outlineWidth), tag).toBeGreaterThanOrEqual(2);
-    expect(style.outlineColor, tag).toBe(expectedColor);
+    expect(style.outlineColor, tag).toBe(active.closest('.site-footer__support-link, .game-menu__support-link') === null ? expectedColor : supportColor);
   }
   expect(seen.size).toBeGreaterThan(0);
 }
@@ -222,7 +230,7 @@ describe.each(MATRIX)('matriz de accesibilidad · $label', ({ feature, value, is
         ? resolveSystemColor('Highlight', 'outlineColor')
         : computed('color', 'focus');
 
-      await expectFocusRings(expectedColor);
+      await expectFocusRings(expectedColor, isForced || theme === 'dark' ? expectedColor : computed('color', 'on-charcoal'));
     },
   );
 });
@@ -237,7 +245,7 @@ describe.each(['light', 'dark'] as const)('constitución común a 360 px · tema
     if (as !== undefined) expect(location.pathname + location.search).toBe(path);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
     (document.activeElement as HTMLElement | null)?.blur();
-    await expectFocusRings(computed('color', 'focus'));
+    await expectFocusRings(computed('color', 'focus'), theme === 'dark' ? computed('color', 'focus') : computed('color', 'on-charcoal'));
   });
 });
 
@@ -262,8 +270,9 @@ describe.each(['light', 'dark'] as const)('fase 1 de la 019 a 360 px · tema %s'
       if (as !== undefined) expect(location.pathname + location.search).toBe(path);
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
       const expectedColor = isForced ? resolveSystemColor('Highlight', 'outlineColor') : computed('color', 'focus');
+      const supportColor = isForced || theme === 'dark' ? expectedColor : computed('color', 'on-charcoal');
       (document.activeElement as HTMLElement | null)?.blur();
-      await expectFocusRings(expectedColor);
+      await expectFocusRings(expectedColor, supportColor);
       // Con «Menú» abierto, los destinos también muestran el foco y la página sigue sin desplazarse a los lados.
       // El menú de juego es un diálogo modal (RF-13 (021) · 13.7): el tabulador recorre solo su contenido.
       const toggle = host!.querySelector<HTMLButtonElement>('button.game-menu__toggle')!;
@@ -272,7 +281,7 @@ describe.each(['light', 'dark'] as const)('fase 1 de la 019 a 360 px · tema %s'
       expect(menu.open).toBe(true);
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
       (document.activeElement as HTMLElement | null)?.blur();
-      await expectFocusRings(expectedColor);
+      await expectFocusRings(expectedColor, supportColor);
       const close = [...menu.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.trim() === 'Cerrar')!;
       await actNow(() => close.click());
       expect(menu.open).toBe(false);

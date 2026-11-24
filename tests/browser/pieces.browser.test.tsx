@@ -14,15 +14,12 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
-import '../../src/styles/paths.css';
 import { THEMES } from '../../shared/domain/identity';
 import { AXES } from '../../shared/domain/apice';
 import { Logo } from '../../src/components/Logo';
 import { AxisIcon } from '../../src/components/AxisIcon';
 import { GameMap } from '../../src/map/GameMap';
 import type { ListedApice } from '../../src/data/apices';
-import { RoadSegment } from '../../src/components/RoadSegment';
-import { Node } from '../../src/components/Node';
 import { ConditionTag } from '../../src/components/ConditionTag';
 import { SiteFooter } from '../../src/components/SiteFooter';
 
@@ -136,27 +133,6 @@ describe.each(THEMES)('piezas en el tema %s', (theme) => {
 });
 
 describe.each(THEMES)('piezas de la 003 en el tema %s', (theme) => {
-  it('RF-9 (003) · 9.1, 9.2, RNF-2 (003): captura de caminos y nodos', async () => {
-    // El tramo no trae tamaño propio: lo toma de su contenedor, como en el inicio y en la constitución.
-    const segment = (width: number, height: number, child: ReactElement) => (
-      <div style={{ width, height, display: 'grid' }}>{child}</div>
-    );
-    const piece = await mount(
-      <div className="pieza-caminos" style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-        <style>{'.pieza-caminos .road-segment { width: 100%; height: 100%; }'}</style>
-        <Node />
-        {segment(120, 20, <RoadSegment />)}
-        <Node />
-        {segment(20, 96, <RoadSegment orientation="vertical" />)}
-        <div className="lot" style={{ padding: 16 }}>
-          {segment(120, 20, <RoadSegment tone="on-surface" />)}
-        </div>
-      </div>,
-      theme,
-    );
-    await expect.element(page.elementLocator(piece)).toMatchScreenshot(`caminos-${theme}`);
-  });
-
   it('RF-4 (003) · 4.5, RNF-2 (003): captura de los botones de ícono', async () => {
     const piece = await mount(
       <div style={{ display: 'flex', gap: 12 }}>

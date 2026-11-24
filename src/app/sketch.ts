@@ -10,7 +10,7 @@ export interface Sketch {
 
 export const EMPTY_SKETCH: Sketch = { axes: [], status: INITIAL_APICE_STATUS };
 
-/** Id del edificio del boceto en el mapa; ningún documento lo usa. */
+/** Id del Ápice del boceto en el mapa; ningún documento lo usa. */
 export const SKETCH_ID = '__boceto__';
 
 const KEY = 'apicca:boceto';
@@ -40,7 +40,7 @@ export function saveSketch(sketch: Sketch): void {
   }
 }
 
-/** El edificio del boceto, en el terreno sin ubicar; `null` mientras no tiene ejes. */
+/** El Ápice del boceto, en el terreno sin ubicar; `null` mientras no tiene ejes. */
 export function sketchItem(sketch: Sketch): ListedApice | null {
   if (sketch.axes.length === 0) return null;
   return {

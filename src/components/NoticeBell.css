@@ -1,4 +1,7 @@
-/* RF-6 (024), RF-4 (012), RNF-3 (012): campana de 44 px (`icon-button`) con el contador a su lado, como el lienzo de Mi tablero. */
+/* RF-6 (024), RF-4 (012), RNF-3 (012): botón de aviso de 44 px (`icon-button`) con el contador a su lado, en la cabecera
+   (sistema «APICCA · Mapa»). El panel cae bajo la cabecera, anclada a `.site-header__inner` (posicionada), alineado a
+   su borde final y siempre dentro de la ventana (RNF-5 (012), D-T11 (012)). No hereda el `max-width: 100%` de `.block`,
+   que lo dejaba del ancho del botón. Lleva el borde de 3 px de `.block`; sin sombra. */
 .notice-bell {
   display: inline-flex;
   align-items: center;
@@ -11,14 +14,10 @@
   line-height: 1;
 }
 
-/* El panel cae bajo la fila del saludo sin empujarla. RNF-5 (012), D-T11 (012): la campana no es su referencia,
-   porque la fila la pone a la derecha en pantallas anchas y al inicio en las angostas. El panel se ancla a la fila
-   (`.dashboard__head`, posicionada) y se alinea a su borde final, el del contenido; así queda dentro de la ventana en
-   todo ancho. No hereda el `max-width: 100%` de `.block`, que lo dejaba del ancho del botón. */
 .notice-panel {
   position: absolute;
   inset-block-start: calc(100% + 8px);
-  inset-inline-end: 0;
+  inset-inline-end: 12px;
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -28,17 +27,31 @@
   padding: 1.5rem;
 }
 
+@media (min-width: 640px) {
+  .notice-panel {
+    inset-inline-end: 24px;
+  }
+}
+
 .notice-panel p {
   margin: 0;
 }
 
+/* Lista con divisores de 1,5 px en `line`. */
 .notice-panel__list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.notice-panel__item {
+  padding-block: 12px;
+}
+
+.notice-panel__item + .notice-panel__item {
+  border-block-start: var(--stroke-divider) solid var(--line);
 }
 
 /* RF-6 (024): la fecha va en su propia línea, con el tamaño de metadatos de la escala. */
@@ -46,8 +59,12 @@
   display: block;
   font-size: var(--type-meta-size);
   line-height: var(--type-meta-line);
+  color: var(--text-muted);
 }
 
+/* Lo no leído se dice con peso y con la barra de 3 px a su lado, no con color. */
 .notice-panel__item--unread {
   font-weight: 800;
+  padding-inline-start: 12px;
+  border-inline-start: var(--stroke-border) solid var(--text);
 }

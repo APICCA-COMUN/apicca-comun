@@ -1,17 +1,15 @@
-/* RF-7 (008) · 7.2–7.4: campos separados 18 px, etiquetas de 14/700 y el ojo de 44 px dentro del campo de 48 px.
+/* RF-7 (008) · 7.2–7.4: campos separados 18 px, etiquetas como rótulo de campo y el ojo de 44 px dentro del campo de 48 px.
    RF-5 (005) · Entrar: el ojo va dentro del campo de contraseña, a la derecha; «Entrar» ocupa todo el ancho y el error
-   lleva su ícono antes del texto. Solo colores de tokens. */
+   va en un recuadro de 3 px en tinta con su ícono antes del texto (el color nunca va solo). Solo colores de tokens. */
 .sign-in-form {
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
-/* RF-2 (019), D-T3 (019): etiquetas en tamaño meta. */
+/* QA #8: la etiqueta del campo es el rótulo del sistema (15 px, 800, mayúsculas; blocks.css), no un estilo propio. */
 .sign-in-form label {
   gap: 6px;
-  font-size: var(--type-meta-size);
-  font-weight: 700;
 }
 
 .sign-in-form.sign-in-form.sign-in-form > label {
@@ -26,11 +24,12 @@
   padding-inline-end: 3.25rem;
 }
 
-/* El campo mide 48 px con 2 px de borde inferior: el ojo de 44 px queda centrado en el área útil. */
+/* El campo mide 48 px con 3 px de borde: el botón del ojo, sin borde propio, queda centrado en el área útil. */
 .sign-in-form__reveal.icon-button {
   position: absolute;
-  inset-block-end: 2px;
-  inset-inline-end: 2px;
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  border-color: transparent;
   box-shadow: none;
   background-color: transparent;
 }
@@ -40,8 +39,8 @@
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
 
 .sign-in-form > button[type='submit'] {
@@ -53,10 +52,10 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  padding: 0;
-  background: transparent;
+  padding: 12px;
+  border-color: var(--text);
   box-shadow: none;
-  color: var(--brand-red);
+  color: var(--text);
   font-size: var(--type-meta-size);
   font-weight: 700;
 }

@@ -1,5 +1,5 @@
 // RF-1 (015), RF-2 (015), RF-13 (021) · 13.5, D-T24 (021): «Apoyado por» y el logo oficial de MangleRojo sin lema,
-// enlazado a su sitio. Lo usan el pie de las páginas de texto y el menú de juego; `prefix` conserva las clases de cada
+// enlazado a su sitio. Lo usan el pie de las páginas de texto y el menú de la cabecera; `prefix` conserva las clases de cada
 // lugar (`site-footer__support…`, `game-menu__support…`). Es un enlace externo, así que no usa `Link`.
 
 export function SupportCredit({ prefix }: { prefix: string }) {

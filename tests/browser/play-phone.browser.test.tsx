@@ -1,7 +1,9 @@
-// RF-10 (024) · 10.1 a 10.4, D-T13 (024) · La barra del mapa en un teléfono, en Chromium real: con los filtros cerrados, sin panel
-// y con una propuesta abierta, el mapa ocupa al menos el 60 % del alto de la ventana y el aviso, con número, fecha y enlace,
-// queda dentro de la ventana sin desbordarla. A 390 × 844 la barra mide 338 px o menos y a 360 × 800, 320 px o menos. Los
-// controles conservan su alto de 44 px (RF-2 (008) · 2.2). Por debajo de 500 px de alto no se exige nada (el escenario deja de estar fijo).
+// RF-10 (024) · 10.1 a 10.4, D-T13 (024) · Inicio en un teléfono, en Chromium real, con el diseño «APICCA · Mapa»: con los filtros
+// cerrados, sin panel y con una propuesta abierta, el mapa va arriba y ocupa al menos el 60 % del alto de la ventana; el panel
+// va debajo, a todo el ancho, y la página se desplaza. El aviso, con número, fecha larga y enlace, queda dentro del ancho de
+// la ventana (y, al llegar a él, dentro de su alto) sin desbordarla. Los botones y enlaces del panel conservan sus 44 px de
+// alto (RF-2 (008) · 2.2). Ya no hay barra de herramientas sobre el mapa (se quitó con el rediseño): no se exige su tope de alto.
+// Por debajo de 500 px de alto no se exige nada (el escenario deja de estar fijo).
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { act } from 'react';
@@ -11,7 +13,6 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
-import '../../src/styles/paths.css';
 // La entrada de la cuenta (`SessionEntry`) toma sus estilos de la cabecera, que la aplicación siempre carga.
 import '../../src/components/SiteHeader.css';
 import { SessionProvider, type SessionState } from '../../src/app/session';
@@ -81,13 +82,16 @@ afterEach(async () => {
 const box = (selector: string) => bench!.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
 
 describe.each([
-  [390, 844, 338],
-  [360, 800, 320],
-])('la barra del mapa a %i × %i', (width, height, barMax) => {
-  it('RF-10 (024) · 10.1, 10.2: el mapa ocupa al menos el 60 % del alto y la barra no pasa del tope', async () => {
+  [390, 844],
+  [360, 800],
+])('Inicio en un teléfono a %i × %i', (width, height) => {
+  it('RF-10 (024) · 10.1, 10.2: el mapa ocupa al menos el 60 % del alto y el panel va debajo, a todo el ancho', async () => {
     await open(width, height);
-    expect(box('.game-map').height).toBeGreaterThanOrEqual(window.innerHeight * 0.6);
-    expect(box('.play__hud').height).toBeLessThanOrEqual(barMax);
+    const map = box('.game-map');
+    expect(map.height).toBeGreaterThanOrEqual(window.innerHeight * 0.6);
+    const panel = box('.play__panel');
+    expect(panel.top).toBeGreaterThanOrEqual(map.bottom - 1);
+    expect(panel.width).toBeGreaterThanOrEqual(window.innerWidth - 1);
   });
 
   it('RF-10 (024): el aviso, con número, fecha larga y enlace, queda dentro de la ventana sin desbordarla', async () => {
@@ -96,6 +100,8 @@ describe.each([
     expect(notice.textContent).toContain('12 propuestas');
     expect(notice.textContent).toContain(WORST_DATE);
     expect(notice.querySelector('a')?.textContent).toBe('Ver propuestas');
+    // El aviso está en el panel, debajo del mapa: se llega a él con el desplazamiento de la página.
+    notice.scrollIntoView({ block: 'end' });
     const rect = notice.getBoundingClientRect();
     expect(rect.left).toBeGreaterThanOrEqual(0);
     expect(rect.right).toBeLessThanOrEqual(window.innerWidth);
@@ -105,12 +111,12 @@ describe.each([
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   });
 
-  it('RF-10 (024), RF-2 (008) · 2.2: los botones y enlaces de la barra conservan los 44 px de alto que ya tenían', async () => {
+  it('RF-10 (024), RF-2 (008) · 2.2: los botones y enlaces del panel conservan los 44 px de alto', async () => {
     await open(width, height);
-    const controls = [...bench!.querySelectorAll<HTMLElement>('.play__hud button, .play__hud a.block')].filter((control) => control.getBoundingClientRect().height > 0);
+    const controls = [...bench!.querySelectorAll<HTMLElement>('.play__home button, .play__home a.block')].filter((control) => control.getBoundingClientRect().height > 0);
     expect(controls.length).toBeGreaterThan(3);
     for (const control of controls) {
-      // La barra ya usa `--size-icon-control` (44 px) en todos sus controles; D-T13 (024) pide que no se reduzcan (RF-2 (008) · 2.2).
+      // El sistema da 44 px a los controles del panel (`--size-icon-control`) y 48 px a las acciones (`--size-control`).
       const wanted = 43.5;
       const name = control.textContent || control.getAttribute('aria-label') || control.className;
       expect(control.getBoundingClientRect().height, name).toBeGreaterThanOrEqual(wanted);

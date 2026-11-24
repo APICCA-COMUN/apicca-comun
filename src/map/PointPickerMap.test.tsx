@@ -19,6 +19,14 @@ describe('PointPickerMap', () => {
     expect(container.querySelector('.leaflet-control-attribution')?.innerHTML).toContain('OpenStreetMap');
   });
 
+  it('QA #4: la atribución conserva a OpenStreetMap y nombra a Leaflet sin la bandera (emoji)', () => {
+    const { container } = render(<PointPickerMap point={null} onPick={vi.fn()} />);
+    const text = container.querySelector('.leaflet-control-attribution')?.textContent ?? '';
+    expect(text).toContain('Leaflet');
+    expect(text).toContain('OpenStreetMap');
+    expect(text).not.toMatch(/\p{Regional_Indicator}|\p{Emoji_Presentation}/u);
+  });
+
   it('RF-8 (002) · 8.3, RF-6 (002) · 6.1, RF-2 (002) · 2.1, D-T9 (002): usa clases y no style; el punto es el pin propio y el zoom, un bloque', () => {
     const { container } = render(<PointPickerMap point={{ lat: -33.45, lng: -70.66 }} onPick={vi.fn()} />);
     const host = container.querySelector<HTMLElement>('.leaflet-container')!;

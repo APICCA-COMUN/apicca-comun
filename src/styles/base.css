@@ -4,7 +4,7 @@
 html {
   background-color: var(--background);
   color: var(--text);
-  font-family: Nunito, 'Nunito Fallback', system-ui, sans-serif;
+  font-family: Jost, 'Jost Fallback', system-ui, sans-serif;
   font-size: 100%;
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
@@ -43,7 +43,21 @@ button {
   font-size: var(--type-body-size);
 }
 
-/* RF-2 (019) · 2.1, 2.3, D-T3 (019): tamaños base de los elementos del navegador */
+/* RF-2 (019) · 2.1, 2.3, D-T3 (019): tamaños base de los elementos del navegador. Sistema «APICCA · Mapa»: los
+   títulos van en mayúsculas a 800. */
+h1,
+h2,
+h3 {
+  font-weight: 800;
+  text-transform: uppercase;
+  /* QA #20: un título solo parte una palabra cuando no cabe en una línea (`break-word`); con `anywhere` el signo final
+     («?») quedaba solo en otra línea. `min-inline-size: 0` deja que el título encoja dentro de una fila flexible, así que
+     las cadenas largas sin espacios siguen partiéndose y no desbordan. */
+  overflow-wrap: break-word;
+  word-break: normal;
+  min-inline-size: 0;
+}
+
 h1 {
   font-size: var(--type-display-size);
   line-height: var(--type-display-line);
@@ -51,10 +65,25 @@ h1 {
 
 h2 {
   font-size: var(--type-doc-heading-size);
+  line-height: var(--type-doc-heading-line);
 }
 
 h3 {
-  font-size: var(--type-lead-size);
+  font-size: var(--type-subheading-size);
+  line-height: var(--type-subheading-line);
+}
+
+/* QA #9, #17: los grupos de campos (`fieldset`) no llevan el borde del navegador, que está fuera de la paleta; su
+   `legend` es el rótulo de campo (blocks.css). */
+fieldset {
+  min-inline-size: 0;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0 0 0.5rem;
 }
 
 /* El monoespaciado genérico lo elige el sistema y cambia entre máquinas; una pila explícita fija cómo se ve el enlace
@@ -74,14 +103,22 @@ small {
   font-size: var(--type-meta-size);
 }
 
+/* Los enlaces del texto, en tinta y subrayados: el subrayado es la señal, no el color. */
 a {
-  color: var(--action-blue);
+  color: var(--text);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
-/* Foco de teclado con el token `focus`, a 3 px del elemento (RF-6 (002) · 6.4, RF-3 (008) · 3.1). */
+/* Foco de teclado con el token `focus`, de 3 px a 3 px del elemento (RF-6 (002) · 6.4, RF-3 (008) · 3.1). */
 :focus-visible {
-  outline: 3px solid var(--focus);
+  outline: var(--focus-width) solid var(--focus);
   outline-offset: var(--focus-offset);
+}
+
+::selection {
+  background-color: var(--text);
+  color: var(--surface);
 }
 
 /* Los diálogos modales flotan por encima de la cabecera y del contenido, dentro de la ventana
@@ -99,7 +136,7 @@ a {
   overflow: auto;
   background-color: var(--surface);
   color: var(--text);
-  border: 1px solid var(--field-border);
+  border: var(--stroke-border) solid var(--field-border);
 }
 
 /* Con colores forzados, el sistema elige los colores; el foco sigue visible. */

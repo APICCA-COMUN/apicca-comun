@@ -1,104 +1,131 @@
-// Contrato de tokens de §4.0 con los valores de plan §2 bis: único origen de los valores
+// Contrato de tokens de §4.0, hoy con los valores del sistema «APICCA · Mapa» (ver abajo) con los valores de plan §2 bis: único origen de los valores
 // de diseño (RNF-4 (002), RF-2 (002), D-T3 (002)); valores de §4.0 (003) según D-T2 (003); `radius-lot` de D-T1 (005); tokens y escala de la 008 según D-T1 (008) y D-T2 (008); `radius-pill`, `node-ring`, `veil` y la escala fluida de D-T2 (019) y D-T3 (019); la paleta del terreno de D-T24 (019). La hoja de estilos se genera desde aquí.
 
 export const THEMES = ['light', 'dark'] as const;
 export type ThemeName = (typeof THEMES)[number];
 
+// Sistema «APICCA · Mapa» (23-11-2026, https://claude.ai/artifact/QEdX1nvqa6nqKbyzzpDyfU): papel y tinta, cinco
+// colores de eje planos, radio 0 y sin sombras. Los nombres de siempre se conservan y toman los valores del sistema;
+// los nuevos (`trama`, `ruta`, `contorno-superficie`, `glifo-sobre-eje` y los trazos) vienen de su `tokens.json`.
+// Lo que no sale del sistema (acción principal y destructiva en tinta) es propuesta del asistente.
 const light = {
-  background: '#E8E7EC',
-  line: '#D8D7DE',
-  surface: '#FFFDF8',
-  text: '#26282C',
-  'text-muted': '#57524A',
-  charcoal: '#33363B',
-  'on-charcoal': '#F3EFE6',
-  'on-charcoal-muted': '#C4BDB0',
-  // Fondo del pie (RF-5 (008), RF-1 (008) · 1.1).
-  'footer-bg': '#33363B',
-  'brand-red': '#C8102E',
-  'action-blue': '#005FB8',
-  'on-accent': '#FFFFFF',
-  'field-border': '#7A7368',
-  focus: '#005FB8',
-  // Aro de los nodos y de la inicial: 3:1 o más sobre el fondo y la superficie (RF-20 (019) · 20.3, D-T13 (019)).
-  'node-ring': '#33363B',
-  // Velo detrás de un diálogo abierto (RF-14 (019) · 14.1, D-T8 (019)); lleva transparencia, como las sombras.
-  veil: 'rgb(20 33 61 / .45)',
+  // papel
+  background: '#F1EFE9',
+  // trama: celdas vacías del teselado y divisores, solo decoración (1,5:1)
+  line: '#C8C5BA',
+  surface: '#F1EFE9',
+  // tinta
+  text: '#141414',
+  // suave: texto secundario, solo sobre papel (6,67:1)
+  'text-muted': '#56534C',
+  charcoal: '#141414',
+  'on-charcoal': '#F1EFE9',
+  'on-charcoal-muted': '#C8C5BA',
+  'footer-bg': '#141414',
+  // Lo destructivo y el error van en tinta; los distingue la palabra y la forma, no el color.
+  'brand-red': '#141414',
+  // La acción principal es tinta llena con texto en papel.
+  'action-blue': '#141414',
+  'on-accent': '#F1EFE9',
+  'field-border': '#141414',
+  focus: '#141414',
+  'node-ring': '#141414',
+  // Velo detrás de un diálogo abierto; lleva transparencia.
+  veil: 'rgb(20 20 20 / .55)',
   'logo-gray': '#666666',
   'logo-red': '#FF0000',
   'logo-blue': '#0096FF',
-  'axis-agua-fill': '#3CC8BA',
-  'axis-agua-stroke': '#1A9E92',
-  'axis-alimento-fill': '#7CC254',
-  'axis-alimento-stroke': '#4E9A2E',
-  'axis-cobijo-fill': '#E07B53',
-  'axis-cobijo-stroke': '#D06A43',
-  'axis-energia-fill': '#F4C542',
-  'axis-energia-stroke': '#A88300',
-  'axis-comunicacion-fill': '#9B7BD8',
-  'axis-comunicacion-stroke': '#9A72DA',
-  'radius-block': '14px',
-  // Radio de los lotes (RF-2 (005), D-T1 (005)).
-  'radius-lot': '18px',
-  // Radio del edificio y de las esquinas superiores de los campos (RF-2 (008)).
-  'radius-building': '10px',
-  // Píldora de las acciones y círculo de los botones de ícono y de los nodos (RF-3 (019), D-T4 (019)).
-  'radius-pill': '999px',
-  'shadow-block': '10px 10px 0 rgb(20 33 61 / .13)',
-  'shadow-raised': '18px 18px 0 rgb(20 33 61 / .13)',
+  // Ejes: fondos de superficie, nunca color de texto; el glifo va siempre en `glifo-sobre-eje` (5,1:1 a 11,8:1).
+  'axis-agua-fill': '#3E8FB3',
+  'axis-agua-stroke': '#141414',
+  'axis-alimento-fill': '#86A150',
+  'axis-alimento-stroke': '#141414',
+  'axis-cobijo-fill': '#E0862E',
+  'axis-cobijo-stroke': '#141414',
+  'axis-energia-fill': '#F2CC3D',
+  'axis-energia-stroke': '#141414',
+  'axis-comunicacion-fill': '#E5645C',
+  'axis-comunicacion-stroke': '#141414',
+  trama: '#C8C5BA',
+  // Celda de una Acción Común: el glifo del eje va encima en su color (5,1:1 a 11,8:1 en claro).
+  ruta: '#141414',
+  // Contorno de 2 px de toda superficie de patrón: los ejes dan 1,4:1 a 3,2:1 sobre el papel claro.
+  'contorno-superficie': '#141414',
+  'glifo-sobre-eje': '#141414',
+  // Radio 0 en todo.
+  'radius-block': '0px',
+  'radius-lot': '0px',
+  'radius-building': '0px',
+  'radius-pill': '0px',
+  // Sin sombras.
+  'shadow-block': 'none',
+  'shadow-raised': 'none',
   'duration-raise': '150ms',
-  // Medidas de la 008: control de 48, botón de ícono de 44, foco a 3 y columna de 1200 (RF-1 (008)).
   'size-control': '48px',
   'size-icon-control': '44px',
   'focus-offset': '3px',
   'content-max': '1200px',
+  // Trazos del sistema: borde de controles y fichas, borde de zona, contorno de superficie, divisor y foco.
+  'stroke-border': '3px',
+  'stroke-zone': '4px',
+  'stroke-outline': '2px',
+  'stroke-divider': '1.5px',
+  'focus-width': '3px',
 } as const;
 
 export type TokenName = keyof typeof light;
 
 const dark: Record<TokenName, string> = {
-  background: '#14213D',
-  line: '#2A3A5E',
-  surface: '#1F2B47',
-  text: '#F3EFE6',
-  'text-muted': '#C4BDB0',
-  charcoal: '#33363B',
-  'on-charcoal': '#F3EFE6',
-  'on-charcoal-muted': '#C4BDB0',
-  'footer-bg': '#0E1830',
-  'brand-red': '#FF8A80',
-  'action-blue': '#7CB8FF',
-  'on-accent': '#14213D',
-  'field-border': '#8E97AD',
-  focus: '#FFD166',
-  'node-ring': '#C4BDB0',
-  veil: 'rgb(0 0 0 / .6)',
+  background: '#131312',
+  line: '#3B3A36',
+  surface: '#131312',
+  text: '#F1EFE9',
+  'text-muted': '#B8B4AA',
+  charcoal: '#F1EFE9',
+  'on-charcoal': '#131312',
+  'on-charcoal-muted': '#3B3A36',
+  'footer-bg': '#F1EFE9',
+  'brand-red': '#F1EFE9',
+  'action-blue': '#F1EFE9',
+  'on-accent': '#131312',
+  'field-border': '#F1EFE9',
+  focus: '#F1EFE9',
+  'node-ring': '#F1EFE9',
+  veil: 'rgb(0 0 0 / .65)',
   'logo-gray': '#FFFFFF',
   'logo-red': '#FF0000',
   'logo-blue': '#0096FF',
-  'axis-agua-fill': '#2BB3A6',
-  'axis-agua-stroke': '#1A9E92',
-  'axis-alimento-fill': '#6DB04A',
-  'axis-alimento-stroke': '#4E9A2E',
-  'axis-cobijo-fill': '#D06A43',
-  'axis-cobijo-stroke': '#D06A43',
-  'axis-energia-fill': '#E8B730',
-  'axis-energia-stroke': '#A88300',
-  'axis-comunicacion-fill': '#8D6BD0',
-  'axis-comunicacion-stroke': '#9A72DA',
-  'radius-block': '14px',
-  // Radio de los lotes (RF-2 (005), D-T1 (005)).
-  'radius-lot': '18px',
-  // Radio del edificio y de las esquinas superiores de los campos (RF-2 (008)).
-  'radius-building': '10px',
-  'radius-pill': '999px',
-  'shadow-block': '10px 10px 0 rgb(0 0 0 / .32)',
-  'shadow-raised': '18px 18px 0 rgb(0 0 0 / .32)',
+  'axis-agua-fill': '#3E8FB3',
+  'axis-agua-stroke': '#141414',
+  'axis-alimento-fill': '#86A150',
+  'axis-alimento-stroke': '#141414',
+  'axis-cobijo-fill': '#E0862E',
+  'axis-cobijo-stroke': '#141414',
+  'axis-energia-fill': '#F2CC3D',
+  'axis-energia-stroke': '#141414',
+  'axis-comunicacion-fill': '#E5645C',
+  'axis-comunicacion-stroke': '#141414',
+  trama: '#3B3A36',
+  // En oscuro la ruta no es tinta (sería clara): gris para que los glifos de eje se lean (3,1:1 a 7,3:1).
+  ruta: '#3B3A36',
+  'contorno-superficie': '#F1EFE9',
+  'glifo-sobre-eje': '#141414',
+  'radius-block': '0px',
+  'radius-lot': '0px',
+  'radius-building': '0px',
+  'radius-pill': '0px',
+  'shadow-block': 'none',
+  'shadow-raised': 'none',
   'duration-raise': '150ms',
   'size-control': '48px',
   'size-icon-control': '44px',
   'focus-offset': '3px',
   'content-max': '1200px',
+  'stroke-border': '3px',
+  'stroke-zone': '4px',
+  'stroke-outline': '2px',
+  'stroke-divider': '1.5px',
+  'focus-width': '3px',
 };
 
 export const TOKENS: Readonly<Record<ThemeName, Readonly<Record<TokenName, string>>>> = { light, dark };
@@ -109,16 +136,25 @@ export const TOKENS: Readonly<Record<ThemeName, Readonly<Record<TokenName, strin
  * mínimo, para cumplir WCAG 1.4.4 con el zoom del navegador (RF-2 (019), D-T3 (019)).
  */
 export const TYPE_SCALE = {
-  display: { size: 'clamp(32px, 5vw, 48px)', line: '1.1', weight: '800' },
+  // titulo-sistema (38) en pantalla ancha
+  display: { size: 'clamp(28px, 4vw, 38px)', line: '1.05', weight: '800' },
   numeral: { size: '34px', line: '1', weight: '800' },
-  heading: { size: 'clamp(28px, 3.6vw, 40px)', line: '1.2', weight: '800' },
-  'doc-heading': { size: '24px', line: '1.25', weight: '800' },
-  title: { size: '22px', line: '1.2', weight: '800' },
-  subheading: { size: '20px', line: '1.25', weight: '700' },
-  lead: { size: '18px', line: '1.5', weight: '400' },
+  // titulo-pantalla (27)
+  heading: { size: 'clamp(22px, 3vw, 27px)', line: '1.1', weight: '800' },
+  'doc-heading': { size: '22px', line: '1.15', weight: '800' },
+  // titulo-ficha (20)
+  title: { size: '20px', line: '1.1', weight: '800' },
+  // titulo-lista (18)
+  subheading: { size: '18px', line: '1.2', weight: '800' },
+  // cuerpo (19)
+  lead: { size: '19px', line: '1.4', weight: '400' },
   body: { size: '16px', line: '1.5', weight: '400' },
-  label: { size: '15px', line: '1.5', weight: '700' },
-  meta: { size: '14px', line: '1.5', weight: '400' },
+  // botón primario (17): «el primario usa el mismo estilo a 17 px» (tokens.json del sistema)
+  'label-primary': { size: '17px', line: '1.2', weight: '800' },
+  // rotulo-campo y botón (15)
+  label: { size: '15px', line: '1.2', weight: '800' },
+  // dato (14)
+  meta: { size: '14px', line: '1.3', weight: '400' },
 } as const;
 
 export const TOKEN_NAMES = Object.keys(light) as readonly TokenName[];

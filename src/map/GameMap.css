@@ -1,7 +1,10 @@
 /* RF-4 (021) · 4.1, 4.3, 4.4, RF-6 (021), RF-7 (021), RF-8 (021) · 8.1, 8.2, RF-9 (021) · 9.1, D-T17 (021): lienzo del mapa
-   propio. Fondo pleno sin retícula; cada manzana es una placa `surface` y los edificios se apoyan en ella sin tarjeta.
-   Los grupos y el «+n» son nodos `charcoal`. Solo colores de tokens (D-T20 (002)); tamaños de texto de la escala y radios
-   de `--radius-*` (RF-2 (019), RF-3 (019)). */
+   propio, con las superficies del sistema «APICCA · Mapa» (docs/sistema-mapa). El teselado vacío se dibuja siempre en
+   `trama`; una zona es siete celdas con un borde de `stroke-zone`; cada Ápice es una celda con su patrón y su contorno de
+   2 px; el «+N» y los grupos son celdas de tinta; la Acción Común es una fila de celdas de `ruta` con el glifo de su eje.
+   Los rótulos van fuera de las celdas y nunca sobre un patrón, sin borde: planos de papel o de tinta (`.ap-rotulo-zona`,
+   `.ap-rotulo-accion`). Solo colores de tokens (D-T20 (002)); tamaños de texto de
+   la escala (14 px o más) y radios cero. Sin sombras, degradados ni transparencias. */
 
 .game-map-shell {
   display: grid;
@@ -40,15 +43,15 @@
   gap: 0.75rem 1rem;
 }
 
-/* La ventana que se arrastra. `clip` impide que el foco en un edificio de fuera la desplace. */
+/* La ventana que se arrastra. `clip` impide que el foco en una celda de fuera la desplace. */
 .game-map {
   position: relative;
   box-sizing: border-box;
   block-size: clamp(22.5rem, 70vh, 35rem);
   overflow: hidden;
   overflow: clip;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lot);
+  border: var(--stroke-border) solid var(--text);
+  border-radius: 0;
   background-color: var(--background);
   color: var(--text);
   cursor: grab;
@@ -61,6 +64,16 @@
   cursor: grabbing;
 }
 
+/* RF-6 (002) · 6.4, RF-3 (008) · 3.1: el foco del lienzo se dibuja hacia dentro, porque el escenario de la página
+   (`.play__stage`) recorta lo que se sale. Con borde, dentro de él; el lienzo de página (`fill`) no lo lleva. */
+.game-map:focus-visible {
+  outline-offset: calc(0px - var(--focus-width) - var(--stroke-border));
+}
+
+.game-map-shell--fill .game-map:focus-visible {
+  outline-offset: calc(0px - var(--focus-width));
+}
+
 /* El origen del lienzo; el encuadre lo desplaza con `transform` (GameMap.tsx). */
 .game-map__world {
   position: absolute;
@@ -70,12 +83,13 @@
   block-size: 0;
 }
 
-/* El origen mide 0 px: el tope `max-width: 100%` de `.block` (blocks.css) dejaría sin ancho a edificios, grupos y «+n».
+/* El origen mide 0 px: el tope `max-width: 100%` de `.block` (blocks.css) dejaría sin ancho a las celdas y a los rótulos.
    Cada uno trae su medida propia. */
 .game-map__world .block {
   max-inline-size: none;
 }
 
+/* El suelo: teselado, rutas y bordes de zona. Decorativo y sin puntero. */
 .game-map__ground {
   position: absolute;
   inset-block-start: 0;
@@ -84,208 +98,329 @@
   pointer-events: none;
 }
 
-.game-map__plate {
-  fill: var(--surface);
-  stroke: var(--line);
-  stroke-width: 2px;
+/* Los bordes de zona, sobre las celdas y bajo los rótulos y la celda apuntada (z-index 2). */
+.game-map__outlines {
+  z-index: 1;
 }
 
-/* RF-18 (021) · 18.5, 18.6, D-T30 (021): el camino es un trazo de 12 px en `node-ring` (3:1 o más con el fondo en los dos
-   temas), con extremos y uniones redondeados; el cerrado va punteado. El borrador de «Trazar camino» es más delgado y
-   punteado corto; el camino elegido, más grueso. */
-.game-map__path {
+/* Las celdas vacías: sin relleno, solo el trazo de 1,5 px en `trama` (sistema: «el teselado siempre se ve»). */
+.game-map__tessellation {
   fill: none;
-  stroke: var(--node-ring);
-  stroke-width: 12px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke: var(--trama);
+  stroke-width: var(--stroke-divider);
+  stroke-linejoin: miter;
 }
 
-.game-map__path[data-closed='true'] {
-  stroke-dasharray: 2 22;
+/* El borde de una zona: siete celdas dentro de un contorno de 4 px en tinta. */
+.game-map__zone-outline {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: var(--stroke-zone);
+  stroke-linejoin: miter;
 }
 
-.game-map__path[data-draft='true'] {
-  stroke-width: 8px;
-  stroke-dasharray: 12 12;
-}
-
-.game-map__path[data-selected='true'] {
-  stroke-width: 16px;
-}
-
-/* El rótulo del camino: una píldora centrada en su punto, sobre el trazo. */
-button.block.game-map__path-label {
+/* Rótulos (zona, terreno sin ubicación): fuera de las celdas, planos de papel con texto de tinta y sin borde. */
+.game-map__label {
   position: absolute;
   z-index: 1;
-  min-block-size: 0;
-  max-inline-size: 14rem;
-  padding: 6px 14px;
-  overflow: hidden;
-  border: 2px solid var(--node-ring);
-  border-radius: var(--radius-pill);
+  box-sizing: border-box;
+  padding: 3px 10px;
+  border: 0;
   background-color: var(--surface);
   color: var(--text);
   font-size: var(--type-meta-size);
   font-weight: 800;
   line-height: 1.25;
-  text-overflow: ellipsis;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   white-space: nowrap;
-  transform: translate(-50%, -50%);
-}
-
-button.block.game-map__path-label[aria-pressed='true'] {
-  box-shadow: inset 0 0 0 3px var(--text), var(--shadow-block);
-}
-
-/* Edificio (RF-4 (021) · 4.4, RF-8 (021) · 8.5): una caja de 92 × 108 px (`SPOT_WIDTH` y `SPOT_HEIGHT` del dominio) con el
-   dibujo y el nombre debajo, en dos líneas como máximo. Sin tarjeta ni sombra: la placa es su suelo. */
-button.block.game-map__building {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 2px;
-  inline-size: 92px;
-  block-size: 108px;
-  min-height: 0;
-  padding: 4px 2px 0;
-  border-radius: var(--radius-building);
-  background-color: transparent;
-  box-shadow: none;
-  color: var(--text);
-  transition: transform var(--duration-raise);
-}
-
-.game-map__building .building {
-  align-items: center;
-  gap: 0;
-}
-
-/* En el mapa la etapa se lee por la forma del edificio y en su nombre accesible; la etiqueta no cabe en la manzana. */
-.game-map__building .building__stage {
-  display: none;
-}
-
-.game-map__name {
-  display: -webkit-box;
-  max-inline-size: 100%;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow-wrap: anywhere;
-  text-align: center;
-  font-size: var(--type-meta-size);
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-@media (hover: hover) {
-  button.block.game-map__building:not(:disabled, [aria-disabled='true']):hover {
-    box-shadow: none;
-    transform: translateY(-3px);
-  }
-}
-
-button.block.game-map__building:not(:disabled, [aria-disabled='true']):active {
-  box-shadow: none;
-}
-
-/* El elegido lleva el anillo del token `focus` y su suelo propio. */
-button.block.game-map__building[aria-pressed='true'] {
-  background-color: var(--background);
-  box-shadow: 0 0 0 3px var(--focus);
-}
-
-button.block.game-map__building[aria-pressed='true'] .building {
-  --building-ground: var(--background);
-}
-
-/* El boceto del visitante (RF-23 (021) · 23.2, D-T39 (021)): un contorno punteado lo distingue por su forma, no solo por
-   su nombre; va por fuera del anillo del elegido. */
-button.block.game-map__building[data-sketch='true']::after {
-  content: '';
-  position: absolute;
-  inset: -6px;
-  border: 3px dashed var(--node-ring);
-  border-radius: var(--radius-building);
   pointer-events: none;
 }
 
-/* Terreno de los ápices sin ubicación (RF-9 (021) · 9.1): aparte, con borde discontinuo y su rótulo. */
-.game-map__terrain {
+.game-map__label--zone {
+  transform: translate(-50%, -100%);
+}
+
+.game-map__label--terrain {
+  transform: translate(0, -100%);
+}
+
+.game-map__label--below {
+  transform: translate(-50%, 0);
+}
+
+/* Si no caben por encima de lo que nombran (borde del lienzo, leyenda o controles), se voltean al otro lado (GameMap.tsx). */
+.game-map__label--zone[data-side='below'],
+.game-map__label--below[data-side='above'] {
+  transform: translate(-50%, var(--label-flip, 0));
+}
+
+.game-map__label--below[data-side='above'] {
+  --label-flip: -100%;
+}
+
+.game-map__label--terrain[data-side='below'] {
+  transform: translate(0, 0);
+}
+
+/* RF-18 (021) · 18.5, 18.6, D-T30 (021): la Acción Común es una fila de celdas de `ruta`, con el glifo de su eje en su color
+   y un contorno de 2 px. La cerrada va con borde discontinuo; el borrador de «Conectar», con guiones cortos; la elegida,
+   con el contorno doble de grueso. Cuando no hay celdas que dibujar, una línea de tinta une los puntos. */
+/* La celda de ruta: `ruta` llena, sin contorno (como `rutaInterior` del sistema). La cerrada, el borrador y la elegida
+   se distinguen por un trazo que solo llevan ellas. */
+.game-map__route {
+  fill: var(--ruta);
+  stroke: none;
+  stroke-width: var(--stroke-outline);
+  stroke-linejoin: miter;
+}
+
+.game-map__route[data-closed='true'] {
+  stroke: var(--text);
+  stroke-dasharray: 8 6;
+}
+
+.game-map__route[data-draft='true'] {
+  stroke: var(--text);
+  stroke-dasharray: 3 5;
+}
+
+.game-map__route[data-selected='true'] {
+  stroke: var(--text);
+  stroke-width: var(--stroke-zone);
+}
+
+.game-map__line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 6px;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+
+.game-map__line[data-closed='true'] {
+  stroke-dasharray: 14 10;
+}
+
+.game-map__line[data-draft='true'] {
+  stroke-width: 4px;
+  stroke-dasharray: 4 8;
+}
+
+.game-map__line[data-selected='true'] {
+  stroke-width: 10px;
+}
+
+/* El glifo de la ruta toma el color de su eje (`axis-*-fill`); la forma del glifo lo dice también sin el color. */
+.game-map__glyph--agua {
+  color: var(--axis-agua-fill);
+}
+
+.game-map__glyph--alimento {
+  color: var(--axis-alimento-fill);
+}
+
+.game-map__glyph--cobijo {
+  color: var(--axis-cobijo-fill);
+}
+
+.game-map__glyph--energia {
+  color: var(--axis-energia-fill);
+}
+
+.game-map__glyph--comunicacion {
+  color: var(--axis-comunicacion-fill);
+}
+
+/* El rótulo de la Acción Común: plano de tinta con texto en papel y sin borde (`.ap-rotulo-accion`), junto a su ruta y fuera
+   de las celdas. GameMap.tsx lo coloca donde no tapa un patrón, otro rótulo, la leyenda ni los controles. */
+button.block.game-map__path-label {
+  /* `button.block` centra su contenido con flex: un título largo se cortaría por los dos lados. */
+  display: block;
+  text-align: start;
+  position: absolute;
+  z-index: 1;
+  min-block-size: 0;
+  max-inline-size: 16rem;
+  padding: 3px 10px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background-color: var(--text);
+  box-shadow: none;
+  color: var(--surface);
+  font-size: var(--type-meta-size);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.05em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translate(0, -50%);
+}
+
+button.block.game-map__path-label[data-align='end'] {
+  transform: translate(-100%, -50%);
+}
+
+/* Elegida: subrayado grueso; apuntada: subrayado fino. Sin borde, el plano de tinta no se invierte (la palabra «Cerrada»
+   dice lo demás). `.block` invierte con (0,3,1): se gana con el ancestro. */
+.game-map .game-map__path-label[aria-pressed='true'] {
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 3px;
+}
+
+@media (hover: hover) {
+  .game-map button.block.game-map__path-label:not(:disabled, [aria-disabled='true']):hover {
+    background-color: var(--text);
+    color: var(--surface);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+}
+
+/* Celdas con contenido (RF-4 (021) · 4.4, RF-8 (021) · 8.5): un botón del tamaño de la caja del hexágono, sin borde ni fondo
+   propios; el dibujo es el SVG de dentro y solo él recibe el puntero, para que los bordes de una celda no tapen a su vecina. */
+button.block.game-map__cell {
   position: absolute;
   box-sizing: border-box;
-  border: 2px dashed var(--field-border);
-  border-radius: var(--radius-lot);
+  display: block;
+  min-block-size: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--text);
+  pointer-events: none;
 }
 
-.game-map__terrain .building {
-  --building-ground: var(--background);
+.game-map button.block.game-map__cell:is(:hover, :active, [aria-pressed='true']) {
+  background-color: transparent;
+  color: var(--text);
 }
 
-.game-map__terrain-label {
+.game-map__shape {
   position: absolute;
-  inset-block-start: 10px;
-  inset-inline-start: 24px;
-  color: var(--text-muted);
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* El contorno de 2 px de la superficie; es también la zona que recibe el puntero. */
+.game-map__hex {
+  fill: none;
+  stroke: var(--contorno-superficie);
+  stroke-width: var(--stroke-outline);
+  stroke-linejoin: miter;
+  pointer-events: visible;
+}
+
+.game-map__hex--ink {
+  fill: var(--text);
+  stroke: var(--text);
+}
+
+/* El elegido: doble anillo, papel de 5 px por dentro y tinta de 7 px por fuera (van detrás del patrón). */
+.game-map__ring {
+  pointer-events: none;
+}
+
+.game-map__ring--paper {
+  fill: var(--surface);
+}
+
+.game-map__ring--ink {
+  fill: var(--text);
+}
+
+/* El boceto del visitante (RF-23 (021) · 23.2, D-T39 (021)): un contorno discontinuo lo distingue por su forma. */
+.game-map__ring--sketch {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 3px;
+  stroke-dasharray: 10 6;
+}
+
+button.block.game-map__cell:is(:hover, :focus-visible, [aria-pressed='true']) {
+  z-index: 2;
+}
+
+/* El nombre de un Ápice: fuera de su celda, con papel de fondo, al elegirla, apuntarla o enfocarla. Nunca sobre el patrón. */
+.game-map__tag {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 100%;
+  display: none;
+  box-sizing: border-box;
+  max-inline-size: min(14rem, var(--tag-room, 14rem));
+  margin-inline-start: 12px;
+  padding: 3px 10px;
+  overflow: hidden;
+  border: 0;
+  background-color: var(--surface);
+  color: var(--text);
   font-size: var(--type-meta-size);
   font-weight: 700;
   line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translateY(-50%);
 }
 
-/* Grupo de un nivel alejado (RF-7 (021) · 7.2): un nodo redondo de 80 px con su número. */
-button.block.game-map__group {
+/* A 360 px, o junto a los controles, no cabe a la derecha: GameMap.tsx lo voltea a la izquierda de la celda. */
+.game-map__tag[data-side='left'] {
+  inset-inline-start: auto;
+  inset-inline-end: 100%;
+  margin-inline-start: 0;
+  margin-inline-end: 12px;
+}
+
+button.block.game-map__apice:is(:hover, :focus-visible, [aria-pressed='true']) .game-map__tag {
+  display: block;
+}
+
+/* Las celdas de tinta: el «+N» de una zona y el grupo de un nivel alejado. El número va en papel sobre la tinta. */
+.game-map__count {
   position: absolute;
-  inline-size: 80px;
-  block-size: 80px;
-  min-height: 0;
-  padding: 0;
-  border: 3px solid var(--node-ring);
-  border-radius: var(--radius-pill);
-  background-color: var(--charcoal);
-  color: var(--on-charcoal);
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--surface);
   font-size: var(--type-title-size);
   font-weight: 800;
   line-height: 1;
+  pointer-events: none;
 }
 
-button.block.game-map__group--unlocated {
-  border-style: dashed;
-  border-color: var(--on-charcoal-muted);
-}
-
-.game-map__group-label {
-  position: absolute;
-  inset-block-start: calc(100% + 8px);
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-  color: var(--text-muted);
-  font-size: var(--type-meta-size);
-  font-weight: 700;
-  line-height: 1.25;
-  white-space: nowrap;
-}
-
-/* «+n» (RF-6 (021) · 6.2): un nodo de 48 px sobre el borde de la placa. */
-button.block.game-map__more {
-  position: absolute;
-  inline-size: var(--size-control);
-  block-size: var(--size-control);
-  min-height: 0;
-  padding: 0;
-  border: 2px solid var(--node-ring);
-  border-radius: var(--radius-pill);
-  background-color: var(--charcoal);
-  color: var(--on-charcoal);
+button.block.game-map__more .game-map__count {
   font-size: var(--type-body-size);
-  font-weight: 800;
-  line-height: 1;
 }
 
-/* Norte y escala (RF-4 (021) · 4.3), fuera de lo que se arrastra. */
+/* Sin ubicación: el grupo lleva el contorno discontinuo y su rótulo debajo. */
+button.block.game-map__group--unlocated .game-map__hex--ink {
+  stroke: var(--surface);
+  stroke-dasharray: 8 6;
+  stroke-width: var(--stroke-outline);
+}
+
+/* Terreno de los Ápices sin ubicación (RF-9 (021) · 9.1): aparte, con contorno discontinuo y su rótulo. El contorno es
+   `outline` para no mover a las celdas, que se miden desde la esquina del terreno. */
+.game-map__terrain {
+  position: absolute;
+  box-sizing: border-box;
+  outline: var(--stroke-outline) dashed var(--text);
+  outline-offset: 0;
+}
+
+/* Norte y escala (RF-4 (021) · 4.3), fuera de lo que se arrastra. Con papel de fondo para no leerse sobre las celdas. */
 .game-map__legend {
   position: absolute;
   inset-block-end: 16px;
@@ -293,6 +428,8 @@ button.block.game-map__more {
   display: flex;
   align-items: flex-end;
   gap: 16px;
+  padding: 6px 10px;
+  background-color: var(--surface);
   color: var(--text);
   font-size: var(--type-meta-size);
   font-weight: 700;
@@ -325,7 +462,7 @@ button.block.game-map__more {
   white-space: nowrap;
 }
 
-/* Acercar, alejar y encuadre inicial (RF-8 (021) · 8.2): botones de ícono de 48 px. */
+/* Acercar, alejar y encuadre inicial (RF-8 (021) · 8.2): botones de ícono de 44 px (`boton-icono`). */
 .game-map__controls {
   position: absolute;
   inset-block-end: 16px;
@@ -337,9 +474,9 @@ button.block.game-map__more {
 }
 
 button.icon-button.game-map__control {
-  inline-size: var(--size-control);
-  block-size: var(--size-control);
-  min-height: var(--size-control);
+  inline-size: var(--size-icon-control);
+  block-size: var(--size-icon-control);
+  min-height: var(--size-icon-control);
 }
 
 .game-map__control svg {
@@ -348,11 +485,11 @@ button.icon-button.game-map__control {
   fill: none;
   stroke: currentColor;
   stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
 
-/* Lista de una manzana con más de siete ápices (RF-6 (021) · 6.3). */
+/* Lista de una zona con más Ápices que celdas (RF-6 (021) · 6.3). */
 .game-map__dialog-title {
   margin: 0 0 1rem;
   font-size: var(--type-title-size);
@@ -379,19 +516,38 @@ button.block.game-map__entry {
   text-align: start;
 }
 
-.game-map__entry .building {
+.game-map__entry .superficie {
   flex: none;
-  inline-size: 64px;
 }
 
-.game-map__entry[aria-pressed='true'] {
-  outline: 3px solid var(--focus);
-  outline-offset: var(--focus-offset);
+/* La fila no se invierte a tinta al apuntarla (el contorno de la superficie, de tinta, desaparecería): el papel se queda y
+   el nombre se subraya, como en `ApiceRow`. El nombre va en minúscula normal, no en las mayúsculas de `button.block`. */
+.game-map__dialog button.block.game-map__entry {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: var(--type-body-size);
+  font-weight: 700;
+}
+
+.game-map__dialog button.block.game-map__entry:is(:hover, :active, [aria-pressed='true']) {
+  background-color: var(--surface);
+  color: var(--text);
 }
 
 .game-map__entry-name {
   min-inline-size: 0;
   font-weight: 700;
+  text-underline-offset: 4px;
+}
+
+.game-map__dialog button.block.game-map__entry:hover .game-map__entry-name {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+.game-map__dialog button.block.game-map__entry[aria-pressed='true'] .game-map__entry-name {
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
 }
 
 /* Al cambiar de nivel, lo dibujado aparece con un fundido breve; con movimiento reducido, de una vez. */
@@ -410,44 +566,54 @@ button.block.game-map__entry {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  button.block.game-map__building {
-    transition: none;
-  }
-
-  button.block.game-map__building:not(:disabled, [aria-disabled='true']):hover {
-    transform: none;
-  }
-}
-
 /* Colores forzados: sin rellenos de tokens, las formas llevan el trazo del sistema y el elegido, el resaltado. */
 @media (forced-colors: active) {
   .game-map {
     border-color: CanvasText;
   }
 
-  .game-map__plate {
+  .game-map__tessellation {
     fill: Canvas;
+    stroke: GrayText;
+  }
+
+  .game-map__zone-outline,
+  .game-map__hex,
+  .game-map__route,
+  .game-map__line {
     stroke: CanvasText;
   }
 
-  .game-map__path {
-    stroke: CanvasText;
+  .game-map__route {
+    fill: Canvas;
   }
 
-  button.block.game-map__path-label {
-    border-color: CanvasText;
+  .game-map__hex--ink,
+  .game-map__ring--ink {
+    fill: CanvasText;
+  }
+
+  .game-map__ring--paper {
+    fill: Canvas;
+  }
+
+  .game-map__count {
+    color: Canvas;
+  }
+
+  button.block.game-map__path-label,
+  .game-map__label,
+  .game-map__tag {
+    border: 1px solid CanvasText;
+    background-color: Canvas;
+    color: CanvasText;
   }
 
   .game-map__terrain {
-    border-color: CanvasText;
+    outline-color: CanvasText;
   }
 
-  button.block.game-map__building[data-sketch='true']::after {
-    border-color: CanvasText;
-  }
-
-  button.block.game-map__building[aria-pressed='true'] {
+  button.block.game-map__cell[aria-pressed='true'] {
     outline: 3px solid Highlight;
     outline-offset: 2px;
   }

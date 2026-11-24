@@ -12,10 +12,11 @@ describe('AxisIcon y AxisBadge', () => {
     expect(icon.classList.contains(`axis-icon--${axisIdentity(axis).key}`)).toBe(true);
   });
 
-  it.each(AXES)('RF-4 (002) · 4.2, 4.5: la insignia de %s muestra el ícono decorativo y el nombre al lado', (axis) => {
+  it.each(AXES)('RF-4 (002) · 4.2, 4.5: la insignia de %s muestra el ícono decorativo y el nombre en minúscula al lado', (axis) => {
     const { container } = render(<AxisBadge axis={axis} />);
     const badge = container.querySelector('.axis-badge')!;
-    expect(badge.textContent).toBe(AXIS_LABEL[axis]);
+    // QA #19.1: en el texto corrido el eje va en minúscula, como en `LeyendaEjes`; el nombre accesible del glifo suelto sigue con mayúscula.
+    expect(badge.textContent).toBe(axis);
     const svg = badge.querySelector('svg')!;
     expect(svg.getAttribute('aria-hidden')).toBe('true');
     expect(svg.getAttribute('focusable')).toBe('false');

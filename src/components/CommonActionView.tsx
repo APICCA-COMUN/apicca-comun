@@ -3,7 +3,7 @@
 // participan y los ápices que une (cada uno abre su panel y el mapa lo marca). Las acciones dependen de quién mira:
 // sin sesión, el aviso de unirse; quien puede, «Sumarme» o «Retirarme»; la autora, «Editar», cerrar o reabrir y
 // «Archivar»; un facilitador, «Archivar». Una que no existe o no se puede leer se ve igual, sin pistas (RF-5 (010) · 5.2).
-// Cambiar los ápices de un camino queda para una fase posterior (RF-4 (010) · 4.2, en `pending`).
+// Cambiar los ápices de una Acción Común queda para una fase posterior (RF-4 (010) · 4.2, en `pending`).
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { AXES, type Axis } from '../../shared/domain/apice';
 import {
@@ -29,11 +29,11 @@ interface Props {
   id: string;
   source?: CommonActionSource;
   client?: OpClient<ApiOps>;
-  /** Tras sumarse, retirarse o cambiarla: el mapa vuelve a pedir los caminos. */
+  /** Tras sumarse, retirarse o cambiarla: el mapa vuelve a pedir las Acciones Comunes. */
   onChange?: () => void;
 }
 
-const STATUS_LABEL: Record<CommonActionStatus, string> = { abierta: 'Camino abierto', cerrada: 'Camino cerrado', archivada: 'Archivado' };
+const STATUS_LABEL: Record<CommonActionStatus, string> = { abierta: 'Abierta', cerrada: 'Cerrada', archivada: 'Archivada' };
 const FAILED = 'No se pudo completar la acción. Inténtalo de nuevo.';
 const hiddenText = (count: number): string => `Une además ${count === 1 ? '1 ápice' : `${count} ápices`} que no puedes ver.`;
 
@@ -43,7 +43,7 @@ export function CommonActionView({ id, source = firestoreCommonActionSource, cli
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
-  usePageTitle({ area: 'Caminos', contentTitle: action?.title ?? 'Camino' });
+  usePageTitle({ area: 'Acciones Comunes', contentTitle: action?.title ?? 'Acción Común' });
 
   const load = useCallback(async () => {
     try {
@@ -64,8 +64,8 @@ export function CommonActionView({ id, source = firestoreCommonActionSource, cli
   if (action === null) {
     return (
       <section>
-        <h1>Camino</h1>
-        <p>Este camino no existe.</p>
+        <h1>Acción Común</h1>
+        <p>Esta Acción Común no existe.</p>
       </section>
     );
   }
@@ -98,7 +98,7 @@ export function CommonActionView({ id, source = firestoreCommonActionSource, cli
         </p>
         <h1>{action.title}</h1>
         {action.axis !== null && <AxisBadge axis={action.axis} />}
-        <p>Propuesto por @{action.authorUsername}</p>
+        <p>Propuesta por @{action.authorUsername}</p>
       </header>
       {editing ? (
         <EditForm action={action} busy={busy} onCancel={() => setEditing(false)} onSave={(fields) => run(() => client.call('editCommonAction', { actionId: id, ...fields }))} />
@@ -122,7 +122,7 @@ export function CommonActionView({ id, source = firestoreCommonActionSource, cli
       {action.hiddenApices > 0 && <p>{hiddenText(action.hiddenApices)}</p>}
       {session.status === 'visitor' && action.status === 'abierta' && (
         <p className="block">
-          Para sumarte a este camino, únete a APICCA. <Link href="/solicitar">Unirme</Link>
+          Para sumarte a esta Acción Común, únete a APICCA. <Link href="/solicitar">Unirme</Link>
         </p>
       )}
       {!editing && (
@@ -143,7 +143,7 @@ export function CommonActionView({ id, source = firestoreCommonActionSource, cli
                 Editar
               </button>
               <button type="button" className="block action-secondary" disabled={busy} onClick={() => void setStatus(action.status === 'abierta' ? 'cerrada' : 'abierta')}>
-                {action.status === 'abierta' ? 'Cerrar camino' : 'Reabrir camino'}
+                {action.status === 'abierta' ? 'Cerrar Acción Común' : 'Reabrir Acción Común'}
               </button>
             </>
           )}
@@ -196,7 +196,7 @@ export interface ActionFieldsProps {
   submitLabel: string;
 }
 
-/** Los campos de una Acción Común, con las etiquetas encima (RF-13 (019)): los usan «Editar» y «Trazar camino». */
+/** Los campos de una Acción Común, con las etiquetas encima (RF-13 (019)): los usan «Editar» y «Conectar». */
 export function ActionFields({ ids, title, description, axis, onTitle, onDescription, onAxis, onSubmit, onCancel, busy, submitLabel }: ActionFieldsProps) {
   return (
     <form className="common-action__form" onSubmit={onSubmit}>

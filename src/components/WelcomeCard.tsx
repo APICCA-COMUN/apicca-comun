@@ -1,6 +1,6 @@
-// RF-21 (021) · 21.1 a 21.3, RF-22 (021), RF-26 (021) · 26.1, D-T37 (021), D-T38 (021) · La invitación a jugar y el primer
-// recorrido: una tarjeta sobre el borde del mapa, no un diálogo modal, para que el mapa siga a la vista y se pueda usar detrás.
-// «Jugar» y «Cerrar» la marcan como vista (`onSeen`); el recorrido solo dice dónde mirar. Textos propuestos (plan §4).
+// RF-21 (021) · 21.1 a 21.3, RF-22 (021), RF-26 (021) · 26.1, D-T37 (021), D-T38 (021) · La invitación y el primer recorrido:
+// una tarjeta dentro del panel de Inicio, no un diálogo modal, para que el mapa siga a la vista y se pueda usar al lado.
+// «Ver el recorrido» y «Cerrar» la marcan como vista (`onSeen`); el recorrido solo dice dónde mirar. Textos propuestos (plan §4).
 // RF-3 (024), D-T3 (024): cada paso que muestra se avisa con `onStep`, para que el mapa se mueva a lo que el texto señala.
 import { useState } from 'react';
 import type { TourStep } from '../../shared/domain/tour';
@@ -8,7 +8,7 @@ import './WelcomeCard.css';
 
 interface Props {
   steps: readonly TourStep[];
-  /** La persona eligió «Jugar» o «Cerrar»: no se vuelve a mostrar en este navegador (RF-21 (021) · 21.3). */
+  /** La persona eligió «Ver el recorrido» o «Cerrar»: no se vuelve a mostrar en este navegador (RF-21 (021) · 21.3). */
   onSeen: () => void;
   /** La tarjeta se quita: «Cerrar», «Saltar el recorrido» o «Listo». */
   onClose: () => void;
@@ -33,8 +33,8 @@ export function WelcomeCard({ steps, onSeen, onClose, onStep }: Props) {
         <>
           <h2 className="welcome-card__title">Te damos la bienvenida a APICCA</h2>
           <p className="welcome-card__text">
-            Un mapa común para crear y conectar Acciones Comunes: cada edificio es un ápice que alguien propone, y cada camino une
-            varios ápices en una acción a favor del bien común.
+            Un mapa común para crear y conectar Acciones Comunes: cada superficie es un Ápice que alguien propone, y cada Acción
+            Común conecta varios Ápices a favor del bien común.
           </p>
           <div className="welcome-card__actions">
             <button
@@ -45,7 +45,7 @@ export function WelcomeCard({ steps, onSeen, onClose, onStep }: Props) {
                 goTo(0);
               }}
             >
-              Jugar
+              Ver el recorrido
             </button>
             <button
               type="button"

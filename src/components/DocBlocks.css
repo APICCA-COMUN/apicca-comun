@@ -19,7 +19,7 @@
 .doc-blocks blockquote {
   margin-inline: 0;
   padding-inline-start: 1rem;
-  border-inline-start: 4px solid var(--line);
+  border-inline-start: var(--stroke-border) solid var(--text);
   color: var(--text-muted);
 }
 
@@ -29,9 +29,11 @@
   font-size: var(--type-meta-size);
 }
 
+/* Sistema «APICCA · Mapa»: el código va en un bloque con borde de 3 px en tinta, sin redondeo ni sombra. */
 .doc-blocks pre {
   overflow-x: auto;
   padding: 1rem;
+  border: var(--stroke-border) solid var(--text);
   border-radius: var(--radius-block);
   background-color: var(--surface);
 }

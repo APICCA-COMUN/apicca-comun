@@ -1,0 +1,15 @@
+/* La sección «Acciones Comunes» de la vista de lista: una tarjeta por Acción Común, separadas entre sí. Solo tokens. */
+.common-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.common-action-list > h2,
+.common-action-list > p {
+  margin: 0;
+}
+
+.common-action-list > button {
+  align-self: flex-start;
+}

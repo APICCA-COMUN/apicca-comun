@@ -1,6 +1,6 @@
 // RF-5 (024) · 5.1, D-T8 (024): las fechas de la constitución van en forma larga.
-// RF-11 (008) · 11.1 a 11.6, D-13 (008): entrada del lienzo, camino continuo con un nodo por tarjeta y pie con la fecha real.
-// RF-15 (003) · 15.1–15.3, RF-9 (003) · 9.4, RF-2 (017) · Página `/constitucion`: las secciones como bloques unidos por un camino vertical con nodos.
+// RF-11 (008) · 11.1 a 11.6, D-13 (008): entrada del lienzo, línea continua de tinta junto a las tarjetas y pie con la fecha real.
+// RF-15 (003) · 15.1–15.3, RF-9 (003) · 9.4, RF-2 (017) · Página `/constitucion`: las secciones como bloques unidos por una línea vertical.
 // RF-1 (004) · 1.2, 1.3; RF-2 (004) · 2.1, 2.2; RF-4 (004) · 4.1–4.3, 4.5, 4.6, 4.10; RF-5 (004) · 5.1, 5.3;
 // RF-12 (004) · 12.5; RF-15 (004) · 15.1; RF-17 (004) · 17.1 · Las secciones vigentes salen de Firestore; sin ellas la página lo dice,
 // sin texto de respaldo (T-11.4). El facilitador edita antes de la apertura.
@@ -31,7 +31,6 @@ import { firestoreNoticeSource, NO_NOTICE, type NoticeSource } from '../data/con
 import { firestoreSectionsSource, orderSections, type SectionsSource } from '../data/constitution/sections';
 import { settleThenRead, type SettleCall } from '../data/constitution/settle';
 import { AmendmentNotice } from '../components/AmendmentNotice';
-import { Node } from '../components/Node';
 import { SectionBlock } from '../components/SectionBlock';
 import './ConstitutionPage.css';
 
@@ -266,9 +265,6 @@ export function ConstitutionPage({
         <div className="constitution__list">
           {ordered.map((section, i) => (
             <div key={section.id} className="constitution__item">
-              <span className="constitution__node">
-                <Node />
-              </span>
               <SectionBlock section={section} number={i + 1} meta={metas[section.id] ?? null} hasActiveAccount={isMember} />
               {canEdit && (
                 <div className="constitution__actions">

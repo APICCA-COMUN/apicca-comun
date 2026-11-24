@@ -1,6 +1,6 @@
 // RF-21 (001) · Filtros de la lista: uno o más ejes (basta que el ápice conecte alguno), un estado y quitarlos.
 // RF-4 (002) · 4.2, RF-6 (002) · 6.1, 6.3: selector como bloque y botón como acción secundaria.
-// RF-12 (003) · 12.3, D-23 (003), D-T18 (003): cada eje es un botón de ícono redondo de 44 px con `aria-pressed` (`AxisToggle`, RF-12 (019)).
+// RF-12 (003) · 12.3, D-23 (003), D-T18 (003): cada eje es un botón de ícono cuadrado de 44 px con `aria-pressed` (`AxisToggle`, RF-12 (019)).
 // RF-17 (019) · 17.1, 17.2, D-T11 (019): el filtro de estado se llama «Etapa» y muestra sus valores con mayúscula inicial.
 import { APICE_STAGE_LABEL, APICE_STATUSES, AXES, type ApiceStatus } from '../../shared/domain/apice';
 import { hasActiveFilters, type ListFilters } from '../../shared/domain/discovery';

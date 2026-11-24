@@ -1,4 +1,4 @@
-// RF-19 (021) · 19.1 a 19.4, 19.6, 19.7, RF-1 (010), D-T31 (021) · El panel «Trazar camino». Quien lo pinta (Play) guarda
+// RF-19 (021) · 19.1 a 19.4, 19.6, 19.7, RF-1 (010), D-T31 (021) · El panel «Conectar». Quien lo pinta (Play) guarda
 // lo elegido y suma o quita ápices al elegirlos en el mapa o en la lista; el panel dice cuántos faltan para tres, avisa
 // del tope de diez, lista lo elegido con «Quitar» y, desde tres, muestra el formulario. Si el servidor rechaza, muestra
 // el motivo y conserva lo elegido y lo escrito. «Cancelar» no guarda nada.
@@ -10,6 +10,7 @@ import { useSession } from '../app/session';
 import { usePageTitle } from '../app/usePageTitle';
 import { api, ApiClientError, type ApiOps, type OpClient } from '../data/api';
 import { ActionFields } from './CommonActionView';
+import './TracePanel.css';
 
 interface Props {
   /** Los ápices elegidos, en orden, con su nombre. */
@@ -23,7 +24,7 @@ interface Props {
 }
 
 const missingText = (missing: number): string =>
-  missing === 0 ? 'Puedes proponerlo.' : missing === 1 ? 'Falta 1 ápice.' : `Faltan ${missing} ápices.`;
+  missing === 0 ? 'Puedes proponerla.' : missing === 1 ? 'Falta 1 ápice.' : `Faltan ${missing} ápices.`;
 
 export function TracePanel({ chosen, notice, onRemove, onCancel, onProposed, client = api }: Props) {
   const session = useSession();
@@ -33,14 +34,14 @@ export function TracePanel({ chosen, notice, onRemove, onCancel, onProposed, cli
   const [axis, setAxis] = useState<Axis | ''>('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  usePageTitle({ area: 'Caminos', contentTitle: 'Trazar camino' });
+  usePageTitle({ area: 'Acciones Comunes', contentTitle: 'Conectar' });
 
   if (session.status !== 'person') {
     return (
       <section>
-        <h1>Trazar camino</h1>
+        <h1>Conectar</h1>
         <p>
-          Para trazar un camino, únete a APICCA. <Link href="/solicitar">Unirme</Link>
+          Para conectar Ápices, únete a APICCA. <Link href="/solicitar">Unirme</Link>
         </p>
       </section>
     );
@@ -55,7 +56,7 @@ export function TracePanel({ chosen, notice, onRemove, onCancel, onProposed, cli
       const { id } = await client.call('proposeCommonAction', { title, description, axis: axis === '' ? null : axis, apiceIds: chosen.map((apice) => apice.id) });
       onProposed(id);
     } catch (caught) {
-      setError(caught instanceof ApiClientError ? caught.message : 'No se pudo proponer el camino. Inténtalo de nuevo.');
+      setError(caught instanceof ApiClientError ? caught.message : 'No se pudo proponer la Acción Común. Inténtalo de nuevo.');
     } finally {
       setBusy(false);
     }
@@ -63,8 +64,8 @@ export function TracePanel({ chosen, notice, onRemove, onCancel, onProposed, cli
 
   return (
     <section className="trace-panel">
-      <h1>Trazar camino</h1>
-      <p>Elige en el mapa los ápices que une este camino.</p>
+      <h1>Conectar</h1>
+      <p>Elige en el mapa los Ápices que conecta esta Acción Común.</p>
       <p role="status" className="block">
         {missingText(missing)}
       </p>

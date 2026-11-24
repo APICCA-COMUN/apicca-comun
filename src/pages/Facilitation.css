@@ -1,4 +1,5 @@
-/* RF-13 (019) · 13.1, 13.2, D-T7 (019): listas de facilitación sin viñeta ni sangría, filas como bloques */
+/* RF-13 (019) · 13.1, 13.2, D-T7 (019): listas de facilitación sin viñeta ni sangría, filas como bloques. Sistema
+   «APICCA · Mapa»: el título se separa del contenido con el borde de sección de 3 px. */
 
 .facilitation {
   display: flex;
@@ -6,11 +7,22 @@
   gap: 1.5rem;
 }
 
+/* Navegación entre las páginas de facilitación: la misma pieza `.menu-link` que la cabecera, en fila y con 1,5 px de línea debajo. */
+.facilitation__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  padding-block-end: 4px;
+  border-block-end: var(--stroke-divider) solid var(--line);
+}
+
 .facilitation h1 {
   font-size: var(--type-display-size);
   line-height: 1.15;
   font-weight: 800;
   margin: 0;
+  padding-block-end: 1rem;
+  border-block-end: var(--stroke-border) solid var(--text);
 }
 
 .facilitation ul,

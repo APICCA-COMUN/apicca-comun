@@ -70,11 +70,11 @@ export const MESSAGES = {
   // Acciones Comunes (RF-1 (010) a RF-4 (010), RF-7 (010)); textos propuestos en §4 del plan de la 021.
   'action-not-found': 'Esa Acción Común no existe.',
   'action-closed': 'Esa Acción Común está cerrada o archivada: no admite nuevas participaciones.',
-  'action-apices-min': 'Un camino une al menos 3 ápices que puedas ver.',
-  'action-apices-max': 'Un camino une como máximo 10 ápices.',
-  'action-limit': 'Ya tienes 20 caminos abiertos. Cierra o archiva alguno para proponer otro.',
-  'author-cannot-leave': 'Quien propuso el camino no puede retirarse mientras esté abierto: puede cerrarlo o archivarlo.',
-  'not-action-author': 'Solo quien propuso el camino puede cambiarlo.',
+  'action-apices-min': 'Una Acción Común une al menos 3 Ápices que puedas ver.',
+  'action-apices-max': 'Una Acción Común une como máximo 10 Ápices.',
+  'action-limit': 'Ya tienes 20 Acciones Comunes abiertas. Cierra o archiva alguna para proponer otra.',
+  'author-cannot-leave': 'Quien propuso la Acción Común no puede retirarse mientras esté abierta: puede cerrarla o archivarla.',
+  'not-action-author': 'Solo quien propuso la Acción Común puede cambiarla.',
   'action-archived': 'La Acción Común está archivada y no se puede modificar.',
 } as const;
 

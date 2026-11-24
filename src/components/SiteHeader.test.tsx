@@ -1,7 +1,8 @@
 // Pruebas de SiteHeader (RF-7 (003) · 7.1, 7.5–7.7, 7.10; D-27 (003); RF-1 (002) · 1.1, 1.3; RF-16 (021) · 16.2;
-// RF-15 (021) · 15.3; D-T24 (021)): cabecera delgada de las páginas de texto, con el logo, «Volver al mapa», el tema, la
-// cuenta y «Menú».
+// RF-15 (021) · 15.3; D-T24 (021)): la cabecera de todo el sitio, con el logo, la navegación principal, el tema, los
+// avisos, la cuenta y «Menú».
 import { render, screen, within } from '@testing-library/react';
+import { MAIN_MENU } from '../../shared/domain/navigation';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SessionProvider, type SessionState } from '../app/session';
 import { expectBlocks } from '../testing/expectBlocks';
@@ -22,22 +23,66 @@ function setup(session: SessionState) {
 afterEach(() => window.history.replaceState(null, '', '/'));
 
 describe('SiteHeader', () => {
-  it('RF-16 (021) · 16.2, RF-7 (003) · 7.5: el banner trae el logo, «Volver al mapa», el conmutador de tema y «Menú», en ese orden', () => {
+  it('RF-16 (021) · 16.2, RF-7 (003) · 7.5: el banner trae el logo, la navegación principal, el conmutador de tema y «Menú», en ese orden', () => {
     setup({ status: 'visitor' });
     const banner = screen.getByRole('banner');
     const logo = within(banner).getByRole('link', { name: 'APICCA COMÚN, ir al inicio' });
-    const back = within(banner).getByRole('link', { name: 'Volver al mapa' });
+    const nav = within(banner).getByRole('navigation', { name: 'Principal' });
     const theme = within(banner).getByRole('button', { name: /^Cambiar a tema (claro|oscuro)$/ });
     const menu = within(banner).getByRole('button', { name: 'Menú' });
-    expect(back.getAttribute('href')).toBe('/');
-    const order = [logo, back, theme, menu];
+    const order = [logo, nav, theme, menu];
     for (let i = 1; i < order.length; i += 1) expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(banner).queryByRole('heading')).toBeNull();
+    expect(within(banner).queryByText(/Volver al mapa/)).toBeNull();
   });
 
-  it('RF-16 (021) · 16.2, D-T24 (021): la cabecera ya no trae la lista de destinos; están en el menú', () => {
+  it('sistema «APICCA · Mapa»: la navegación trae Ápices, Acciones Comunes, Documentación, Constitución y Foro', () => {
     setup(PERSON);
-    expect(within(screen.getByRole('banner')).queryByRole('navigation')).toBeNull();
+    const nav = within(screen.getByRole('banner')).getByRole('navigation', { name: 'Principal' });
+    expect(within(nav).getAllByRole('link').map((link) => [link.textContent, link.getAttribute('href')])).toEqual(
+      MAIN_MENU.map((item) => [item.label, item.href]),
+    );
+  });
+
+  it.each([
+    ['/', 'Ápices'],
+    ['/apices/a', 'Ápices'],
+    ['/apices/nuevo', 'Ápices'],
+    ['/apices/a/historial', 'Ápices'],
+    ['/acciones', 'Acciones Comunes'],
+    ['/acciones/nueva', 'Acciones Comunes'],
+    ['/documentacion/como-empezar', 'Documentación'],
+    ['/constitucion/propuestas', 'Constitución'],
+    ['/foro/h1', 'Foro'],
+  ])('sistema «APICCA · Mapa»: en %s la entrada vigente es «%s» y solo ella', (path, current) => {
+    window.history.replaceState(null, '', path);
+    setup(PERSON);
+    const nav = within(screen.getByRole('banner')).getByRole('navigation', { name: 'Principal' });
+    const marked = within(nav).getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page');
+    expect(marked.map((link) => link.textContent)).toEqual([current]);
+  });
+
+  it('sistema «APICCA · Mapa»: en una página que no es de la navegación ninguna entrada es la vigente', () => {
+    window.history.replaceState(null, '', '/entrar');
+    setup({ status: 'visitor' });
+    const nav = within(screen.getByRole('banner')).getByRole('navigation', { name: 'Principal' });
+    expect(within(nav).getAllByRole('link').filter((link) => link.hasAttribute('aria-current'))).toHaveLength(0);
+  });
+
+  it('RF-4 (012): con sesión la cabecera trae la campana de avisos, antes de la cuenta; sin sesión no', async () => {
+    const source = { fetchNotices: async () => ({ notices: [], seenAt: null }) };
+    const { unmount } = render(
+      <SessionProvider initial={PERSON}>
+        <SiteHeader noticesSource={source} />
+      </SessionProvider>,
+    );
+    const banner = screen.getByRole('banner');
+    const bell = within(banner).getByRole('button', { name: /^Avisos/ });
+    const account = within(banner).getByRole('link', { name: /^Lo mío,/ });
+    expect(bell.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    unmount();
+    setup({ status: 'visitor' });
+    expect(screen.queryByRole('button', { name: /^Avisos/ })).toBeNull();
   });
 
   it('RF-7 (003) · 7.6: sin sesión «Entrar» es un enlace action-secondary a /entrar', () => {

@@ -6,6 +6,7 @@ import { COMMON_ACTION_LIMITS } from '../../shared/domain/commonActions';
 import { Link } from '../app/router';
 import type { CommonActionSummary } from '../data/commonActions';
 import { AxisBadge } from './AxisIcon';
+import './CommonActionList.css';
 
 interface Props {
   /** `null` mientras cargan. */
@@ -13,22 +14,22 @@ interface Props {
   mine: boolean;
 }
 
-const STATUS_TEXT = { abierta: 'Abierto', cerrada: 'Cerrado', archivada: 'Archivado' } as const;
+const STATUS_TEXT = { abierta: 'Abierta', cerrada: 'Cerrada', archivada: 'Archivada' } as const;
 const peopleText = (count: number): string => (count === 1 ? '1 participante' : `${count} participantes`);
 
 export function CommonActionList({ actions, mine }: Props) {
   const [shown, setShown] = useState<number>(COMMON_ACTION_LIMITS.pageSize);
   if (actions === null) return null;
   return (
-    <section aria-label="Caminos" className="common-action-list">
-      <h2>Caminos</h2>
+    <section aria-label="Acciones Comunes" className="common-action-list">
+      <h2>Acciones Comunes</h2>
       {actions.length === 0 ? (
         mine ? (
           <p>
-            Todavía no participas en ningún camino. <Link href="/acciones">Ver todos los caminos</Link>
+            Todavía no participas en ninguna Acción Común. <Link href="/acciones">Ver todas las Acciones Comunes</Link>
           </p>
         ) : (
-          <p>Todavía no hay caminos.</p>
+          <p>Todavía no hay Acciones Comunes.</p>
         )
       ) : (
         <>
@@ -39,13 +40,13 @@ export function CommonActionList({ actions, mine }: Props) {
               </h3>
               {action.axis !== null && <AxisBadge axis={action.axis} />}
               <p>
-                {STATUS_TEXT[action.status]} · Propuesto por @{action.authorUsername} · {peopleText(action.participantCount)}
+                {STATUS_TEXT[action.status]} · Propuesta por @{action.authorUsername} · {peopleText(action.participantCount)}
               </p>
             </article>
           ))}
           {actions.length > shown && (
             <button type="button" className="block action-secondary" onClick={() => setShown((value) => value + COMMON_ACTION_LIMITS.pageSize)}>
-              Ver más caminos
+              Ver más Acciones Comunes
             </button>
           )}
         </>

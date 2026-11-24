@@ -20,9 +20,9 @@ function renderForm(props: Partial<React.ComponentProps<typeof ContentForm>> = {
 const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
 describe('ContentForm', () => {
-  it('RF-6 (001): ofrece nombre, descripción, ejes, necesidades y aportes', () => {
+  it('RF-6 (001): ofrece nombre, descripción, ejes, lo que necesita y lo que ofrece', () => {
     renderForm();
-    for (const label of ['Nombre', 'Descripción', 'Necesidades', 'Aportes']) expect(screen.getByLabelText(label)).toBeTruthy();
+    for (const label of ['Nombre', 'Descripción', 'Necesita', 'Ofrece']) expect(screen.getByLabelText(label)).toBeTruthy();
     expect(screen.getByRole('group', { name: 'Ejes' })).toBeTruthy();
     expect(screen.queryByLabelText('Etapa')).toBeNull();
   });
@@ -143,7 +143,7 @@ describe('ContentForm', () => {
 
   it('RF-5 (003) · 5.2; RF-17 (003) · 17.1: cada campo tiene su etiqueta visible encima, asociada con for/id', () => {
     renderForm({ showStatus: true });
-    for (const name of ['Nombre', 'Descripción', 'Necesidades', 'Aportes', 'Etapa']) {
+    for (const name of ['Nombre', 'Descripción', 'Necesita', 'Ofrece', 'Etapa']) {
       const control = screen.getByLabelText(name);
       const label = document.querySelector(`label[for="${control.id}"]`);
       expect(label, name).not.toBeNull();
@@ -162,7 +162,7 @@ describe('ContentForm', () => {
       const described = document.getElementById(control.getAttribute('aria-describedby') ?? '');
       expect(described?.textContent, name).toBe(text);
     }
-    expect(screen.getByLabelText('Necesidades').getAttribute('aria-invalid')).toBe('false');
+    expect(screen.getByLabelText('Necesita').getAttribute('aria-invalid')).toBe('false');
   });
 
   it('RF-17 (019) · 17.1, 17.2, D-T11 (019): con showStatus el campo se llama «Etapa», con mayúscula inicial, y envía el valor de siempre', async () => {

@@ -1,5 +1,5 @@
-// RF-4 (024) · 4.1, 4.2, D-T5 (024) · Abrir un camino (`/acciones/:id`) encuadra sus ápices en Chromium real, en una ventana ancha
-// y en un teléfono: el rótulo del camino y un edificio enlazado quedan dentro del lienzo.
+// RF-4 (024) · 4.1, 4.2, D-T5 (024) · Abrir una Acción Común (`/acciones/:id`) encuadra sus Ápices en Chromium real, en una ventana
+// ancha y en un teléfono: el rótulo de la Acción Común y la celda de cada Ápice que une quedan dentro del lienzo.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { act } from 'react';
@@ -9,7 +9,6 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
-import '../../src/styles/paths.css';
 // La entrada de la cuenta (`SessionEntry`) toma sus estilos de la cabecera, que la aplicación siempre carga.
 import '../../src/components/SiteHeader.css';
 import type { Location } from '../../shared/domain/location';
@@ -25,7 +24,7 @@ const PERSON: SessionState = { status: 'person', uid: 'u1', role: 'member', user
 const zone = (cell: string, lat: number, lng: number): Location => ({ lat, lng, precision: 'approximate', zone: { cell, lat, lng } });
 const CENTRO = zone('8766e092affffff', 4.597156, -74.08474);
 const MEDELLIN = zone('876619d92ffffff', 6.243305, -75.585547);
-/** Tres ápices en el centro de Bogotá y uno en Medellín: al abrir, el mapa los muestra en grupos, lejos de los edificios. */
+/** Tres Ápices en el centro de Bogotá y uno en Medellín: al abrir, el mapa los muestra en grupos, lejos de las celdas de cada uno. */
 const ITEMS: ListedApice[] = [
   listed(1, { location: CENTRO, name: 'Huerta del barrio' }),
   listed(2, { location: CENTRO, name: 'Compost común' }),
@@ -35,7 +34,7 @@ const ITEMS: ListedApice[] = [
 
 const road: CommonActionSummary = {
   id: 'c1',
-  title: 'Camino del agua',
+  title: 'Ruta del agua',
   description: 'Una descripción larga.',
   axis: null,
   status: 'abierta',
@@ -105,21 +104,22 @@ const inside = (inner: DOMRect, outer: DOMRect) =>
 describe.each([
   [1280, 800],
   [390, 844],
-])('abrir un camino lo encuadra a %i × %i', (width, height) => {
+])('abrir una Acción Común la encuadra a %i × %i', (width, height) => {
   beforeEach(async () => {
     await open(width, height);
   });
 
-  it('RF-4 (024) · 4.1, 4.2: el rótulo del camino y un edificio enlazado quedan dentro del lienzo', async () => {
+  it('RF-4 (024) · 4.1, 4.2: el rótulo de la Acción Común y la celda de cada Ápice que une quedan dentro del lienzo', async () => {
     const label = () => bench!.querySelector<HTMLElement>('.game-map button.game-map__path-label');
     await expect.poll(label).toBeTruthy();
     await expect.poll(() => bench!.querySelector('.game-map')?.getAttribute('data-level')).toBe('0');
     const map = canvas();
-    expect(inside(label()!.getBoundingClientRect(), map)).toBe(true);
-    for (const name of ['Huerta del barrio, Idea', 'Compost común, Idea', 'Agua de lluvia, Idea']) {
-      const building = bench!.querySelector<HTMLElement>(`.game-map button.game-map__building[aria-label="${name}"]`);
-      expect(building, name).toBeTruthy();
-      expect(inside(building!.getBoundingClientRect(), map), name).toBe(true);
+    const rects = () => JSON.stringify({ label: label()!.getBoundingClientRect(), map });
+    expect(inside(label()!.getBoundingClientRect(), map), rects()).toBe(true);
+    for (const name of ['Huerta del barrio', 'Compost común', 'Agua de lluvia']) {
+      const cell = bench!.querySelector<HTMLElement>(`.game-map button.game-map__apice[aria-label^="${name}, "]`);
+      expect(cell, name).toBeTruthy();
+      expect(inside(cell!.getBoundingClientRect(), map), name).toBe(true);
     }
   });
 });

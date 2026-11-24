@@ -138,7 +138,7 @@ describe('router: rutas de la constitución común (004)', () => {
     '/constitucion/documentos/d1',
     '/constitucion/propuestas',
     '/constitucion/propuestas/a1',
-  ])('RF-7 (004) · 7.4, RF-13 (021) · 13.1: el menú marca «Reglas» (la constitución) como actual en %s', async (path) => {
+  ])('RF-7 (004) · 7.4, RF-13 (021) · 13.1: el menú marca «Constitución» como actual en %s', async (path) => {
     window.history.replaceState(null, '', path);
     render(
       <SessionProvider initial={{ status: 'visitor' }}>
@@ -146,6 +146,6 @@ describe('router: rutas de la constitución común (004)', () => {
       </SessionProvider>,
     );
     await userEvent.click(screen.getByRole('button', { name: 'Menú' }));
-    expect(screen.getByRole('link', { name: 'Reglas' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('link', { name: 'Constitución' }).getAttribute('aria-current')).toBe('page');
   });
 });

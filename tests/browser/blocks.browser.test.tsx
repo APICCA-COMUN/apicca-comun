@@ -1,8 +1,8 @@
 // Bloques, lotes, botones y campos en Chromium real (RF-3 (003), RF-4 (003), RF-5 (003), RNF-1 (003), D-T20 (003)): en las
-// rutas que la siembra parcial permite montar, todo bloque calcula `radius-block`, sin borde y `shadow-block`
-// hacia abajo y a la derecha (RF-3 (003) · 3.1, 3.4); con piezas de prueba, el lote lleva borde `line` y ninguna
-// sombra (3.2), los botones, el diálogo abierto y los campos siguen RF-4 (003) y RF-5 (003), y con colores forzados y contraste
-// aumentado los bordes se mantienen. Siguen vigentes de la 002: el foco de teclado se pinta con `focus` (6.4), a 360 px no hay desplazamiento horizontal (6.6) y
+// rutas que la siembra parcial permite montar, todo bloque calcula radio 0, borde de 3 px en tinta (`field-border`) y ninguna
+// sombra (RF-3 (003) · 3.1, 3.4); con piezas de prueba, el lote lleva el mismo borde (3.2), los botones, el diálogo abierto y
+// los campos siguen RF-4 (003) y RF-5 (003), y con colores forzados y contraste aumentado los bordes se mantienen. Siguen
+// vigentes de la 002: el foco de teclado se pinta con `focus` (6.4), a 360 px no hay desplazamiento horizontal (6.6) y
 // el nombre de 120 caracteres y el usuario de 24 se ajustan sin cortarse ni desbordar (6.7; en la lista del mapa y en la ficha). Con la siembra
 // completa (T-8.1, RNF-5 (002)) los 360 px recorren todas las rutas de la app, con sesión donde la ruta la pide.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -14,7 +14,6 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
-import '../../src/styles/paths.css';
 import { contrastRatio, hexToRgb, THEMES, TOKENS, type ThemeName, type TokenName } from '../../shared/domain/identity';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
@@ -133,25 +132,17 @@ function visibleRight(element: Element): number {
 
 /**
  * Los bloques que RF-3 (003) · 3.1 describe tal cual: los deshabilitados o en curso llevan su propia forma
- * (RF-6 (002) · 6.5), los campos y la acción destructiva llevan su borde (RF-5 (003) · 5.1, RF-4 (003) · 4.4).
+ * (RF-6 (002) · 6.5), los campos y la acción destructiva llevan su borde (RF-5 (003) · 5.1, RF-4 (003) · 4.4), el campo con
+ * error suma una barra (5.3), el que está bajo el puntero se invierte (RF-9 (002)) y el botón presionado también. Los grupos,
+ * los edificios y los rótulos de ruta del mapa son marcadores del mapa; los diálogos cerrados (el menú plegado, RF-13 (021))
+ * no se pintan.
  */
-/** El ojo de Entrar va dentro del campo, sin sombra propia (RF-5 (005) · 5.1). */
-// Fuera queda también el que está bajo el puntero: con `:hover` sube a `shadow-raised` (blocks.css). Desde la 019 el
-// primer edificio del terreno puede quedar donde el puntero dejó la prueba anterior.
-// Los edificios del recorrido quedan fuera: llevan `shadow-raised`, la sombra de los edificios (§4.0 de la 003, RF-5 (019),
-// D-T12 (021)). Sin esta excepción la prueba dependía de medir Prototipado antes de que el recorrido se dibujara.
-// Los grupos del mapa son marcadores con anillo, como los nodos (D-T17 (021)); los diálogos cerrados (el menú de juego,
-// RF-13 (021)) no se pintan.
-// El botón presionado («Lo mío») suma un anillo a la sombra, como los filtros de eje (RF-12 (003) · 12.3): no se mide aquí.
-// Los edificios del mapa no son tarjetas: van sin sombra y con radius-building, porque la placa es su suelo (RF-4 (021) · 4.4).
-// El rótulo del camino lleva el borde node-ring de su trazo (D-T30 (021)). Al elegir un ápice, el mapa lo encuadra
-// (RF-20 (021) · 20.4) y los dos quedan a la vista detrás del panel.
 const activeBlocks = () =>
   [...host!.querySelectorAll<HTMLElement>('.block')].filter(
     (el) =>
       el.getClientRects().length > 0 &&
       !el.matches(
-        ':disabled, [aria-disabled="true"], [aria-busy="true"], :hover, input, select, textarea, .action-destructive, .sign-in-form__reveal, .game-map__group, .game-map__building, .game-map__path-label, button[aria-pressed="true"]',
+        ':disabled, [aria-disabled="true"], [aria-busy="true"], [aria-invalid="true"], :hover, input, select, textarea, .action-destructive, .sign-in-form__reveal, .game-map__cell, .game-map__group, .game-map__path-label, button[aria-pressed="true"]',
       ),
   );
 
@@ -202,31 +193,34 @@ afterAll(async () => {
 });
 
 describe.each(THEMES)('bloques en el tema %s', (theme) => {
-  it.each(PATHS)('RF-3 (003) · 3.1, 3.4: en $path todo bloque calcula radius-block, sin borde y shadow-block, hacia abajo y a la derecha', async ({ path, as }) => {
+  it.each(PATHS)('RF-3 (003) · 3.1, 3.4: en $path todo bloque calcula radio 0, borde de 3 px en field-border y ninguna sombra', async ({ path, as }) => {
     document.documentElement.dataset['theme'] = theme;
     await page.viewport(1280, 800);
     await useAccount(as);
     await show(path);
     if (as !== undefined) expect(location.pathname + location.search).toBe(path);
-    const shadow = computed('boxShadow', 'shadow-block');
-    const [x, y] = [...shadow.matchAll(/(-?[\d.]+)px/g)].map((match) => parseFloat(match[1]!));
-    expect(x).toBeGreaterThan(0);
-    expect(y).toBeGreaterThan(0);
-    const blocks = activeBlocks();
+    // Los botones de ícono de la cabecera van sin borde (`.ap-boton-icono` del sistema): se comprueban aparte.
+    const inHeader = (el: HTMLElement) => el.matches('.site-header .icon-button');
+    for (const el of activeBlocks().filter(inHeader)) {
+      expect(getComputedStyle(el).borderTopWidth, el.outerHTML.slice(0, 100)).toBe('0px');
+      expect(getComputedStyle(el).borderRadius).toBe('0px');
+    }
+    const blocks = activeBlocks().filter((el) => !inHeader(el));
     expect(blocks.length).toBeGreaterThan(0);
+    const border = token(theme, 'field-border');
     const odd = blocks
       .filter((el) => {
         const style = getComputedStyle(el);
-        // El contador del mapa es una píldora, como los botones (D-T22 (021)).
-        const pill = el.matches('button, a, .play__count');
         const sides = [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth];
         return (
-          (pill ? parseFloat(style.borderTopLeftRadius) < el.getBoundingClientRect().height / 2 : style.borderRadius !== TOKENS[theme]['radius-block']) ||
-          style.boxShadow !== shadow ||
-          sides.some((width) => width !== '0px')
+          style.borderRadius !== '0px' ||
+          style.boxShadow !== 'none' ||
+          sides.some((width) => width !== '3px') ||
+          style.borderTopStyle !== 'solid' ||
+          style.borderTopColor !== border
         );
       })
-      .map((el) => `${getComputedStyle(el).boxShadow} ${el.outerHTML.slice(0, 100)}`);
+      .map((el) => `${getComputedStyle(el).borderTopWidth} ${getComputedStyle(el).boxShadow} ${el.outerHTML.slice(0, 100)}`);
     expect(odd).toEqual([]);
   });
 
@@ -245,6 +239,8 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
     start.focus();
     start.remove();
     const focus = computed('color', 'focus');
+    // El pie es de tinta en el tema claro: ahí el foco del enlace de apoyo es `on-charcoal` (papel), porque `focus` es tinta sobre tinta.
+    const onFooter = computed('color', 'on-charcoal');
     const seen = new Set<Element>();
     for (let stop = 0; stop < 12; stop += 1) {
       await userEvent.tab();
@@ -254,7 +250,8 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
       const style = getComputedStyle(active);
       expect(active.matches(':focus-visible')).toBe(true);
       expect(style.outlineStyle, active.outerHTML.slice(0, 80)).not.toBe('none');
-      expect(style.outlineColor, active.outerHTML.slice(0, 80)).toBe(focus);
+      const expected = theme === 'light' && active.matches('.site-footer__support-link') ? onFooter : focus;
+      expect(style.outlineColor, active.outerHTML.slice(0, 80)).toBe(expected);
     }
     expect(seen.size).toBeGreaterThan(0);
   });
@@ -286,27 +283,25 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
     expectWrappedInside(heading, LONG_NAME, 2);
   });
 
-  it.each(['/?vista=lista', `/apices/${LONG_APICE_ID}`])('RF-7 (002) · 7.2, D-T10 (002), RF-2 (021) · 2.1, D-T4 (021): en %s a 360 px todo edificio deja al menos 64 px para su dibujo', async (path) => {
+  it.each(['/?vista=lista', `/apices/${LONG_APICE_ID}`])('RF-7 (002) · 7.2, D-T10 (002), RF-2 (021) · 2.1, D-T4 (021): en %s a 360 px toda superficie deja al menos 64 px para su patrón, con contorno de 0 o 2 px y dentro de su bloque', async (path) => {
     document.documentElement.dataset['theme'] = theme;
     await page.viewport(360, 800);
     await show(path);
-    const buildings = await waitFor(() => {
-      const found = [...host!.querySelectorAll<HTMLElement>('.building')];
+    const surfaces = await waitFor(() => {
+      // La muestra de 56 × 34 de la fila (`FilaApice` del sistema) no cuenta: es la miniatura de la lista, no una superficie.
+      const found = [...host!.querySelectorAll<HTMLElement>('main .superficie')].filter(
+        (surface) => surface.getBoundingClientRect().width > 0 && surface.closest('.apice-row') === null,
+      );
       return found.length > 0 ? found : null;
     });
-    for (const building of buildings) {
-      const style = getComputedStyle(building);
-      const inner = building.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-      expect(inner).toBeGreaterThanOrEqual(64);
-      // El dibujo mide 64·n en toda etapa, con el tope de su lugar (D-T10 (002)): 1 en el mapa (D-T17 (021)); 4 en la
-      // ficha; 2 en las tarjetas.
-      const max = building.closest('.game-map__building, .game-map__dialog') !== null ? 1 : building.closest('.apice-view__head') !== null ? 4 : 2;
-      const drawing = building.querySelector<SVGElement>('svg.building__drawing')!;
-      // RF-11 (024) · 11.1, D-T14 (024): en la ficha, por debajo de 900 px de ventana, el edificio mide 6rem (`ApiceView.css`).
-      const headNarrow = building.closest('.apice-view__head') !== null && window.innerWidth < 900;
-      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-      expect(drawing.getBoundingClientRect().width).toBe(headNarrow ? 6 * rem : 64 * Math.min(Math.floor(inner / 64), max));
-      expect(building.querySelector('img, canvas')).toBeNull();
+    for (const surface of surfaces) {
+      const box = surface.getBoundingClientRect();
+      expect(box.width, surface.outerHTML.slice(0, 80)).toBeGreaterThanOrEqual(64);
+      expect(box.right).toBeLessThanOrEqual(innerWidth + 0.5);
+      const owner = surface.closest('.block, .lot');
+      if (owner !== null) expect(box.right).toBeLessThanOrEqual(owner.getBoundingClientRect().right + 0.5);
+      expect(['0px', '2px']).toContain(getComputedStyle(surface).borderTopWidth);
+      expect(surface.querySelector('img, canvas')).toBeNull();
     }
   });
 
@@ -367,23 +362,23 @@ describe.each(THEMES)('lotes, botones, diálogo y campos en el tema %s', (theme)
     await emulate('prefers-contrast', 'no-preference');
   });
 
-  it('RF-3 (003) · 3.2, RF-2 (005) · 2.1: todo lote calcula fondo surface, radius-lot, borde line de 1 px y ninguna sombra', async () => {
+  it('RF-3 (003) · 3.2, RF-2 (005) · 2.1: todo lote calcula fondo surface, radio 0, borde de 3 px field-border y ninguna sombra', async () => {
     const box = mount('<section class="lot"><p>Lote</p></section><div class="lot">Otro</div>');
     await settle();
     for (const lot of box.querySelectorAll<HTMLElement>('.lot')) {
       const style = getComputedStyle(lot);
-      expect(style.borderRadius).toBe(TOKENS[theme]['radius-lot']);
+      expect(style.borderRadius).toBe('0px');
       expect(style.backgroundColor).toBe(token(theme, 'surface'));
       for (const side of ['Top', 'Right', 'Bottom', 'Left'] as const) {
-        expect(style[`border${side}Width`]).toBe('1px');
+        expect(style[`border${side}Width`]).toBe('3px');
         expect(style[`border${side}Style`]).toBe('solid');
-        expect(style[`border${side}Color`]).toBe(token(theme, 'line'));
+        expect(style[`border${side}Color`]).toBe(token(theme, 'field-border'));
       }
       expect(style.boxShadow).toBe('none');
     }
   });
 
-  it('RF-4 (003) · 4.1: todo botón y enlace con forma de botón es una píldora de al menos 44 px de alto', async () => {
+  it('RF-4 (003) · 4.1: todo botón y enlace con forma de botón es un rectángulo de borde recto y al menos 48 px de alto, en mayúsculas', async () => {
     const box = mount(`
       <button class="block action-primary">Principal</button>
       <button class="block action-secondary">Secundario</button>
@@ -394,65 +389,71 @@ describe.each(THEMES)('lotes, botones, diálogo y campos en el tema %s', (theme)
     const all = [...box.querySelectorAll<HTMLElement>('button, a')];
     expect(all).toHaveLength(5);
     for (const el of all) {
-      const height = el.getBoundingClientRect().height;
-      expect(height, el.outerHTML).toBeGreaterThanOrEqual(44);
-      expect(parseFloat(getComputedStyle(el).borderTopLeftRadius), el.outerHTML).toBeGreaterThanOrEqual(height / 2);
+      const style = getComputedStyle(el);
+      expect(el.getBoundingClientRect().height, el.outerHTML).toBeGreaterThanOrEqual(48);
+      expect(style.borderTopLeftRadius, el.outerHTML).toBe('0px');
+      expect(style.textTransform, el.outerHTML).toBe('uppercase');
+      expect(style.fontWeight, el.outerHTML).toBe('800');
     }
   });
 
-  it('RF-4 (003) · 4.2: el botón principal se rellena con action-blue y deja el texto en on-accent', async () => {
+  it('RF-4 (003) · 4.2: el botón principal se rellena con action-blue (tinta) y deja el texto en on-accent', async () => {
     const box = mount('<button class="block action-primary">Principal</button>');
     await settle();
     const style = getComputedStyle(get(box, 'button'));
     expect(style.backgroundColor).toBe(token(theme, 'action-blue'));
     expect(style.color).toBe(token(theme, 'on-accent'));
-    expect(style.boxShadow).toBe(computed('boxShadow', 'shadow-block'));
+    expect(style.boxShadow).toBe('none');
+    expect(contrastRatio(TOKENS[theme]['on-accent'], TOKENS[theme]['action-blue'])).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('RF-4 (003) · 4.3: el botón secundario tiene fondo surface, sin borde y shadow-block', async () => {
+  it('RF-4 (003) · 4.3: el botón secundario tiene fondo surface, borde de 3 px en field-border y ninguna sombra', async () => {
     const box = mount('<button class="block action-secondary">Secundario</button><a class="block action-secondary" href="#x">Enlace</a>');
     await settle();
     for (const el of box.querySelectorAll<HTMLElement>('button, a')) {
       const style = getComputedStyle(el);
       expect(style.backgroundColor).toBe(token(theme, 'surface'));
-      expect(style.borderTopWidth).toBe('0px');
-      expect(style.borderBottomWidth).toBe('0px');
-      expect(style.boxShadow).toBe(computed('boxShadow', 'shadow-block'));
+      expect(style.borderTopWidth).toBe('3px');
+      expect(style.borderBottomWidth).toBe('3px');
+      expect(style.borderTopColor).toBe(token(theme, 'field-border'));
+      expect(style.boxShadow).toBe('none');
     }
   });
 
-  it('RF-4 (003) · 4.4: el botón destructivo tiene fondo surface, texto brand-red y borde de 2 px brand-red', async () => {
+  it('RF-4 (003) · 4.4: el botón destructivo tiene fondo surface, texto brand-red y borde discontinuo de 3 px brand-red', async () => {
     const box = mount('<button class="block action-destructive">Descartar</button>');
     await settle();
     const style = getComputedStyle(get(box, 'button'));
     expect(style.backgroundColor).toBe(token(theme, 'surface'));
     expect(style.color).toBe(token(theme, 'brand-red'));
     for (const side of ['Top', 'Right', 'Bottom', 'Left'] as const) {
-      expect(style[`border${side}Width`]).toBe('2px');
-      expect(style[`border${side}Style`]).toBe('solid');
+      expect(style[`border${side}Width`]).toBe('3px');
+      expect(style[`border${side}Style`]).toBe('dashed');
       expect(style[`border${side}Color`]).toBe(token(theme, 'brand-red'));
     }
   });
 
-  it.each([['icon-button'], ['block icon-button']])('RF-4 (003) · 4.5: el botón de ícono «%s» mide 44 × 44 y es redondo', async (classes) => {
+  it.each([['icon-button'], ['block icon-button']])('RF-4 (003) · 4.5: el botón de ícono «%s» mide 44 × 44, es cuadrado y lleva borde de 3 px', async (classes) => {
     const box = mount(`<button class="${classes}" aria-label="Cambiar tema">T</button><a class="${classes}" href="#x" aria-label="Mi tablero">M</a>`);
     await settle();
     for (const el of box.querySelectorAll<HTMLElement>('button, a')) {
       const rect = el.getBoundingClientRect();
       expect(rect.width, el.outerHTML).toBe(44);
       expect(rect.height, el.outerHTML).toBe(44);
-      expect(parseFloat(getComputedStyle(el).borderTopLeftRadius), el.outerHTML).toBeGreaterThanOrEqual(22);
+      expect(getComputedStyle(el).borderTopLeftRadius, el.outerHTML).toBe('0px');
+      expect(getComputedStyle(el).borderTopWidth, el.outerHTML).toBe('3px');
       expect(getComputedStyle(el).backgroundColor).toBe(token(theme, 'surface'));
     }
   });
 
-  it('RF-4 (003) · 4.3: al pasar el cursor, el botón secundario se eleva a shadow-raised', async () => {
+  it('RF-4 (003) · 4.3: al pasar el cursor, el botón secundario se invierte: fondo text y letra surface', async () => {
     const box = mount('<button class="block action-secondary">Secundario</button>');
     await settle();
     const button = get(box, 'button');
     await userEvent.hover(button);
     await settle();
-    expect(getComputedStyle(button).boxShadow).toBe(computed('boxShadow', 'shadow-raised'));
+    expect(getComputedStyle(button).backgroundColor).toBe(token(theme, 'text'));
+    expect(getComputedStyle(button).color).toBe(token(theme, 'surface'));
     await userEvent.unhover(button);
   });
 
@@ -471,7 +472,7 @@ describe.each(THEMES)('lotes, botones, diálogo y campos en el tema %s', (theme)
     const secondary = getComputedStyle(outside);
     expect(secondary.backgroundColor).toBe(token(theme, 'surface'));
     expect(secondary.color).toBe(token(theme, 'text'));
-    expect(secondary.borderTopWidth).toBe('0px');
+    expect(secondary.borderTopWidth).toBe('3px');
     expect(getComputedStyle(get(box, '#inside')).backgroundColor).toBe(token(theme, 'action-blue'));
 
     dialog.remove();
@@ -479,55 +480,59 @@ describe.each(THEMES)('lotes, botones, diálogo y campos en el tema %s', (theme)
     expect(getComputedStyle(outside).backgroundColor).toBe(token(theme, 'action-blue'));
   });
 
-  it.each([['input type="text"'], ['textarea'], ['select']])('RF-5 (003) · 5.1: «%s» se muestra sobre background, sin borde salvo uno inferior de 2 px field-border', async (tag) => {
+  it.each([['input type="text"'], ['textarea'], ['select']])('RF-5 (003) · 5.1: «%s» se muestra sobre surface, con borde completo de 3 px field-border, sin radio y sin sombra', async (tag) => {
     const name = tag.split(' ')[0]!;
     const box = mount(`<${tag} class="block" aria-label="Campo">${name === 'input' ? '' : `</${name}>`}`);
     await settle();
     const style = getComputedStyle(get(box, name));
-    expect(style.backgroundColor).toBe(token(theme, 'background'));
-    for (const side of ['Top', 'Right', 'Left'] as const) expect(style[`border${side}Width`]).toBe('0px');
-    expect(style.borderBottomWidth).toBe('2px');
-    expect(style.borderBottomStyle).toBe('solid');
-    expect(style.borderBottomColor).toBe(token(theme, 'field-border'));
+    expect(style.backgroundColor).toBe(token(theme, 'surface'));
+    for (const side of ['Top', 'Right', 'Bottom', 'Left'] as const) {
+      expect(style[`border${side}Width`]).toBe('3px');
+      expect(style[`border${side}Style`]).toBe('solid');
+      expect(style[`border${side}Color`]).toBe(token(theme, 'field-border'));
+    }
+    expect(style.borderTopLeftRadius).toBe('0px');
     expect(style.boxShadow).toBe('none');
+    expect(parseFloat(style.minHeight)).toBeGreaterThanOrEqual(48);
   });
 
   it('RF-5 (003) · 5.1: field-border sobre background pasa 3:1', () => {
     expect(contrastRatio(TOKENS[theme]['field-border'], TOKENS[theme].background)).toBeGreaterThanOrEqual(3);
   });
 
-  it('RF-5 (003) · 5.3: un campo con aria-invalid marca su borde inferior con brand-red', async () => {
+  it('RF-5 (003) · 5.3: un campo con aria-invalid marca su borde con brand-red y una barra de 12 px a la izquierda', async () => {
     const box = mount('<input class="block" aria-label="Campo" aria-invalid="true" />');
     await settle();
     const style = getComputedStyle(get(box, 'input'));
     expect(style.borderBottomColor).toBe(token(theme, 'brand-red'));
-    expect(style.borderBottomWidth).toBe('2px');
-    expect(style.borderTopWidth).toBe('0px');
+    expect(style.borderBottomWidth).toBe('3px');
+    expect(style.borderLeftWidth).toBe('12px');
+    expect(style.borderTopWidth).toBe('3px');
   });
 
-  it('RF-3 (003) · 3.1; D-T20 (003): con colores forzados el bloque lleva un borde de 1 px CanvasText y el lote conserva el suyo', async () => {
-    const box = mount('<article class="block">Bloque</article><section class="lot">Lote</section>');
+  it('RF-3 (003) · 3.1; D-T20 (003): con colores forzados el bloque, el botón de ícono y el lote llevan un borde de 3 px CanvasText', async () => {
+    const box = mount('<article class="block">Bloque</article><section class="lot">Lote</section><button class="icon-button" aria-label="Cerrar">x</button>');
     await emulate('forced-colors', 'active');
     try {
       expect(matchMedia('(forced-colors: active)').matches).toBe(true);
       await settle();
       const canvasText = systemColor('CanvasText');
-      const block = getComputedStyle(get(box, '.block'));
-      const lot = getComputedStyle(get(box, '.lot'));
-      for (const side of ['Top', 'Right', 'Bottom', 'Left'] as const) {
-        expect(block[`border${side}Width`]).toBe('1px');
-        expect(block[`border${side}Style`]).toBe('solid');
-        expect(block[`border${side}Color`]).toBe(canvasText);
-        expect(lot[`border${side}Width`]).toBe('1px');
-        expect(lot[`border${side}Style`]).toBe('solid');
+      for (const element of box.querySelectorAll<HTMLElement>('.block, .lot, .icon-button')) {
+        const style = getComputedStyle(element);
+        for (const side of ['Top', 'Right', 'Bottom', 'Left'] as const) {
+          expect(style[`border${side}Width`], element.className).toBe('3px');
+          expect(style[`border${side}Style`], element.className).toBe('solid');
+        }
+        // El lote conserva su propio borde; el bloque y el botón de ícono toman el color del sistema.
+        if (!element.matches('.lot')) expect(style.borderTopColor, element.className).toBe(canvasText);
       }
     } finally {
       await emulate('forced-colors', 'none');
     }
   });
 
-  it('RF-3 (003) · 3.1, 3.2; RNF-1 (003); D-T20 (003): con contraste aumentado, bloques y lotes llevan bordes de 2 px del color text', async () => {
-    const box = mount('<article class="block">Bloque</article><section class="lot">Lote</section>');
+  it('RF-3 (003) · 3.1, 3.2; RNF-1 (003); D-T20 (003): con contraste aumentado, bloques y lotes conservan el borde de 3 px en tinta y el deshabilitado pasa a tinta', async () => {
+    const box = mount('<article class="block">Bloque</article><section class="lot">Lote</section><button class="block action-secondary" disabled>Quieto</button>');
     await emulate('prefers-contrast', 'more');
     try {
       expect(matchMedia('(prefers-contrast: more)').matches).toBe(true);
@@ -535,9 +540,8 @@ describe.each(THEMES)('lotes, botones, diálogo y campos en el tema %s', (theme)
       for (const el of box.querySelectorAll<HTMLElement>('.block, .lot')) {
         const style = getComputedStyle(el);
         for (const side of ['Top', 'Right', 'Bottom', 'Left'] as const) {
-          expect(style[`border${side}Width`], el.className).toBe('2px');
-          expect(style[`border${side}Style`], el.className).toBe('solid');
-          expect(style[`border${side}Color`], el.className).toBe(token(theme, 'text'));
+          expect(style[`border${side}Width`], el.className).toBe('3px');
+          expect(style[`border${side}Color`], el.className).toBe(el.matches(':disabled') ? token(theme, 'text') : token(theme, 'field-border'));
         }
       }
     } finally {

@@ -21,10 +21,13 @@ function NoticeDate({ at }: { at: number }) {
   );
 }
 
+/** Sistema «APICCA · Mapa»: sin campana de cliché, un marco cuadrado con una marca maciza, del mismo trazo que los
+ *  íconos de interfaz (propuesta del asistente). */
 function BellGlyph() {
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" className="notice-bell__glyph">
-      <path d="M6 17h12l-1.5-2V11a4.5 4.5 0 0 0-9 0v4L6 17zM10 20h4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="3.75" y="3.75" width="16.5" height="16.5" fill="none" stroke="currentColor" strokeWidth="3" />
+      <rect x="9" y="9" width="6" height="6" fill="currentColor" />
     </svg>
   );
 }

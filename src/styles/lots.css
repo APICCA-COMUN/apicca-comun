@@ -1,12 +1,12 @@
 /* Lotes (RF-3 (003) · 3.2, D-T1 (003), D-T4 (003), D-T20 (003)): superficie de apoyo del mapa, las listas agrupadas y los
-   formularios principales. Fondo `surface`, radio de `radius-lot`, borde `line` y ninguna sombra (RF-2 (005), D-T1 (005)).
+   formularios principales. Sistema «APICCA · Mapa»: papel, radio 0, borde de 3 px en tinta y ninguna sombra.
    Solo colores de tokens. */
 
 .lot {
   box-sizing: border-box;
   max-width: 100%;
   min-width: 0;
-  border: 1px solid var(--line);
+  border: var(--stroke-border) solid var(--field-border);
   border-radius: var(--radius-lot);
   box-shadow: none;
   background-color: var(--surface);
@@ -46,6 +46,9 @@ main > .lot.lot--access {
 /* Columna de la página (RF-1 (005), D-T2 (005)): 1200 px como máximo, centrada, con 16 a 48 px a cada lado. */
 main {
   box-sizing: content-box;
+  /* Todo el ancho menos el aire de los lados: con solo `margin-inline: auto`, la columna tomaría el ancho mínimo de su
+     contenido y una palabra larga (un título del foro a 360 px) la ensancharía más allá de la ventana. */
+  inline-size: calc(100% - 2 * clamp(16px, 4vw, 48px));
   max-inline-size: 1200px;
   margin-inline: auto;
   padding-inline: clamp(16px, 4vw, 48px);
@@ -56,21 +59,38 @@ main > .home__closing {
   margin-block: var(--section-gap);
 }
 
+/* QA #16.1: el lote de una página no se pega a la cabecera (24 px; el sistema no tiene token de espacio, el paso es
+   `espacio-5`). El de acceso lleva su propio margen, más abajo. */
 main > .lot {
+  margin-block-start: 24px;
   margin-block-end: var(--section-gap);
 }
 
-/* Colores forzados (RNF-1 (003), D-T20 (003)): el lote conserva su borde de 1 px, con el color del sistema. */
-@media (forced-colors: active) {
-  .lot {
-    border: 1px solid CanvasText;
-  }
+/* QA #16.1, opinión 3: una lista de bloques dentro de un lote no lleva otro marco; las filas (`.block`) ya tienen el suyo.
+   Sin viñetas ni sangría, con 12 px entre filas. */
+.lot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-/* Contraste aumentado (RNF-1 (003), D-T20 (003)): borde de 2 px del color del texto. */
-@media (prefers-contrast: more) {
+/* QA #16.1, opinión 3: dentro de la propuesta (`article.lot`), sus secciones (Acuerdos, Objeciones, Deliberación,
+   Revisiones anteriores) no llevan otro marco de 3 px: serían cuatro marcos concéntricos con las filas. Cada una queda
+   separada por el filete de 3 px de las secciones del sistema. */
+.amendment-view > section.lot {
+  padding: 0;
+  padding-block-start: 24px;
+  border-width: var(--stroke-border) 0 0;
+  background-color: transparent;
+}
+
+/* Colores forzados (RNF-1 (003), D-T20 (003)): el lote conserva su borde, con el color del sistema. */
+@media (forced-colors: active) {
   .lot {
-    border: 2px solid var(--text);
+    border-color: CanvasText;
   }
 }
 
@@ -100,7 +120,7 @@ main > .lot {
 .prototyping__head h1 {
   margin: 0;
   font-size: var(--type-display-size);
-  line-height: 1.1;
+  line-height: var(--type-display-line);
   font-weight: 800;
 }
 

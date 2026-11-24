@@ -31,7 +31,7 @@ export interface LinkedApice {
 export interface CommonActionDetail extends CommonActionSummary {
   /** Participantes visibles, por orden de llegada. */
   participants: { uid: string; username: string }[];
-  /** Los ápices enlazados que quien mira puede ver, en el orden del camino. */
+  /** Los ápices enlazados que quien mira puede ver, en el orden de la Acción Común. */
   apices: LinkedApice[];
   /** Cuántos ápices enlazados no puede ver quien mira (RF-4 (010) · 4.3). */
   hiddenApices: number;

@@ -13,7 +13,7 @@ const LOGO_URL = 'https://apicca.com/brand/logo.png';
 
 export function resetEmail(): ResetEmail {
   const c = TOKENS.light;
-  const font = "'Nunito', 'Trebuchet MS', Arial, sans-serif";
+  const font = "'Jost', 'Futura', 'Trebuchet MS', Arial, sans-serif";
   const body = `<!doctype html>
 <html lang="es" style="color-scheme: light only;">
 <head>

@@ -1,18 +1,18 @@
 // Fase 1 de la spec 019 («Sistema»), medida en Chromium sobre la siembra completa:
 // - RF-2 (019) · 2.1, 2.3, D-T3 (019): todo texto visible usa un tamaño de la escala, y el h1 de cada página, `display`.
-// - RF-3 (019) · 3.1, 3.2, D-T4 (019): acciones en píldora, bloques con `radius-block` y lotes con `radius-lot`.
+// - RF-3 (019) · 3.1, 3.2, D-T4 (019): acciones, bloques y lotes cuadrados (radio 0) del sistema «APICCA · Mapa».
 // - RF-12 (019) · 12.1 a 12.4, D-T6 (019): el formulario del ápice.
 // - RF-13 (019) · 13.1, 13.2, D-T7 (019): las filas y el enlace de Facilitación.
 // - RF-15 (019) · 15.1, D-T9 (019): la inicial de la cuenta, sobre `charcoal`.
 // - RF-18 (019) · 18.1, D-T12 (019): un solo h1 por página.
-// - RF-20 (019) · 20.3, D-T13 (019): el aro de los nodos, en `node-ring`.
+// - RF-20 (019) · 20.3, D-T13 (019): la línea y los tramos de la Constitución, en tinta y con contraste 3:1.
 // - RF-22 (019) · 22.1, D-T15 (019): el pie, al fondo de la ventana.
 // Fase 2 («Terreno»):
-// - RF-4 (019) · 4.1 a 4.5, D-T19 (019), D-14 (019): el edificio crece por etapa y la ficha muestra aparte la imagen de una idea.
-// - RF-9 (019) · 9.1, 9.3, D-T21 (019): el pin de necesidades, de 14 px y sin cifras.
+// - RF-4 (019) · 4.1 a 4.5, D-T19 (019), D-14 (019): la superficie de cada Ápice dice la Etapa con su regla y el eje con su color.
+// - RF-9 (019) · 9.1, 9.3, D-T21 (019): «Tiene necesidades» va escrito, sin pin ni cifras.
 // - RF-11 (019) · 11.1 a 11.4, D-T23 (019): la ficha como taller.
 // - RF-19 (019) · 19.5, D-T22 (019): el terreno de partida en la primera pantalla a 360 px.
-// - RNF-5 (019): el edificio no anima con movimiento reducido.
+// - RNF-5 (019): la superficie no anima, con o sin movimiento reducido.
 // El lote de Prototipado (RF-8 (019)), la franja y el panel al lado (RF-7 (019)) y los ejes del Inicio (RF-23 (019))
 // dieron paso al mapa (RF-11 (021) a RF-14 (021)): sus medidas están en map.browser y map-width.browser.
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -24,7 +24,6 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
-import '../../src/styles/paths.css';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
@@ -199,40 +198,36 @@ describe('RF-2 (019) · escala tipográfica', () => {
       expect(outside).toEqual([]);
       const h1 = host!.querySelector<HTMLElement>('h1');
       expect(h1, 'h1').not.toBeNull();
-      // En el panel del mapa el h1 usa `title`, porque el panel es angosto (D-T23 (021)).
-      const size = h1!.closest('aside.game-panel') !== null ? 'title' : 'display';
+      // En el panel del mapa el h1 usa `title`, porque el panel es angosto (D-T23 (021)); el título de Inicio usa `heading`.
+      const size = h1!.closest('aside.game-panel') !== null ? 'title' : h1!.closest('.play__intro') !== null ? 'heading' : 'display';
       expect(getComputedStyle(h1!).fontSize).toBe(measure('fontSize', `var(--type-${size}-size)`));
     });
   });
 });
 
 describe('RF-3 (019) · radios', () => {
-  it.each(ROUTES)('RF-3 (019) · 3.1, 3.2: en $path las acciones son píldoras, los bloques usan radius-block y los lotes radius-lot', async ({ path, as }) => {
+  it.each(ROUTES)('RF-3 (019) · 3.1, 3.2: en $path las acciones, los bloques y los lotes son cuadrados, con borde de 3 px y sin sombra', async ({ path, as }) => {
     await at(1280);
     await show(path, as);
-    const block = measure('borderTopLeftRadius', 'var(--radius-block)');
-    const lot = measure('borderTopLeftRadius', 'var(--radius-lot)');
     const failures: string[] = [];
-    // El contador del mapa es una píldora, como las acciones (D-T22 (021)). Los edificios del mapa no son acciones de texto:
-    // llevan radius-building (RF-4 (021) · 4.4) y quedan a la vista cuando el mapa encuadra al elegido (RF-20 (021) · 20.4).
-    for (const action of [...host!.querySelectorAll<HTMLElement>('button.block:not(.game-map__building), a.block, .icon-button, .play__count')].filter(visible)) {
-      const half = action.getBoundingClientRect().height / 2;
-      if (corners(action).some((radius) => px(radius) < half - 0.5)) failures.push(`acción ${name(action)}: ${corners(action).join(' ')}`);
-    }
-    const containers = [...host!.querySelectorAll<HTMLElement>('.block')].filter(
-      (element) => visible(element) && !element.matches('button, a, input, select, textarea, .icon-button, .leaflet-bar, .play__count'),
+    const squares = [...host!.querySelectorAll<HTMLElement>('.block, .lot, .icon-button')].filter(
+      (element) => visible(element) && !element.closest('.leaflet-container') && !element.matches('.game-map__cell, .game-map__path-label'),
     );
-    for (const element of containers) {
-      const radii = corners(element);
-      if (!radii.every((radius) => radius === block || radius === '0px') || !radii.includes(block)) failures.push(`bloque ${name(element)}: ${radii.join(' ')}`);
+    expect(squares.length).toBeGreaterThan(0);
+    for (const element of squares) {
+      const style = getComputedStyle(element);
+      if (corners(element).some((radius) => radius !== '0px')) failures.push(`${name(element)}: radio ${corners(element).join(' ')}`);
+      if (style.boxShadow !== 'none') failures.push(`${name(element)}: sombra ${style.boxShadow}`);
     }
-    const building = measure('borderTopLeftRadius', 'var(--radius-building)');
-    for (const element of [...host!.querySelectorAll<HTMLElement>('button.block.game-map__building')].filter(visible)) {
-      if (!corners(element).every((radius) => radius === building)) failures.push(`edificio ${name(element)}: ${corners(element).join(' ')}`);
-    }
-    for (const element of [...host!.querySelectorAll<HTMLElement>('.lot')].filter(visible)) {
-      const radii = corners(element);
-      if (!radii.every((radius) => radius === lot || radius === '0px') || !radii.includes(lot)) failures.push(`lote ${name(element)}: ${radii.join(' ')}`);
+    // Las acciones de texto y los lotes llevan el borde completo de 3 px; el estado deshabilitado lo cambia a discontinuo.
+    // Los botones de ícono de la cabecera van sin borde, como `.ap-boton-icono` del sistema.
+    for (const element of [...host!.querySelectorAll<HTMLElement>('button.block, a.block, .lot')].filter(visible)) {
+      if (element.matches('.site-header .icon-button')) {
+        if (getComputedStyle(element).borderTopWidth !== '0px') failures.push(`${name(element)}: la cabecera lleva borde`);
+        continue;
+      }
+      if (element.closest('.leaflet-container') !== null || element.matches(':disabled, [aria-disabled="true"], .game-map__cell, .game-map__path-label')) continue;
+      if (getComputedStyle(element).borderTopWidth !== '3px') failures.push(`${name(element)}: borde ${getComputedStyle(element).borderTopWidth}`);
     }
     expect(failures).toEqual([]);
   });
@@ -267,17 +262,19 @@ describe('RF-12 (019) · formulario del ápice', () => {
       expect(failures).toEqual([]);
     });
 
-    it.each(FORMS)('RF-12 (019) · 12.3: en %s los grupos de campos son lotes, sin el borde del navegador', async (path) => {
+    it.each(FORMS)('RF-12 (019) · 12.3: en %s los grupos de campos son cuadrados y sin marco (ni el del navegador): su leyenda es el rótulo del campo', async (path) => {
       await at(width);
       await show(path, AUTHOR);
-      const lot = measure('borderTopLeftRadius', 'var(--radius-lot)');
       const fieldsets = [...host!.querySelectorAll<HTMLFieldSetElement>('aside.game-panel form fieldset')].filter(visible);
       expect(fieldsets.length).toBeGreaterThan(0);
       for (const fieldset of fieldsets) {
         const style = getComputedStyle(fieldset);
         expect(style.borderTopStyle, name(fieldset)).not.toBe('groove');
-        expect(corners(fieldset), name(fieldset)).toEqual([lot, lot, lot, lot]);
-        if (style.borderTopStyle !== 'none') expect(style.borderTopColor, name(fieldset)).toBe(rgb(TOKENS.light.line));
+        expect(corners(fieldset), name(fieldset)).toEqual(['0px', '0px', '0px', '0px']);
+        // Sin otro marco de 3 px dentro del formulario: el grupo va sin borde y la leyenda hace de rótulo de campo.
+        expect(style.borderTopWidth, name(fieldset)).toBe('0px');
+        const legend = fieldset.querySelector('legend');
+        if (legend !== null) expect(getComputedStyle(legend).textTransform, name(fieldset)).toBe('uppercase');
       }
     });
 
@@ -371,7 +368,7 @@ describe.each(THEMES)('tema %s', (theme) => {
     delete document.documentElement.dataset['theme'];
   });
 
-  it('RF-15 (019) · 15.1, D-T9 (019): la inicial va sobre charcoal, con la letra en on-charcoal y un aro de 2 px en node-ring', async () => {
+  it('RF-15 (019) · 15.1, D-T9 (019): la inicial va sobre charcoal, con la letra en on-charcoal y un aro cuadrado de 3 px en node-ring', async () => {
     document.documentElement.dataset['theme'] = theme;
     await at(1280);
     await show('/documentacion', AUTHOR);
@@ -379,19 +376,23 @@ describe.each(THEMES)('tema %s', (theme) => {
     const style = getComputedStyle(initial);
     expect(style.backgroundColor).toBe(rgb(TOKENS[theme].charcoal));
     expect(style.color).toBe(rgb(TOKENS[theme]['on-charcoal']));
-    expect(style.borderTopWidth).toBe('2px');
+    expect(style.borderTopWidth).toBe('3px');
     expect(style.borderTopStyle).toBe('solid');
+    expect(style.borderTopLeftRadius).toBe('0px');
     expect(style.borderTopColor).toBe(rgb(TOKENS[theme]['node-ring']));
   });
 
-  it.each(['/constitucion'])('RF-20 (019) · 20.3, D-T13 (019): en %s el aro de cada nodo usa node-ring y contrasta 3:1 con el fondo', async (path) => {
+  it.each(['/constitucion'])('RF-20 (019) · 20.3, D-T13 (019): en %s la línea y los tramos de cada tarjeta son de tinta y contrastan 3:1 con el fondo', async (path) => {
     document.documentElement.dataset['theme'] = theme;
     await at(1280);
-    await show(path, undefined, path === '/constitucion' ? ['Agua compartida'] : []);
-    const nodes = [...host!.querySelectorAll<HTMLElement>('[data-testid="node"]')].filter(visible);
-    expect(nodes.length).toBeGreaterThan(0);
-    for (const node of nodes) expect(getComputedStyle(node).borderTopColor).toBe(rgb(TOKENS[theme]['node-ring']));
-    expect(contrastRatio(TOKENS[theme]['node-ring'], TOKENS[theme].background)).toBeGreaterThanOrEqual(3);
+    await show(path, undefined, ['Agua compartida']);
+    const list = host!.querySelector<HTMLElement>('.constitution__list')!;
+    const ink = rgb(TOKENS[theme].text);
+    expect(getComputedStyle(list, '::before').backgroundColor).toBe(ink);
+    const items = [...list.querySelectorAll<HTMLElement>('.constitution__item')].filter(visible);
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) expect(getComputedStyle(item, '::before').backgroundColor).toBe(ink);
+    expect(contrastRatio(TOKENS[theme].text, TOKENS[theme].background)).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -415,11 +416,8 @@ describe('RF-22 (019) · pie al fondo', () => {
 // y «Referencia retirada» es una idea con imagen y sin necesidades. Las imágenes siguen en la siembra como evidencia de
 // RF-27 (021) · 27.4: se conservan y no se muestran.
 
-/**
- * La tarjeta de la lista del mapa con el nombre `apiceName` (RF-10 (021)). En la siembra completa el mapa abre alejado,
- * con grupos (RF-7 (021)): el edificio entero, con su etapa en texto, se mide en la lista.
- */
-async function buildingFor(apiceName: string): Promise<HTMLElement> {
+/** La tarjeta de la lista del mapa con el nombre `apiceName` (RF-10 (021)): la superficie, la Etapa en texto y la ficha. */
+async function cardFor(apiceName: string): Promise<HTMLElement> {
   return waitFor(() => [...host!.querySelectorAll<HTMLElement>('main article.block')].find((card) => card.querySelector('h3')?.textContent === apiceName));
 }
 
@@ -433,76 +431,72 @@ function colorOf(value: string): string {
   return computed;
 }
 
-/** Las partes del dibujo, de arriba abajo (RF-3 (021) · 3.1 a 3.3). */
-const parts = (building: Element) => ['roof', 'body', 'base'].filter((part) => building.querySelector(`.building__drawing .building__${part}`) !== null);
-
-describe('RF-4 (019) · el edificio crece', () => {
+describe('RF-4 (019) · la Etapa se ve en la superficie', () => {
   it.each([
-    { apiceName: 'Referencia retirada', stage: 'idea', label: 'Idea', expected: ['base'], axis: 'agua' },
-    { apiceName: 'Huerta con imagen', stage: 'prototipo', label: 'Prototipo', expected: ['body', 'base'], axis: 'alimento' },
-    { apiceName: 'Los cinco ejes', stage: 'en marcha', label: 'En marcha', expected: ['roof', 'body', 'base'], axis: 'agua' },
-  ])('RF-4 (019) · 4.1, 4.4, RF-3 (021) · 3.1 a 3.3, RF-2 (021) · 2.2, D-T19 (019): «$apiceName» ($stage) muestra $expected, la base del primer eje y el texto «$label» en la lista', async ({ apiceName, stage, label, expected, axis }) => {
+    { apiceName: 'Referencia retirada', stage: 'idea', label: 'Idea', rule: 'tresbolillo', axis: 'agua' },
+    { apiceName: 'Huerta con imagen', stage: 'prototipo', label: 'Prototipo', rule: 'encaje', axis: 'alimento' },
+    { apiceName: 'Los cinco ejes', stage: 'en marcha', label: 'En marcha', rule: 'eco', axis: 'agua' },
+  ])('RF-4 (019) · 4.1, 4.4, RF-2 (021) · 2.2, D-T19 (019): «$apiceName» ($stage) usa la regla $rule, el fondo del primer eje y el texto «$label» en la lista', async ({ apiceName, label, rule, axis }) => {
     await at(1280);
     await show('/?vista=lista');
-    const button = await buildingFor(apiceName);
-    const building = button.querySelector<HTMLElement>('.building')!;
-    expect(building.dataset['stage']).toBe(stage);
-    expect(parts(building)).toEqual(expected);
-    expect(getComputedStyle(building.querySelector('.building__base')!).fill).toBe(colorOf(`var(--axis-${axis}-fill)`));
-    // RF-1 (021) · 1.1, RF-27 (021) · 27.4: ningún edificio muestra imagen, aunque el ápice guarde una.
-    expect(building.querySelector('img, canvas')).toBeNull();
-    const text = building.querySelector<HTMLElement>('.building__stage')!;
+    const card = await cardFor(apiceName);
+    const surface = card.querySelector<HTMLElement>('.superficie')!;
+    expect(surface.dataset['rule']).toBe(rule);
+    expect(surface.getAttribute('aria-label')).toContain(`Etapa ${label}`);
+    expect(getComputedStyle(surface.querySelector('.superficie__fondo')!).fill).toBe(colorOf(`var(--axis-${axis}-fill)`));
+    // RF-1 (021) · 1.1, RF-27 (021) · 27.4: ninguna tarjeta muestra imagen, aunque el ápice guarde una.
+    expect(card.querySelector('img, canvas')).toBeNull();
+    // La Etapa va escrita: el patrón y el color no la dicen solos.
+    const text = [...card.querySelectorAll<HTMLElement>('p')].find((item) => item.textContent === label)!;
     expect(visible(text)).toBe(true);
-    expect(text.textContent).toBe(label);
   });
 
-  it('RF-27 (021) · 27.4, RF-1 (021) · 1.1: la ficha de un ápice que guarda una imagen aceptada ya no la muestra, ni dentro ni fuera del edificio', async () => {
+  it('RF-27 (021) · 27.4, RF-1 (021) · 1.1: la ficha de un ápice que guarda una imagen aceptada ya no la muestra', async () => {
     await at(1280);
     for (const id of [APICE_IDS.withRetractedReference, APICE_IDS.withImage]) {
       await show(`/apices/${id}`);
-      await waitFor(() => host!.querySelector('.apice-view__head .building__drawing'));
-      // El panel: el logo de apoyo del menú de juego también es una imagen (RF-13 (021) · 13.5).
-      const main = host!.querySelector<HTMLElement>('aside.game-panel')!;
-      expect(main.querySelectorAll('img, canvas, input[type="file"]')).toHaveLength(0);
-      expect(main.querySelector('.apice-view__image')).toBeNull();
+      const sheet = await waitFor(() => host!.querySelector<HTMLElement>('article.apice-view'));
+      expect(sheet.querySelectorAll('img, canvas, input[type="file"]')).toHaveLength(0);
+      expect(sheet.querySelector('.apice-view__image')).toBeNull();
     }
   });
 });
 
 describe('RF-9 (019) · necesidades a la vista', () => {
-  it('RF-9 (019) · 9.1, 9.3, D-T21 (019): el pin es un círculo de 14 px del primer eje, sin texto, y solo está si hay necesidades', async () => {
+  it('RF-9 (019) · 9.1, 9.3, D-T21 (019): la tarjeta dice «Tiene necesidades» con texto, sin pin ni cifras, y solo si hay necesidades', async () => {
     await at(1280);
     await show('/?vista=lista');
-    const withNeeds = await buildingFor('Huerta con imagen');
-    const pin = withNeeds.querySelector<HTMLElement>('.building__pin')!;
-    const box = pin.getBoundingClientRect();
-    expect([box.width, box.height]).toEqual([14, 14]);
-    expect(pin.textContent).toBe('');
-    expect(pin.getAttribute('aria-hidden')).toBe('true');
-    expect(getComputedStyle(pin).backgroundColor).toBe(colorOf('var(--axis-alimento-fill)'));
-    expect((await buildingFor('Referencia retirada')).querySelector('.building__pin')).toBeNull();
+    const withNeeds = await cardFor('Huerta con imagen');
+    const note = [...withNeeds.querySelectorAll<HTMLElement>('p')].find((item) => item.textContent === 'Tiene necesidades')!;
+    expect(visible(note)).toBe(true);
+    expect(withNeeds.querySelector('.building__pin')).toBeNull();
+    const without = await cardFor('Referencia retirada');
+    expect([...without.querySelectorAll('p')].some((item) => item.textContent === 'Tiene necesidades')).toBe(false);
   });
 });
 
 describe('RF-11 (019) · la ficha como taller', () => {
-  it.each([360, 1280])('RF-11 (019) · 11.1 a 11.4, D-T23 (019): a %i px la ficha lleva el edificio con el h1, ejes sin viñetas, los lotes juntos y la fecha larga', async (width) => {
+  it.each([360, 1280])('RF-11 (019) · 11.1 a 11.4, D-T23 (019): a %i px la ficha lleva la superficie antes del h1, sin insignias de eje aparte, Ofrece y Necesita en una línea cada uno y la fecha larga', async (width) => {
     await at(width);
     await show(`/apices/${APICE_IDS.withImage}`);
-    const head = host!.querySelector<HTMLElement>('.apice-view__head')!;
-    const building = head.querySelector<HTMLElement>('.building')!;
+    const sheet = host!.querySelector<HTMLElement>('article.apice-view')!;
+    const surface = sheet.querySelector<HTMLElement>('.superficie')!;
+    const head = sheet.querySelector<HTMLElement>('.apice-view__head')!;
     const h1 = head.querySelector('h1')!;
     expect(h1.textContent).toBe('Huerta con imagen');
-    expect(building.compareDocumentPosition(h1) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(building.querySelector('.building__stage')!.textContent).toBe('Prototipo');
-    const axes = host!.querySelector<HTMLElement>('ul.apice-view__axes')!;
-    expect(getComputedStyle(axes).listStyleType).toBe('none');
-    expect(px(getComputedStyle(axes).paddingLeft)).toBe(0);
-    const [needs, offers] = [...host!.querySelectorAll<HTMLElement>('.apice-view__workshop > section.lot')];
-    expect([needs!.querySelector('h2')!.textContent, offers!.querySelector('h2')!.textContent]).toEqual(['Necesidades', 'Aportes']);
-    expect(needs!.nextElementSibling).toBe(offers);
+    expect(surface.compareDocumentPosition(h1) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(head.querySelector('.apice-view__rotulo')!.textContent).toContain('prototipo');
+    expect(sheet.querySelector('ul.apice-view__axes, .axis-badge')).toBeNull();
+    const [offers, needs] = [...sheet.querySelectorAll<HTMLElement>('.apice-view__datos > p.apice-view__dato')];
+    expect([offers!.querySelector('strong')!.textContent, needs!.querySelector('strong')!.textContent]).toEqual(['Ofrece:', 'Necesita:']);
+    expect(offers!.nextElementSibling).toBe(needs);
+    expect(sheet.querySelector('section.lot')).toBeNull();
+    expect(getComputedStyle(offers!.querySelector('strong')!).fontWeight).toBe('800');
+    expect(px(getComputedStyle(offers!).fontSize)).toBe(14);
     const location = [...host!.querySelectorAll('h2')].find((heading) => heading.textContent === 'Ubicación')!;
-    expect(offers!.compareDocumentPosition(location) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(needs!.compareDocumentPosition(location) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(host!.textContent).toMatch(/Última edición el \d{1,2} de [a-z]+ de \d{4}/);
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width);
   });
 });
 
@@ -524,18 +518,13 @@ describe('RNF-5 (019) · movimiento', () => {
     await cdp().send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   });
 
-  it.each([
-    { reduce: true, expected: 'none' },
-    { reduce: false, expected: 'building-grow' },
-  ])('RNF-5 (019): con movimiento reducido $reduce, el techo y el cuerpo animan con «$expected»', async ({ reduce, expected }) => {
+  it.each([{ reduce: true }, { reduce: false }])('RNF-5 (019): con movimiento reducido $reduce, la superficie del Ápice no anima', async ({ reduce }) => {
     await cdp().send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: reduce ? 'reduce' : 'no-preference' }] });
     await at(1280);
-    // Sin `show`: la lista puede dejar edificios fuera de lo que pinta el navegador de prueba, y Chromium no arranca su
-    // animación, así que esperar a que no quede ninguna no terminaría. Basta el nombre calculado.
     await useAccount(undefined);
     history.replaceState(null, '', '/?vista=lista');
     dispatchEvent(new PopStateEvent('popstate'));
-    const building = (await buildingFor('Los cinco ejes')).querySelector<HTMLElement>('.building')!;
-    for (const part of building.querySelectorAll('.building__roof, .building__body')) expect(getComputedStyle(part).animationName).toBe(expected);
+    const card = await cardFor('Los cinco ejes');
+    for (const part of card.querySelectorAll('.superficie, .superficie__franja, .superficie__glifos')) expect(getComputedStyle(part).animationName).toBe('none');
   });
 });

@@ -87,13 +87,14 @@ describe('con la autora', () => {
     expect(host!.querySelector('main')!.textContent).not.toContain('No encontramos esta página');
   });
 
-  it('RF-13 (002) · 13.1, 13.3: el estado aparece como etiqueta en el ápice con imagen', async () => {
+  it('RF-13 (002) · 13.1, 13.3: el estado aparece en el rótulo del ápice con imagen', async () => {
     await show(`/apices/${APICE_IDS.withImage}`);
-    await waitFor(() => tag('status', CONDITION_TEXTS.status));
+    // El rediseño quitó la etiqueta de estado: la ficha lo dice en su rótulo y la superficie lo dice en su nombre accesible.
+    await waitFor(() => host!.querySelector('.apice-view__rotulo')?.textContent?.includes(CONDITION_TEXTS.status.toLowerCase()));
     // RF-27 (021) · 27.4: la imagen sembrada se conserva en el almacén y la ficha no la muestra.
     // En el panel: el logo de apoyo del menú de juego también es una imagen (RF-13 (021) · 13.5).
     const panel = await waitFor(() => host!.querySelector<HTMLElement>('aside.game-panel'));
-    await waitFor(() => panel.querySelector('svg.building__drawing'));
+    await waitFor(() => panel.querySelector('.superficie'));
     expect(panel.querySelectorAll('img, canvas')).toHaveLength(0);
   });
 
@@ -143,7 +144,7 @@ describe('con la facilitación', () => {
   it('RF-27 (021) · 27.1, 27.4: la ficha del ápice con una referencia retirada ya no la muestra ni la etiqueta, tampoco a la facilitación', async () => {
     await show(`/apices/${APICE_IDS.withRetractedReference}`);
     const main = await waitFor(() => host!.querySelector<HTMLElement>('aside.game-panel'));
-    await waitFor(() => main.querySelector('svg.building__drawing'));
+    await waitFor(() => main.querySelector('.superficie'));
     expect(main.querySelectorAll('.tag[data-condition="reference"], img, input[type="file"]')).toHaveLength(0);
     // Ni el texto alternativo de la referencia sembrada ni el motivo de su retiro.
     expect(main.textContent).not.toMatch(/Imagen retirada|No corresponde al ápice/);

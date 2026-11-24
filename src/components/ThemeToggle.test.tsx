@@ -2,7 +2,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { THEME_ICONS } from '../../shared/domain/identity';
 import { THEME_KEY } from '../app/theme';
 import { expectBlocks } from '../testing/expectBlocks';
 import { ThemeToggle } from './ThemeToggle';
@@ -76,17 +75,18 @@ describe('ThemeToggle', () => {
     expect(button.className).toBe('block icon-button');
     const svg = button.querySelector('svg');
     expect(svg?.getAttribute('aria-hidden')).toBe('true');
-    expect(svg?.querySelector('path')?.getAttribute('d')).toBe(THEME_ICONS.moon.d);
+    expect(svg?.classList.contains('icono--tema')).toBe(true);
     expect(button.textContent).toBe('');
     expectBlocks(container);
   });
 
-  it('RF-7 (003) · 7.5: el ícono es el sol con el tema oscuro vigente y la luna con el claro', async () => {
+  it('RF-7 (003) · 7.5: el ícono es el mismo disco mitad lleno en los dos temas; el nombre dice a cuál se cambia', async () => {
     render(<ThemeToggle />);
     const button = screen.getByRole('button');
-    expect(button.querySelector('path')?.getAttribute('d')).toBe(THEME_ICONS.moon.d);
+    expect(button.querySelector('svg')?.classList.contains('icono--tema')).toBe(true);
     await userEvent.click(button);
-    expect(button.querySelector('path')?.getAttribute('d')).toBe(THEME_ICONS.sun.d);
+    expect(button.querySelector('svg')?.classList.contains('icono--tema')).toBe(true);
+    expect(button.getAttribute('aria-label')).toBe('Cambiar a tema claro');
   });
 
   it('RF-7 (003) · 7.5: «Tema actual: …» sigue en el DOM como texto solo para lectores (visually-hidden)', () => {

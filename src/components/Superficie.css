@@ -1,0 +1,181 @@
+/* Sistema «APICCA · Mapa» (23-11-2026): superficies de patrón, glifos, leyendas e íconos de interfaz. El fondo de una
+   superficie es el color de su eje y todo lo que va encima, en `glifo-sobre-eje` (de 5,1:1 a 11,8:1). Solo tokens. */
+
+.superficie {
+  display: inline-flex;
+  box-sizing: border-box;
+  flex: none;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.superficie--contorno {
+  border: var(--stroke-outline) solid var(--contorno-superficie);
+}
+
+.superficie--fluida {
+  display: flex;
+  inline-size: 100%;
+}
+
+.superficie__franja {
+  display: block;
+  flex: 1 1 0;
+  min-inline-size: 0;
+  block-size: 100%;
+}
+
+.superficie__glifos,
+.glifo__forma {
+  fill: var(--glifo-sobre-eje);
+}
+
+.superficie__ecos {
+  fill: none;
+  stroke: var(--glifo-sobre-eje);
+  stroke-linejoin: miter;
+  stroke-miterlimit: 8;
+}
+
+.superficie--agua .superficie__fondo,
+.glifo--agua .glifo__losa {
+  fill: var(--axis-agua-fill);
+}
+
+.superficie--alimento .superficie__fondo,
+.glifo--alimento .glifo__losa {
+  fill: var(--axis-alimento-fill);
+}
+
+.superficie--cobijo .superficie__fondo,
+.glifo--cobijo .glifo__losa {
+  fill: var(--axis-cobijo-fill);
+}
+
+.superficie--energia .superficie__fondo,
+.glifo--energia .glifo__losa {
+  fill: var(--axis-energia-fill);
+}
+
+.superficie--comunicacion .superficie__fondo,
+.glifo--comunicacion .glifo__losa {
+  fill: var(--axis-comunicacion-fill);
+}
+
+/* QA #13.1: la losa del glifo lleva el mismo contorno de 2 px que toda superficie de eje. */
+.glifo__losa {
+  stroke: var(--contorno-superficie);
+  stroke-width: var(--stroke-outline);
+}
+
+/* Glifo suelto: en el color del texto que lo rodea. */
+.glifo {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+}
+
+.glifo:not(.glifo--losa) .glifo__forma {
+  fill: currentColor;
+}
+
+.glifo__trazo {
+  fill: none;
+  stroke: var(--glifo-sobre-eje);
+  stroke-linejoin: miter;
+}
+
+.glifo:not(.glifo--losa) .glifo__trazo {
+  stroke: currentColor;
+}
+
+/* Íconos de interfaz. */
+.icono {
+  display: block;
+  flex: none;
+}
+
+.icono__lleno {
+  fill: currentColor;
+}
+
+.icono__trazo {
+  fill: none;
+  stroke: currentColor;
+}
+
+/* Leyendas. */
+.leyenda-etapa,
+.leyenda-ejes {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leyenda-etapa {
+  gap: 12px;
+}
+
+.leyenda-etapa__item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-inline-size: 0;
+}
+
+.leyenda-etapa__item > .superficie {
+  border: var(--stroke-outline) solid var(--contorno-superficie);
+}
+
+.leyenda-etapa__regla {
+  color: var(--text-muted);
+  font-size: var(--type-meta-size);
+}
+
+.leyenda-ejes {
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: var(--type-meta-size);
+  font-weight: 600;
+}
+
+.leyenda-ejes__item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Rótulo del sistema: 800, 0,1em, en mayúsculas. El sistema lo da a 12 px; aquí va a 14 px (`meta`), el mínimo de
+   texto del sitio (RF-5 (002) · 5.6). La lectura de rótulos pequeños sigue «Por decidir». */
+.rotulo {
+  font-size: var(--type-meta-size);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+/* Colores forzados: la forma sigue diciendo el eje. */
+@media (forced-colors: active) {
+  .superficie .superficie__fondo,
+  .glifo--losa .glifo__losa {
+    fill: Canvas;
+  }
+
+  .superficie__glifos,
+  .glifo__forma,
+  .icono__lleno {
+    fill: CanvasText;
+  }
+
+  .superficie__ecos,
+  .glifo__trazo,
+  .icono__trazo {
+    stroke: CanvasText;
+  }
+
+  .superficie--contorno {
+    border-color: CanvasText;
+  }
+}

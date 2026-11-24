@@ -103,7 +103,9 @@ describe('ConstitutionPage, lectura de Firestore (004)', () => {
     // RF-15 (019) · 15.2, D-T9 (019): el número ya no lleva un eje.
     expect(numbers.every((n) => !n?.hasAttribute('data-axis'))).toBe(true);
     for (const card of cards) expect(card.classList.contains('block')).toBe(true);
-    expect(container.querySelectorAll('.constitution__node [data-testid="node"]')).toHaveLength(6);
+    // Las secciones cuelgan de una sola línea: cada ítem es hijo de `.constitution__list` y no lleva nodo propio.
+    expect(container.querySelectorAll('.constitution__list > .constitution__item')).toHaveLength(6);
+    expect(container.querySelector('[data-testid="node"]')).toBeNull();
   });
 
   it('RF-2 (004) · 2.1: quien no tiene cuenta activa ve título, texto y fecha, y no pide autoría ni historiales', async () => {

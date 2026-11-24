@@ -1,10 +1,10 @@
-// Mapa propio en Chromium real (D-T19 (021)): sin teselas, imágenes ni peticiones a otros orígenes y con los colores del
-// contrato de tokens en los dos temas (RF-4 (021) · 4.1, 4.2); el norte, la escala y el nombre de cada edificio a la vista
-// (4.3, 4.4); se arrastra con el puntero sin elegir lo que queda debajo (RF-8 (021) · 8.1); los controles miden 44 px o más
-// (8.2); el teclado mueve el lienzo, cambia de nivel y pasa de un edificio al vecino (8.3 a 8.5); la rueda sola desplaza la
-// página y con Ctrl cambia el nivel (8.6); elegir un grupo acerca hasta sus manzanas (RF-7 (021) · 7.2, 7.3); con colores
-// forzados las placas usan los colores del sistema (RNF-1 (021)); y en Prototipado el mapa es una vista propia
-// (RF-10 (021) · 10.2, 10.3).
+// Mapa propio en Chromium real (D-T19 (021)), con el sistema «APICCA · Mapa»: sin teselas de imagen ni peticiones a otros
+// orígenes y con los colores del contrato de tokens en los dos temas (RF-4 (021) · 4.1, 4.2): el fondo, el teselado en `trama`,
+// el contorno de cada celda y los rótulos; el norte, la escala y el nombre de cada Ápice a la vista (4.3, 4.4); se arrastra con el
+// puntero sin elegir lo que queda debajo (RF-8 (021) · 8.1); los controles miden 44 px o más (8.2); el teclado mueve el lienzo,
+// cambia de nivel y pasa de una celda a la vecina (8.3 a 8.5); la rueda sola desplaza la página y con Ctrl cambia el nivel (8.6);
+// elegir un grupo acerca hasta sus zonas (RF-7 (021) · 7.2, 7.3); con colores forzados el teselado, las celdas y los rótulos usan
+// los colores del sistema (RNF-1 (021)); y la vista de mapa de Inicio es una vista propia (RF-10 (021) · 10.2, 10.3).
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { cdp, commands, page, userEvent } from 'vitest/browser';
 import { act } from 'react';
@@ -37,7 +37,7 @@ const apice = (id: string, name: string, axes: Axis[], zone: typeof BOGOTA | nul
   location: zone === null ? null : { lat: zone.lat, lng: zone.lng, precision: 'approximate', zone },
 });
 
-/** Tres ápices en la misma manzana: el mapa abre en el nivel barrio. */
+/** Tres Ápices en la misma zona: el mapa abre en el nivel más cercano. */
 const BLOCK = [
   apice('a', 'Huerta', ['alimento', 'agua'], BOGOTA),
   apice('b', 'Cocina', ['agua'], BOGOTA),
@@ -117,8 +117,9 @@ function center(element: Element): { x: number; y: number } {
   return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
 }
 
-const buildings = (map: HTMLElement) => [...map.querySelectorAll<HTMLButtonElement>('.game-map__building')];
-const building = (map: HTMLElement, name: string) => buildings(map).find((button) => button.getAttribute('aria-label') === `${name}, Idea`)!;
+const cells = (map: HTMLElement) => [...map.querySelectorAll<HTMLButtonElement>('button.game-map__apice')];
+/** La celda de un Ápice por su nombre: su nombre accesible es «nombre, ejes, etapa». */
+const cellOf = (map: HTMLElement, name: string) => cells(map).find((button) => button.getAttribute('aria-label')?.startsWith(`${name}, `) === true)!;
 
 /**
  * Un arrastre real con el ratón, desde un punto del mapa (relativo a su esquina) hasta `by` píxeles más allá. Va por el
@@ -157,15 +158,24 @@ describe.each(THEMES)('mapa propio en el tema %s', (theme) => {
     await page.viewport(1280, 800);
   });
 
-  it('RF-4 (021) · 4.1, D-T17 (021): el fondo, las placas y los nombres salen de los tokens, sin teselas ni imágenes', async () => {
+  it('RF-4 (021) · 4.1, D-T17 (021): el fondo, el teselado, los contornos y los rótulos salen de los tokens, sin teselas ni imágenes', async () => {
     document.documentElement.dataset['theme'] = theme;
     const { map } = await mount(BLOCK);
     expect(getComputedStyle(map).backgroundColor).toBe(computed('var(--background)'));
-    const plates = [...map.querySelectorAll<SVGCircleElement>('.game-map__plate')];
-    expect(plates).toHaveLength(1);
-    expect(getComputedStyle(plates[0]!).fill).toBe(computed('var(--surface)'));
-    expect(getComputedStyle(plates[0]!).stroke).toBe(computed('var(--line)'));
-    for (const name of map.querySelectorAll('.game-map__name')) expect(getComputedStyle(name).color).toBe(computed('var(--text)'));
+    const tessellation = map.querySelector<SVGPathElement>('path.game-map__tessellation')!;
+    expect(getComputedStyle(tessellation).stroke).toBe(computed('var(--trama)'));
+    expect(getComputedStyle(tessellation).fill).toBe('none');
+    expect(cells(map)).toHaveLength(3);
+    for (const hex of map.querySelectorAll<SVGPolygonElement>('button.game-map__apice .game-map__hex')) {
+      expect(getComputedStyle(hex).stroke).toBe(computed('var(--contorno-superficie)'));
+      expect(getComputedStyle(hex).strokeLinejoin).toBe('miter');
+    }
+    const label = map.querySelector<HTMLElement>('.game-map__label--zone')!;
+    expect(getComputedStyle(label).backgroundColor).toBe(computed('var(--surface)'));
+    expect(getComputedStyle(label).color).toBe(computed('var(--text)'));
+    expect(getComputedStyle(label).borderTopLeftRadius).toBe('0px');
+    expect(getComputedStyle(label).boxShadow).toBe('none');
+    for (const tag of map.querySelectorAll('.game-map__tag')) expect(getComputedStyle(tag).color).toBe(computed('var(--text)'));
     expect(map.querySelectorAll('img, image, .leaflet-container')).toHaveLength(0);
   });
 
@@ -183,7 +193,7 @@ describe.each(THEMES)('mapa propio en el tema %s', (theme) => {
     expect(foreign.map((entry) => entry.name)).toEqual([]);
   });
 
-  it('RF-4 (021) · 4.3, 4.4, RF-5 (019), RF-8 (021) · 8.5: el norte, la escala y el nombre de cada edificio están a la vista; el nombre accesible lleva la etapa', async () => {
+  it('RF-4 (021) · 4.3, 4.4, RF-5 (019), RF-8 (021) · 8.5: el norte, la escala y el nombre de cada Ápice están a la vista; el nombre accesible lleva la etapa', async () => {
     document.documentElement.dataset['theme'] = theme;
     const { map } = await mount(BLOCK);
     const north = map.querySelector<HTMLElement>('[aria-label="Norte arriba"]')!;
@@ -192,15 +202,22 @@ describe.each(THEMES)('mapa propio en el tema %s', (theme) => {
     expect(scale.textContent).toMatch(/^\d+ (km|m)$/);
     expect(scale.getBoundingClientRect().width).toBeGreaterThan(20);
     const box = map.getBoundingClientRect();
-    for (const [index, name] of ['Huerta', 'Cocina', 'Panel solar'].entries()) {
-      const button = building(map, name);
+    const zone = map.querySelector<HTMLElement>('.game-map__label--zone')!;
+    expect(zone.textContent).toMatch(/^Zona [0-9a-f]{4} · 3 Ápices$/);
+    for (const [index, [name, axes]] of [['Huerta', 'alimento y agua'], ['Cocina', 'agua'], ['Panel solar', 'energía']].entries()) {
+      const button = cellOf(map, name!);
       expect(button, name).toBeDefined();
-      const label = button.querySelector<HTMLElement>('.game-map__name')!;
-      expect(label.textContent).toBe(name);
-      const area = label.getBoundingClientRect();
+      // El nombre accesible lleva los ejes y la etapa; el nombre de la celda va en un rótulo propio, fuera de ella.
+      expect(button.getAttribute('aria-label')).toBe(`${name}, ${axes}, Idea`);
+      const tag = button.querySelector<HTMLElement>('.game-map__tag')!;
+      expect(tag.textContent).toBe(name);
+      // El rótulo aparece al apuntar la celda y, con papel de fondo, queda dentro del lienzo.
+      await userEvent.hover(button.querySelector('.game-map__hex')!);
+      const area = tag.getBoundingClientRect();
       expect(area.width, `${index}`).toBeGreaterThan(0);
       expect(area.left).toBeGreaterThanOrEqual(box.left);
       expect(area.right).toBeLessThanOrEqual(box.right);
+      expect(getComputedStyle(tag).backgroundColor).toBe(computed('var(--surface)'));
     }
   });
 
@@ -216,14 +233,16 @@ describe.each(THEMES)('mapa propio en el tema %s', (theme) => {
     }
   });
 
-  it('RNF-1 (021), RNF-1 (002): con colores forzados las placas y el lienzo usan los colores del sistema', async () => {
+  it('RNF-1 (021), RNF-1 (002): con colores forzados el teselado, las celdas, los rótulos y el lienzo usan los colores del sistema', async () => {
     document.documentElement.dataset['theme'] = theme;
     await forcedColors(true);
     expect(matchMedia('(forced-colors: active)').matches).toBe(true);
     const { map } = await mount(BLOCK);
-    const plate = map.querySelector<SVGCircleElement>('.game-map__plate')!;
-    expect(getComputedStyle(plate).fill).toBe(computed('Canvas'));
-    expect(getComputedStyle(plate).stroke).toBe(computed('CanvasText'));
+    expect(getComputedStyle(map.querySelector('path.game-map__tessellation')!).stroke).toBe(computed('GrayText'));
+    expect(getComputedStyle(map.querySelector('.game-map__hex')!).stroke).toBe(computed('CanvasText'));
+    const label = map.querySelector<HTMLElement>('.game-map__label--zone')!;
+    expect(getComputedStyle(label).backgroundColor).toBe(computed('Canvas'));
+    expect(getComputedStyle(label).color).toBe(computed('CanvasText'));
     expect(getComputedStyle(map).borderTopColor).toBe(computed('CanvasText'));
   });
 });
@@ -242,18 +261,18 @@ describe('moverse por el mapa', () => {
     scrollTo(0, 0);
   });
 
-  it('RF-8 (021) · 8.1: arrastrar mueve el lienzo con el puntero y no elige ningún edificio', async () => {
+  it('RF-8 (021) · 8.1: arrastrar mueve el lienzo con el puntero y no elige ningún Ápice', async () => {
     const { map, onSelect } = await mount(BLOCK);
-    const before = center(building(map, 'Cocina'));
+    const before = center(cellOf(map, 'Cocina'));
     await drag(map, { x: 24, y: 24 }, { x: 100, y: 50 });
-    const after = center(building(map, 'Cocina'));
+    const after = center(cellOf(map, 'Cocina'));
     expect(after.x - before.x).toBeCloseTo(100, 0);
     expect(after.y - before.y).toBeCloseTo(50, 0);
-    // Empezar el arrastre sobre un edificio tampoco lo elige.
-    await drag(map, within(map, building(map, 'Huerta')), { x: -60, y: 0 });
+    // Empezar el arrastre sobre una celda tampoco la elige.
+    await drag(map, within(map, cellOf(map, 'Huerta')), { x: -60, y: 0 });
     expect(onSelect).not.toHaveBeenCalled();
     // Un clic sí lo elige.
-    await userEvent.click(building(map, 'Huerta'));
+    await userEvent.click(cellOf(map, 'Huerta'));
     expect(onSelect).toHaveBeenCalledWith('a');
   });
 
@@ -263,9 +282,9 @@ describe('moverse por el mapa', () => {
     host!.querySelector('button')!.focus();
     await userEvent.tab();
     expect(document.activeElement).toBe(map);
-    const before = center(building(map, 'Cocina'));
+    const before = center(cellOf(map, 'Cocina'));
     await userEvent.keyboard('{ArrowRight}');
-    expect(center(building(map, 'Cocina')).x).toBeCloseTo(before.x - 80, 0);
+    expect(center(cellOf(map, 'Cocina')).x).toBeCloseTo(before.x - 80, 0);
     await userEvent.keyboard('-');
     await settle();
     expect(map.dataset['level']).toBe('1');
@@ -278,16 +297,19 @@ describe('moverse por el mapa', () => {
     expect(map.dataset['level']).toBe('0');
   });
 
-  it('RF-8 (021) · 8.4, 8.5: un solo edificio está en el orden del tabulador; las flechas pasan al vecino y el foco usa focus', async () => {
+  it('RF-8 (021) · 8.4, 8.5: una sola celda está en el orden del tabulador; las flechas pasan a la vecina y el foco usa focus', async () => {
     const { map } = await mount(BLOCK);
-    expect(buildings(map).filter((button) => button.tabIndex === 0)).toHaveLength(1);
+    expect([...map.querySelectorAll<HTMLButtonElement>('button.game-map__cell')].filter((button) => button.tabIndex === 0)).toHaveLength(1);
     host!.querySelector('button')!.focus();
     await userEvent.tab();
     await userEvent.tab();
     const first = document.activeElement as HTMLElement;
-    expect(first.classList.contains('game-map__building')).toBe(true);
+    expect(first.classList.contains('game-map__apice')).toBe(true);
     expect(first.matches(':focus-visible')).toBe(true);
+    // El foco se ve: un contorno de 3 px en el token `focus`, a su distancia.
     expect(getComputedStyle(first).outlineColor).toBe(computed('var(--focus)'));
+    expect(getComputedStyle(first).outlineStyle).toBe('solid');
+    expect(parseFloat(getComputedStyle(first).outlineWidth)).toBeGreaterThanOrEqual(3);
     const reached = new Set([first.getAttribute('aria-label')]);
     for (const key of ['{ArrowRight}', '{ArrowDown}', '{ArrowLeft}', '{ArrowUp}']) {
       await userEvent.keyboard(key);
@@ -295,9 +317,9 @@ describe('moverse por el mapa', () => {
     }
     expect(reached.size).toBeGreaterThan(1);
     for (const label of reached) expect(label).toMatch(/, Idea$/);
-    // Tab sale del mapa sin pasar por los otros edificios.
+    // Tab sale del mapa sin pasar por las otras celdas.
     await userEvent.tab();
-    expect((document.activeElement as HTMLElement).classList.contains('game-map__building')).toBe(false);
+    expect((document.activeElement as HTMLElement).classList.contains('game-map__apice')).toBe(false);
   });
 
   it('RF-8 (021) · 8.6: con el puntero sobre el mapa, la rueda sola desplaza la página y con Ctrl cambia el nivel', async () => {
@@ -322,11 +344,11 @@ describe('moverse por el mapa', () => {
     expect(scrollY).toBe(0);
   });
 
-  it('RF-7 (021) · 7.2, 7.3, 7.4: con dos ciudades el mapa abre alejado y elegir un grupo acerca hasta sus manzanas', async () => {
+  it('RF-7 (021) · 7.2, 7.3, 7.4: con dos ciudades el mapa abre alejado y elegir un grupo acerca hasta sus zonas', async () => {
     const { map } = await mount(FAR);
     expect(Number(map.dataset['level'])).toBeGreaterThan(0);
     const groups = [...map.querySelectorAll<HTMLButtonElement>('.game-map__group')];
-    expect(groups.map((group) => group.getAttribute('aria-label')).sort()).toEqual(['1 ápice, acercar', '1 ápice, acercar']);
+    expect(groups.map((group) => group.getAttribute('aria-label')).sort()).toEqual(['1 Ápice, acercar', '1 Ápice, acercar']);
     const box = map.getBoundingClientRect();
     for (const group of groups) {
       const spot = center(group);
@@ -338,12 +360,12 @@ describe('moverse por el mapa', () => {
     await userEvent.click(groups[0]!);
     await settle();
     expect(map.dataset['level']).toBe('0');
-    expect(buildings(map).length).toBeGreaterThan(0);
-    expect((document.activeElement as HTMLElement).classList.contains('game-map__building')).toBe(true);
+    expect(cells(map).length).toBeGreaterThan(0);
+    expect((document.activeElement as HTMLElement).classList.contains('game-map__apice')).toBe(true);
   });
 });
 
-describe('el mapa en Jugar', () => {
+describe('el mapa en Inicio', () => {
   let app: Root | undefined;
   let appHost: HTMLDivElement | undefined;
   let previousPath: string;
@@ -360,7 +382,7 @@ describe('el mapa en Jugar', () => {
     history.replaceState(null, '', previousPath);
   });
 
-  it('RF-17 (021) · 17.1, RF-10 (021) · 10.2, 10.3, RF-9 (021) · 9.1: /prototipado?vista=mapa lleva al mapa, sin lista ni teselas, y el ápice sin ubicación va aparte', async () => {
+  it('RF-17 (021) · 17.1, RF-10 (021) · 10.2, 10.3, RF-9 (021) · 9.1: /prototipado?vista=mapa lleva al mapa, sin lista ni teselas, y el Ápice sin ubicación va aparte', async () => {
     history.replaceState(null, '', '/prototipado?vista=mapa');
     appHost = document.createElement('div');
     document.body.append(appHost);
@@ -374,7 +396,7 @@ describe('el mapa en Jugar', () => {
       ),
     );
     const map = await waitFor(() => appHost!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]'));
-    const seeded = await waitFor(() => map.querySelector<HTMLElement>(`[aria-label="${LONG_NAME}, Idea"]`));
+    const seeded = await waitFor(() => map.querySelector<HTMLElement>(`[aria-label^="${LONG_NAME}, "]`));
     expect(seeded.closest('[role="group"][aria-label="Sin ubicación"]')).not.toBeNull();
     expect(appHost.querySelector('.apice-lot, .leaflet-container')).toBeNull();
     expect([...appHost.querySelectorAll('main h3')].some((heading) => heading.textContent === LONG_NAME)).toBe(false);

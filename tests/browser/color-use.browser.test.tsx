@@ -1,10 +1,11 @@
 // Uso del color en Chromium real (T-4.16, plan §9.4): en las rutas que la siembra completa permite
-// montar (con la sesión de la autora en «Lo mío», `/?mio=1`), solo `.action-destructive` y `[role=alert]` calculan `brand-red` (RF-2 (002) · 2.3), solo
-// `.action-primary` y los enlaces calculan `action-blue` (RF-2 (002) · 2.4) y solo el interior de
-// `.logo` calcula un `logo-*` (RF-2 (002) · 2.3). Se miran el color, el fondo y los cuatro bordes.
-// RF-15 (019) · 15.2, D-15 (019), D-T9 (019): los colores de eje (`axis-*`) solo los calculan los íconos de eje, los
-// edificios y el lote, los pines del mapa, las hebras y los edificios del mapa ilustrado y los hilos por eje del Foro.
-// Para ellos también se miran `fill` y `stroke`, porque las hebras y los íconos son SVG.
+// montar (con la sesión de la autora en «Lo mío», `/?mio=1`), solo el interior de `.logo` calcula un `logo-*` (RF-2 (002) · 2.3).
+// Sistema «APICCA · Mapa»: el rojo de marca y el azul de acción pasaron a ser la tinta (RF-2 (002) · 2.3, 2.4), así que ya
+// no son colores aparte que vigilar; en su lugar se comprueba que valen tinta y que el aviso de error se dice con texto y
+// con borde discontinuo, no con un color propio. Se miran el color, el fondo y los cuatro bordes.
+// RF-15 (019) · 15.2, D-15 (019), D-T9 (019): los colores de eje (`axis-*-fill`) solo los calculan las superficies de
+// patrón, los glifos y los íconos de eje, y los hilos por eje del Foro. Para ellos también se miran `fill` y `stroke`,
+// porque las superficies y los glifos son SVG.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { commands, userEvent } from 'vitest/browser';
 import { act } from 'react';
@@ -14,7 +15,6 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
-import '../../src/styles/paths.css';
 import { AXES } from '../../shared/domain/apice';
 import { THEMES } from '../../shared/domain/identity';
 import { App } from '../../src/App';
@@ -54,19 +54,18 @@ async function useAccount(account: typeof AUTHOR | undefined) {
 
 /** Dónde puede aparecer cada token reservado: el elemento o un antepasado debe coincidir. */
 const ALLOWED: Record<string, string> = {
-  'brand-red': '.action-destructive, [role="alert"]',
-  'action-blue': '.action-primary, a',
   'logo-gray': '.logo',
   'logo-red': '.logo',
   'logo-blue': '.logo',
 };
 
 /** Dónde pueden aparecer los colores de eje (RF-15 (019) · 15.2). */
-const AXIS_PLACES = '.axis-icon, .building, .apice-lot, .apicca-pin, .map-illustration, .forum__axis, .forum-message__initial';
+const AXIS_PLACES = '[class*="superficie"], [class*="glifo"], .axis-icon, .forum__axis, .forum-message__initial';
 /** Los nombres de token de cada eje, sin tildes, como en `tokens.ts`. */
 const AXIS_TOKENS = AXES.flatMap((axis) => {
   const key = axis.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return [`axis-${key}-fill`, `axis-${key}-stroke`];
+  // El trazo de eje vale tinta (`axis-*-stroke`): no es un color propio.
+  return [`axis-${key}-fill`];
 });
 for (const token of AXIS_TOKENS) ALLOWED[token] = AXIS_PLACES;
 
@@ -177,7 +176,21 @@ describe.each(THEMES)('uso del color en el tema %s', (theme) => {
     expect(misuses(host!)).toEqual([]);
   });
 
-  it('RF-2 (002) · 2.3: con el aviso de error de /entrar a la vista, el rojo sigue solo en el aviso', async () => {
+  it('RF-2 (002) · 2.3, 2.4: el rojo de marca y el azul de acción valen la tinta del tema', () => {
+    document.documentElement.dataset['theme'] = theme;
+    const ink = (token: string) => {
+      const probe = document.createElement('div');
+      probe.style.color = `var(--${token})`;
+      document.body.append(probe);
+      const value = getComputedStyle(probe).color;
+      probe.remove();
+      return value;
+    };
+    expect(ink('brand-red')).toBe(ink('text'));
+    expect(ink('action-blue')).toBe(ink('text'));
+  });
+
+  it('RF-2 (002) · 2.3: con el aviso de error de /entrar a la vista, el error se dice con texto y los colores reservados siguen en su lugar', async () => {
     document.documentElement.dataset['theme'] = theme;
     await useAccount(undefined);
     await show('/entrar');
@@ -186,7 +199,8 @@ describe.each(THEMES)('uso del color en el tema %s', (theme) => {
     await userEvent.fill(email!, 'nadie@ejemplo.org');
     await userEvent.fill(password!, 'clave-que-no-existe');
     await userEvent.click(host!.querySelector<HTMLButtonElement>('form button[type="submit"]')!);
-    await waitFor(() => host!.querySelector('[role="alert"]'));
+    const alert = await waitFor(() => host!.querySelector<HTMLElement>('[role="alert"]'));
+    expect(alert.textContent!.trim().length).toBeGreaterThan(0);
     expect(misuses(host!)).toEqual([]);
   });
 });

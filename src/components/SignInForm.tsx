@@ -7,22 +7,22 @@ import { signInMessage } from '../app/authMessages';
 import { authCode, useAuthService } from '../data/authService';
 import './SignInForm.css';
 
-/** Ojo abierto, o tachado mientras la contraseña se ve. */
+/** Ojo angular (sin curvas ni círculos), abierto o tachado mientras la contraseña se ve. */
 function EyeGlyph({ crossed }: { crossed: boolean }) {
   return (
     <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden="true" focusable="false" className="sign-in-form__glyph">
-      <path d="M2 12 C5 6.5 8.5 4.5 12 4.5 C15.5 4.5 19 6.5 22 12 C19 17.5 15.5 19.5 12 19.5 C8.5 19.5 5 17.5 2 12 Z" />
-      <circle cx="12" cy="12" r="3.5" />
+      <path d="M2 12 L7 6 H17 L22 12 L17 18 H7 Z" />
+      <rect x="9.5" y="9.5" width="5" height="5" />
       {crossed && <path d="M4 20 L20 4" />}
     </svg>
   );
 }
 
-/** Señal de error: círculo con signo de exclamación. */
+/** Señal de error: cuadrado con signo de exclamación. */
 function AlertGlyph() {
   return (
     <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden="true" focusable="false" className="sign-in-form__glyph">
-      <circle cx="12" cy="12" r="9.5" />
+      <rect x="3" y="3" width="18" height="18" />
       <path d="M12 7 V13 M12 16.5 V17" />
     </svg>
   );

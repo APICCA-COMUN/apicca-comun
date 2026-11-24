@@ -1,6 +1,6 @@
 // RF-7 (003) · 7.6, 7.7, 7.10 (D-27 (003)), RF-15 (021) · 15.3, D-T24 (021): la entrada de la cuenta, igual en la
 // cabecera de las páginas de texto y en la barra del mapa. Sin sesión, «Entrar»; con sesión, la inicial, el nombre de
-// usuario y el rol, que llevan a «Lo mío» (`/?mio=1`); con la cuenta suspendida, una silueta que lleva al mapa, donde
+// usuario y el rol, que llevan a «Lo mío» (`/?mio=1`); con la cuenta suspendida, una figura que lleva a los Ápices, donde
 // está el aviso de suspensión.
 import type { Role } from '../../shared/domain/accounts';
 import { Link } from '../app/router';
@@ -11,12 +11,12 @@ export function roleLabel(role: Role): string {
   return role === 'facilitator' ? 'Facilitador' : 'Persona inscrita';
 }
 
-/** Silueta genérica de persona para la cuenta suspendida (sin nombre de usuario, RF-11 (003) · 11.9). */
+/** Figura genérica de persona para la cuenta suspendida (sin nombre de usuario, RF-11 (003) · 11.9): dos cuadrados. */
 function PersonGlyph() {
   return (
     <svg viewBox="0 0 24 24" width={24} height={24} aria-hidden="true" focusable="false" fill="currentColor">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21 C4 16.5 7.5 14 12 14 C16.5 14 20 16.5 20 21 Z" />
+      <rect x="8" y="3" width="8" height="8" />
+      <path d="M4 21 V16 H20 V21 Z" />
     </svg>
   );
 }

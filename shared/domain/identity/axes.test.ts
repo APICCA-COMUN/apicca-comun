@@ -27,12 +27,11 @@ describe('identidad de los ejes', () => {
     }
   });
 
-  it('RF-4 (002) · 4.4: cada trazo alcanza 3:1 sobre surface y charcoal, en cada tema', () => {
+  it('RF-4 (002) · 4.4, sistema «APICCA · Mapa»: el glifo de cada eje alcanza 3:1 sobre su propio color, en cada tema', () => {
     for (const theme of THEMES) {
       const t = TOKENS[theme];
       for (const a of AXIS_IDENTITY) {
-        expect(contrastRatio(t[a.stroke], t.surface), `${theme} ${a.key}`).toBeGreaterThanOrEqual(3);
-        expect(contrastRatio(t[a.stroke], t.charcoal), `${theme} ${a.key}`).toBeGreaterThanOrEqual(3);
+        expect(contrastRatio(t[a.stroke], t[a.fill]), `${theme} ${a.key}`).toBeGreaterThanOrEqual(3);
       }
     }
   });

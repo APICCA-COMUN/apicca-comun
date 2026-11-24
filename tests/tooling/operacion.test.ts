@@ -114,7 +114,8 @@ describe('operación · dependencias', () => {
     expect(names('functions/package.json', 'dependencies')).toEqual(['firebase-admin', 'firebase-functions', 'h3-js']);
   });
 
-  it('RNF-2 (013): el sitio no suma dependencias de ejecución', () => {
-    expect(names('package.json', 'dependencies')).toEqual(['firebase', 'leaflet', 'react', 'react-dom']);
+  // h3-js entra el 23-11-2026 por pedido de la persona: el mapa se tesela con H3 en el cliente.
+  it('RNF-2 (013): el sitio no suma dependencias de ejecución (salvo h3-js para el mapa)', () => {
+    expect(names('package.json', 'dependencies')).toEqual(['firebase', 'h3-js', 'leaflet', 'react', 'react-dom']);
   });
 });

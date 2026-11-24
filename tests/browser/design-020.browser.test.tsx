@@ -1,6 +1,6 @@
 // Deuda de la vista en vivo (spec 020), medida en Chromium sobre la siembra completa (D-T7 (020)):
-// - RF-1 (020) · 1.1, D-T1 (020): cada nodo se ve entero, por encima de sus caminos. A 6 px del centro, hacia los
-//   cuatro lados, el punto cae en el nodo.
+// - RF-1 (020) · 1.1, D-T1 (020): cada tarjeta de la línea de la Constitución se ve entera y nada la tapa. A 6 px del
+//   centro, hacia los cuatro lados, el punto cae en la tarjeta (el sistema «APICCA · Mapa» ya no dibuja nodos).
 // - RF-1 (020) · 1.2 salió con el Inicio de texto: `/` es el mapa (RF-11 (021)).
 // - RF-2 (020) · 2.1, D-T3 (020): el zoom del selector de ubicación mide 44 × 44 px como mínimo.
 // - RF-3 (020) · 3.1, D-T4 (020): cada ruta del recorrido tiene un solo `main`.
@@ -15,7 +15,6 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
-import '../../src/styles/paths.css';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
@@ -41,15 +40,14 @@ const ROUTES: { path: string; as?: Account; form?: true }[] = [
 ];
 
 /**
- * Las rutas con nodos: la Constitución. El Inicio de texto, con sus pasos y su mapa ilustrado, dio paso al mapa
- * (RF-11 (021)).
+ * Las rutas con tarjetas unidas por la línea: la Constitución.
  * `ready`: textos que la página pinta solo cuando ya leyó sus datos, como en `pages.browser.test.tsx`.
- * `nodes`: dónde están los nodos de la ruta, y `count`, cuántos debe haber (QA-1 de la implementación): si faltara
- * alguno, la medida de RF-1 (020) · 1.1 no lo vería.
+ * `nodes`: dónde están las tarjetas de la ruta, y `count`, cuántas debe haber (QA-1 de la implementación): si faltara
+ * alguna, la medida de RF-1 (020) · 1.1 no la vería.
  */
 const NODE_ROUTES: { path: string; ready?: string[]; nodes: string; count: () => number }[] = [
-  // Un nodo por sección de la constitución sembrada (RF-11 (008) · 11.5).
-  { path: '/constitucion', ready: ['Agua compartida', 'Escuchar primero'], nodes: '.constitution__node [data-testid="node"]', count: () => Object.keys(CONSTITUTION_IDS.sections).length },
+  // Una tarjeta por sección de la constitución sembrada (RF-11 (008) · 11.5).
+  { path: '/constitucion', ready: ['Agua compartida', 'Escuchar primero'], nodes: '.constitution__item > article', count: () => Object.keys(CONSTITUTION_IDS.sections).length },
 ];
 
 let signedInAs: string | null = null;
@@ -110,10 +108,9 @@ function hasBox(element: Element): boolean {
   return box.width > 0 && box.height > 0;
 }
 
-/** Dónde está un nodo, para el mensaje del fallo. */
+/** Dónde está una tarjeta, para el mensaje del fallo. */
 function place(node: Element): string {
-  const owner = node.closest('.constitution__item');
-  return owner?.classList[0] ?? node.parentElement?.className ?? '?';
+  return node.querySelector('h2')?.textContent ?? node.parentElement?.className ?? '?';
 }
 
 function describeHit(hit: Element | null): string {
@@ -122,18 +119,19 @@ function describeHit(hit: Element | null): string {
   return `${hit.tagName.toLowerCase()}${name ? `.${name.split(' ').join('.')}` : ''}`;
 }
 
-/** Los puntos a 6 px del centro de cada nodo, hacia los cuatro lados, que no caen en el nodo. */
-function coveredNodes(): string[] {
+/** Los puntos a 6 px del centro de cada tarjeta, hacia los cuatro lados, que no caen en ella. */
+function coveredNodes(selector: string): string[] {
   const failures: string[] = [];
-  const nodes = [...host!.querySelectorAll<HTMLElement>('[data-testid="node"]')].filter(hasBox);
+  const nodes = [...host!.querySelectorAll<HTMLElement>(selector)].filter(hasBox);
   nodes.forEach((node, index) => {
     node.scrollIntoView({ block: 'center', inline: 'nearest' });
     const box = node.getBoundingClientRect();
+    if (box.left < 0 || box.right > innerWidth + 0.5) failures.push(`tarjeta ${index + 1} (${place(node)}) se sale de la ventana: ${Math.round(box.left)}–${Math.round(box.right)}`);
     const cx = box.left + box.width / 2;
-    const cy = box.top + box.height / 2;
+    const cy = box.top + Math.min(box.height / 2, innerHeight / 2);
     for (const [dx, dy, side] of [[6, 0, 'derecha'], [-6, 0, 'izquierda'], [0, 6, 'abajo'], [0, -6, 'arriba']] as const) {
       const hit = document.elementFromPoint(cx + dx, cy + dy);
-      if (hit !== node) failures.push(`nodo ${index + 1} (${place(node)}), ${side}: ${describeHit(hit)}`);
+      if (hit === null || !node.contains(hit)) failures.push(`tarjeta ${index + 1} (${place(node)}), ${side}: ${describeHit(hit)}`);
     }
   });
   scrollTo(0, 0);
@@ -195,19 +193,19 @@ afterAll(async () => {
   await page.viewport(1280, 800);
 });
 
-describe('RF-1 (020) · nodos legibles', () => {
+describe('RF-1 (020) · tarjetas legibles', () => {
   describe.each([360, 1100, 1280])('a %i px', (width) => {
-    it.each(NODE_ROUTES)('RF-1 (020) · 1.1: en $path cada nodo se ve entero, por encima de sus caminos', async ({ path, ready, nodes, count }) => {
+    it.each(NODE_ROUTES)('RF-1 (020) · 1.1: en $path cada tarjeta de la línea se ve entera, sin nada encima', async ({ path, ready, nodes, count }) => {
       await at(width);
       await useAccount(undefined);
       await show(path, ready);
       const shown = () => [...host!.querySelectorAll(nodes)].filter(hasBox).length;
-      // La Constitución llega con los datos: se espera a que pinte los nodos que pide.
+      // La Constitución llega con los datos: se espera a que pinte las tarjetas que pide.
       await waitFor(() => count() > 0 && shown() === count()).catch(() => undefined);
       await waitFor(() => document.getAnimations().length === 0);
       expect(count()).toBeGreaterThan(0);
       expect(shown()).toBe(count());
-      expect(coveredNodes()).toEqual([]);
+      expect(coveredNodes(nodes)).toEqual([]);
     });
   });
 });

@@ -1,8 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { APICE_STAGE_LABEL } from '../../shared/domain/apice';
-import { buildingVariant } from '../../shared/domain/identity';
-import { ApiceCard } from './ApiceCard';
+import { ApiceCard, ApiceRow } from './ApiceCard';
 import { expectBlocks } from '../testing/expectBlocks';
 
 const base = {
@@ -15,13 +14,13 @@ const base = {
 };
 
 describe('ApiceCard', () => {
-  it('RF-21 (001), RF-22 (001), RF-2 (021) · 2.1: muestra los datos de la tarjeta, con el edificio en lugar de la imagen, y enlaza a la ficha', () => {
+  it('RF-21 (001), RF-22 (001), RF-2 (021) · 2.1: muestra los datos de la tarjeta, con la superficie del Ápice en lugar de la imagen, y enlaza a la ficha', () => {
     render(<ApiceCard apice={base} />);
     const card = screen.getByRole('article');
     expect(within(card).getByRole('link', { name: 'Cosecha de lluvia' }).getAttribute('href')).toBe('/apices/a1');
-    expect(card.querySelector('.building svg.building__drawing')).not.toBeNull();
-    expect(within(card).getByText('Agua')).toBeTruthy();
-    expect(within(card).getByText('Cobijo')).toBeTruthy();
+    expect(card.querySelector('.superficie svg.superficie__franja')).not.toBeNull();
+    expect(within(card).getByText('agua')).toBeTruthy();
+    expect(within(card).getByText('cobijo')).toBeTruthy();
     expect(within(card).getAllByText('Prototipo').length).toBeGreaterThan(0);
     expect(within(card).getByText(/\b3\b.*2026/)).toBeTruthy();
     expect(within(card).getByText('Captamos agua de lluvia en el techo comunal.')).toBeTruthy();
@@ -50,26 +49,22 @@ describe('ApiceCard · bloques (002)', () => {
 });
 
 describe('ApiceCard · identidad (002)', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   it('RF-4 (002) · 4.2: cada eje se muestra con su ícono y su nombre', () => {
     const { container } = render(<ApiceCard apice={{ ...base, axes: ['agua', 'energía'] }} />);
     const list = within(screen.getByRole('list', { name: 'Ejes' }));
-    expect(list.getByText('Agua')).toBeTruthy();
-    expect(list.getByText('Energía')).toBeTruthy();
+    expect(list.getByText('agua')).toBeTruthy();
+    expect(list.getByText('energía')).toBeTruthy();
     expect(container.querySelector('ul .axis-icon--agua')).toBeTruthy();
     expect(container.querySelector('ul .axis-icon--energia')).toBeTruthy();
   });
 
-  it('RF-7 (002) · 7.2, RF-2 (021) · 2.4, 2.5, D-T4 (021): el edificio de la tarjeta mide 128 px como máximo y su forma sale del id', () => {
-    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
+  it('la superficie de la tarjeta lleva una franja por eje, contorno y nombre accesible con la Etapa', () => {
     const { container } = render(<ApiceCard apice={base} />);
-    const building = container.querySelector('.building')!;
-    const drawing = building.querySelector('svg.building__drawing')!;
-    expect([drawing.getAttribute('width'), drawing.getAttribute('height')]).toEqual(['128', '128']);
-    expect(building.getAttribute('data-variant')).toBe(String(buildingVariant('a1')));
+    const surface = container.querySelector('.superficie')!;
+    expect(surface.classList.contains('superficie--contorno')).toBe(true);
+    expect(surface.getAttribute('role')).toBe('img');
+    expect(surface.getAttribute('aria-label')).toBe('agua y cobijo, Etapa Prototipo');
+    expect(surface.querySelectorAll('svg.superficie__franja')).toHaveLength(2);
   });
 
   it('RF-13 (002) · 13.1, 13.3: el estado es una etiqueta con el texto de la 001', () => {
@@ -88,30 +83,55 @@ describe('ApiceCard · identidad (002)', () => {
       unmount();
     }
   });
-  it('RF-3 (021) · 3.1 a 3.3, RF-4 (019) · 4.1, 4.4, D-T19 (019): el edificio de la tarjeta sigue la etapa y la dice en texto', () => {
-    for (const [status, parts] of [
-      ['idea', 1],
-      ['prototipo', 2],
-      ['en marcha', 3],
+  it('RF-3 (021) · 3.1 a 3.3: la regla de la superficie sigue la Etapa y la Etapa se dice en texto', () => {
+    for (const [status, rule] of [
+      ['idea', 'tresbolillo'],
+      ['prototipo', 'encaje'],
+      ['en marcha', 'eco'],
     ] as const) {
       const { container, unmount } = render(<ApiceCard apice={{ ...base, status }} />);
-      expect(container.querySelector('.building')!.getAttribute('data-stage')).toBe(status);
-      expect(container.querySelectorAll('.building__base, .building__body, .building__roof')).toHaveLength(parts);
-      expect(container.querySelector('.building__stage')!.textContent).toBe(APICE_STAGE_LABEL[status]);
+      expect(container.querySelector('.superficie')!.getAttribute('data-rule')).toBe(rule);
+      expect(container.querySelector('.tag[data-condition="status"]')!.textContent).toBe(APICE_STAGE_LABEL[status]);
       unmount();
     }
   });
 
-  it('RF-9 (019) · 9.1, 9.2, D-T21 (019): con necesidades con texto la tarjeta pone el pin y dice «Tiene necesidades»', () => {
-    const { container, rerender } = render(<ApiceCard apice={{ ...base, needs: 'Tejas' }} />);
-    expect(container.querySelector('.building__pin')).not.toBeNull();
+  it('RF-9 (019) · 9.1, 9.2, D-T21 (019): con necesidades con texto la tarjeta dice «Tiene necesidades»', () => {
+    const { rerender } = render(<ApiceCard apice={{ ...base, needs: 'Tejas' }} />);
     expect(screen.getByText('Tiene necesidades')).toBeTruthy();
-    expect(container.textContent).not.toMatch(/\d+ necesidades?/i);
+    expect(document.body.textContent).not.toMatch(/\d+ necesidades?/i);
     rerender(<ApiceCard apice={{ ...base, needs: '  ' }} />);
-    expect(container.querySelector('.building__pin')).toBeNull();
     expect(screen.queryByText('Tiene necesidades')).toBeNull();
     rerender(<ApiceCard apice={base} />);
     expect(screen.queryByText('Tiene necesidades')).toBeNull();
+  });
+});
+
+describe('ApiceRow', () => {
+  it('es una fila con la superficie de 56 × 34, el nombre y el código de zona; enlaza a la ficha', () => {
+    const located = { ...base, location: { lat: 4.6, lng: -74.1, precision: 'approximate' as const, zone: { cell: '872830828ffffff', lat: 4.6, lng: -74.1 } } };
+    const { container } = render(
+      <ul>
+        <ApiceRow apice={located} />
+      </ul>,
+    );
+    const link = screen.getByRole('link', { name: /Cosecha de lluvia/ });
+    expect(link.getAttribute('href')).toBe('/apices/a1');
+    expect(container.querySelector('.superficie')!.getAttribute('aria-hidden')).toBe('true');
+    expect((container.querySelector('.superficie') as HTMLElement).style.inlineSize).toBe('56px');
+    expect((container.querySelector('.superficie') as HTMLElement).style.blockSize).toBe('34px');
+    expect(container.querySelector('.apice-row__zone')!.textContent).toBe('0828');
+    expect(container.textContent).toContain('agua y cobijo, Etapa Prototipo, zona 0828');
+  });
+
+  it('sin zona no muestra código, y el Ápice abierto se marca con aria-current', () => {
+    const { container } = render(
+      <ul>
+        <ApiceRow apice={base} current />
+      </ul>,
+    );
+    expect(container.querySelector('.apice-row__zone')).toBeNull();
+    expect(screen.getByRole('link').getAttribute('aria-current')).toBe('true');
   });
 });
 

@@ -2,6 +2,7 @@
 // se trazó del original (`resetario/public/img/apicca_logo.png`, 768 × 281) por capas de color:
 // el gris cubre toda la palabra y el rojo de las «cc» va encima, como en el original.
 import type { AxisKey } from './axes';
+import { glyph } from './pattern';
 import type { TokenName } from './tokens';
 
 export type IconLayer = { readonly token: TokenName; readonly d: string };
@@ -32,32 +33,19 @@ export const FAVICON: LayeredIcon = {
   ],
 };
 
-// Íconos de eje: un solo trazado relleno con `currentColor` y `fill-rule="evenodd"`, en una rejilla de 24 × 24 (RF-4 (002) · 4.3 y 4.5, D-9 (002)).
+// Íconos de eje (RF-4 (002) · 4.3 y 4.5; sistema «APICCA · Mapa», decidido por la persona el 23-11-2026): el glifo
+// de cada eje (agua círculo, alimento trapecio, cobijo cuadrado, energía triángulo, comunicación barra diagonal),
+// macizo y centrado en una rejilla de 24 × 24, como la losa `ficha` del sistema (semilado 0,29 × 24). Sale de
+// `pattern.ts`; el color lo pone quien lo pinta.
 export type AxisIcon = { readonly viewBox: '0 0 24 24'; readonly d: string };
+const axisGlyph = (key: AxisKey): AxisIcon => ({ viewBox: '0 0 24 24', d: glyph(key, 12, 12, 24 * 0.29).d });
 export const AXIS_ICONS: Readonly<Record<AxisKey, AxisIcon>> = {
-  agua: {
-    viewBox: '0 0 24 24',
-    d: 'M12 2.5 C12 2.5 5 10.5 5 15 C5 18.9 8.1 22 12 22 C15.9 22 19 18.9 19 15 C19 10.5 12 2.5 12 2.5 Z',
-  },
-  alimento: {
-    viewBox: '0 0 24 24',
-    d: 'M10.5 22 V14 C9 11.5 4.5 8.5 3.5 7.5 C6 6 10 8 12 11 C14 8 18 6 20.5 7.5 C19.5 8.5 15 11.5 13.5 14 V22 H10.5 Z',
-  },
-  cobijo: {
-    viewBox: '0 0 24 24',
-    // Aleros, chimenea, puerta y ventana: sin ellos la silueta se parecía a la gota de agua (T-5.9).
-    d: 'M12 2 L15.5 5 V2.5 H18.5 V7.5 L22.5 11 H19 V21.5 H5 V11 H1.5 Z M7.5 21.5 V14 H11 V21.5 Z M13 14 H16.5 V17.5 H13 Z',
-  },
-  energia: {
-    viewBox: '0 0 24 24',
-    d: 'M13 2 L6 12.5 H12 L9 22 L18 9.5 H12.5 L15.5 2 Z',
-  },
-  comunicacion: {
-    viewBox: '0 0 24 24',
-    d: 'M5 2.5 H13 C14.4 2.5 15.5 3.6 15.5 5 V9 C15.5 10.4 14.4 11.5 13 11.5 H6.5 L2.5 14 L3.5 10.5 V5 C3.5 3.6 4.1 2.5 5 2.5 Z M11 12.5 H19 C20.1 12.5 21 13.4 21 14.5 V18 L21.5 22 L17.5 19.5 H11 C9.9 19.5 9 18.6 9 17.5 V14.5 C9 13.4 9.9 12.5 11 12.5 Z',
-  },
+  agua: axisGlyph('agua'),
+  alimento: axisGlyph('alimento'),
+  cobijo: axisGlyph('cobijo'),
+  energia: axisGlyph('energia'),
+  comunicacion: axisGlyph('comunicacion'),
 };
-
 
 // Íconos del conmutador de tema: sol y luna, un solo trazado relleno con `currentColor` y `fill-rule="evenodd"`,
 // en la misma rejilla de 24 × 24 (RF-7 (003) · 7.5, D-T8 (003)).

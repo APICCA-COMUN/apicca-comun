@@ -68,11 +68,12 @@ describe.each(PATHS)('cabecera en %s', (path) => {
 });
 
 describe.each(PATHS)('menú y sesión de la cabecera en %s', (path) => {
-  it('RF-16 (021) · 16.2, RF-7 (003) · 7.6: el banner trae «Volver al mapa», «Menú» y, sin sesión, «Entrar»', () => {
+  it('RF-16 (021) · 16.2, RF-7 (003) · 7.6: el banner trae la navegación principal, «Menú» y, sin sesión, «Entrar»', () => {
     window.history.replaceState(null, '', path);
     render(<App />);
     const banner = screen.getByRole('banner');
-    expect(within(banner).getByRole('link', { name: 'Volver al mapa' }).getAttribute('href')).toBe('/');
+    const nav = within(banner).getByRole('navigation', { name: 'Principal' });
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Ápices', 'Acciones Comunes', 'Documentación', 'Constitución', 'Foro']);
     within(banner).getByRole('button', { name: 'Menú' });
     within(banner).getByRole('link', { name: 'Entrar' });
   });

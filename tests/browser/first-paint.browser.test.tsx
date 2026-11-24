@@ -52,15 +52,18 @@ describe.each(THEMES)('primer pintado con el sistema en %s', (scheme) => {
   });
 });
 
-describe('primer pintado con Niebla', () => {
-  it('RNF-6 (003): con la hoja bloqueada, el fondo claro es Niebla y el oscuro no cambia, con y sin elección', async () => {
-    const niebla = await commands.openIndex({ colorScheme: 'light', block: ['stylesheet', 'font'] });
-    expect(niebla.background).toBe(rgb('#E8E7EC'));
-    expect(niebla.themeColors['(prefers-color-scheme: light)']).toBe('#E8E7EC');
+describe('primer pintado con el papel y la tinta del sistema', () => {
+  it('RNF-6 (003): con la hoja bloqueada, el fondo claro es el papel y el oscuro la tinta, con y sin elección', async () => {
+    const light = TOKENS.light.background;
+    const dark = TOKENS.dark.background;
+    expect(light).not.toBe(dark);
+    const paper = await commands.openIndex({ colorScheme: 'light', block: ['stylesheet', 'font'] });
+    expect(paper.background).toBe(rgb(light));
+    expect(paper.themeColors['(prefers-color-scheme: light)']).toBe(light);
     const chosen = await commands.openIndex({ colorScheme: 'dark', theme: 'light', block: ['stylesheet'] });
-    expect(chosen.background).toBe(rgb('#E8E7EC'));
-    expect(Object.values(chosen.themeColors)).toEqual(['#E8E7EC', '#E8E7EC']);
-    const dark = await commands.openIndex({ colorScheme: 'dark', block: ['stylesheet', 'font'] });
-    expect(dark.background).toBe(rgb('#14213D'));
+    expect(chosen.background).toBe(rgb(light));
+    expect(Object.values(chosen.themeColors)).toEqual([light, light]);
+    const night = await commands.openIndex({ colorScheme: 'dark', block: ['stylesheet', 'font'] });
+    expect(night.background).toBe(rgb(dark));
   });
 });

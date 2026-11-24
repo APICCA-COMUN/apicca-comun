@@ -63,9 +63,9 @@ describe('CommonActionView', () => {
   it('RF-20 (021) · 20.1, RF-5 (010) · 5.1: muestra título, estado, eje, autoría, descripción con formato, participantes y los ápices que une', async () => {
     setup(VISITOR);
     expect(await screen.findByRole('heading', { level: 1, name: 'Agua lluvia' })).toBeTruthy();
-    expect(screen.getByText('Camino abierto')).toBeTruthy();
-    expect(screen.getByText('Propuesto por @ana')).toBeTruthy();
-    expect(screen.getByText('agua').tagName).toBe('STRONG');
+    expect(screen.getByText('Abierta')).toBeTruthy();
+    expect(screen.getByText('Propuesta por @ana')).toBeTruthy();
+    expect(screen.getByText('agua', { selector: 'strong' }).tagName).toBe('STRONG');
     within(screen.getByRole('list', { name: 'Participantes (2)' })).getByText('@beto');
     const apices = screen.getByRole('list', { name: 'Ápices que une' });
     expect(within(apices).getByRole('link', { name: 'Tanque' }).getAttribute('href')).toBe('/apices/a2');
@@ -79,7 +79,7 @@ describe('CommonActionView', () => {
   it('RF-20 (021) · 20.3: sin sesión, dice que para sumarse hay que unirse y enlaza a la solicitud', async () => {
     setup(VISITOR);
     await screen.findByRole('heading', { level: 1 });
-    expect(screen.getByText(/Para sumarte a este camino, únete a APICCA/)).toBeTruthy();
+    expect(screen.getByText(/Para sumarte a esta Acción Común, únete a APICCA/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Unirme' }).getAttribute('href')).toBe('/solicitar');
     expect(screen.queryByRole('button', { name: 'Sumarme' })).toBeNull();
   });
@@ -100,20 +100,20 @@ describe('CommonActionView', () => {
     expect(calls).toContainEqual({ op: 'leaveCommonAction', payload: { actionId: 'c1' } });
   });
 
-  it('RF-7 (010), D-T32 (021): la autora no se retira mientras está abierta; ve «Editar», «Cerrar camino» y «Archivar»', async () => {
+  it('RF-7 (010), D-T32 (021): la autora no se retira mientras está abierta; ve «Editar», «Cerrar Acción Común» y «Archivar»', async () => {
     const { calls } = setup(ANA);
     await screen.findByRole('heading', { level: 1 });
     expect(screen.queryByRole('button', { name: 'Retirarme' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Sumarme' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Cerrar camino' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cerrar Acción Común' }));
     expect(calls).toContainEqual({ op: 'setCommonActionStatus', payload: { actionId: 'c1', status: 'cerrada' } });
     screen.getByRole('button', { name: 'Archivar' });
   });
 
-  it('RF-7 (010): cerrada, la autora ve «Reabrir camino» y nadie se suma', async () => {
+  it('RF-7 (010): cerrada, la autora ve «Reabrir Acción Común» y nadie se suma', async () => {
     setup(ANA, detail({ status: 'cerrada' }));
-    expect(await screen.findByText('Camino cerrado')).toBeTruthy();
-    screen.getByRole('button', { name: 'Reabrir camino' });
+    expect(await screen.findByText('Cerrada')).toBeTruthy();
+    screen.getByRole('button', { name: 'Reabrir Acción Común' });
     expect(screen.queryByRole('button', { name: 'Sumarme' })).toBeNull();
   });
 
@@ -148,15 +148,15 @@ describe('CommonActionView', () => {
     expect((await screen.findByRole('alert')).textContent).toMatch(/no admite nuevas participaciones/);
   });
 
-  it('RF-5 (010) · 5.2: una que no existe o no se puede leer dice «Este camino no existe.», sin pistas', async () => {
+  it('RF-5 (010) · 5.2: una que no existe o no se puede leer dice «Esta Acción Común no existe.», sin pistas', async () => {
     setup(VISITOR, null);
-    expect(await screen.findByRole('heading', { level: 1, name: 'Camino' })).toBeTruthy();
-    expect(screen.getByText('Este camino no existe.')).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Acción Común' })).toBeTruthy();
+    expect(screen.getByText('Esta Acción Común no existe.')).toBeTruthy();
   });
 
   it('RF-8 (010): archivada, lo dice y no ofrece acciones', async () => {
     setup(ANA, detail({ status: 'archivada' }));
-    await waitFor(() => expect(screen.getByText('Archivado')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Archivada')).toBeTruthy());
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 });

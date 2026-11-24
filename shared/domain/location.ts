@@ -1,6 +1,6 @@
 // Ubicación de un ápice (RF-9 (001), RF-5 (021)): validación de coordenadas, precisión y zona publicada.
 // Puro, sin DOM. La zona es una celda H3 que calcula el servidor (D-T13 (021)); aquí solo viven su forma y su lectura,
-// porque el dominio compartido llega al navegador y no carga la biblioteca de celdas (D-5 (021)).
+// porque el dominio compartido llega al navegador y no carga `h3-js`, que vive en `shared/domain/h3cells.ts` y se carga de forma diferida con el mapa (D-5 (021)).
 import { invalid, valid, type Validation } from './result';
 
 export type Precision = 'approximate' | 'exact';

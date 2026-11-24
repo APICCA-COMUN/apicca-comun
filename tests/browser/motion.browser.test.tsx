@@ -1,6 +1,6 @@
-// Movimiento en Chromium real (T-4.15): elevación al pasar el cursor y al pulsar
-// (RF-9 (002) · 9.1, 9.2), nada sin cursor (9.3), cambio instantáneo con movimiento reducido (9.4)
-// y ninguna animación en reposo (9.5).
+// Movimiento en Chromium real (T-4.15): inversión a tinta llena al pasar el cursor y al pulsar (en lugar de la
+// elevación con sombra del diseño anterior; RF-9 (002) · 9.1, 9.2), nada sin cursor (9.3), cambio instantáneo con
+// movimiento reducido (9.4) y ninguna animación en reposo (9.5).
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { cdp, userEvent } from 'vitest/browser';
 import '../../src/styles/tokens.css';
@@ -19,12 +19,12 @@ async function touchDevice(enabled: boolean) {
   await cdp().send('Emulation.setTouchEmulationEnabled', enabled ? { enabled, maxTouchPoints: 1 } : { enabled });
 }
 
-/** El valor calculado de `box-shadow` con un token, resuelto con un elemento auxiliar. */
-function shadow(token: string): string {
+/** El valor calculado de un color con un token, resuelto con un elemento auxiliar. */
+function color(token: string, property: 'color' | 'backgroundColor' = 'backgroundColor'): string {
   const probe = document.createElement('div');
-  probe.style.boxShadow = `var(--${token})`;
+  probe.style[property] = `var(--${token})`;
   document.body.append(probe);
-  const value = getComputedStyle(probe).boxShadow;
+  const value = getComputedStyle(probe)[property];
   probe.remove();
   return value;
 }
@@ -53,46 +53,53 @@ afterEach(async () => {
   await touchDevice(false);
 });
 
-it('RF-9 (002) · 9.1: con cursor, pasar sobre un bloque interactivo lo eleva con shadow-raised en duration-raise', async () => {
+it('RF-9 (002) · 9.1: con cursor, pasar sobre un bloque interactivo lo invierte a tinta llena en duration-raise', async () => {
   expect(matchMedia('(hover: hover)').matches).toBe(true);
   const button = mount();
   const style = getComputedStyle(button);
-  expect(style.boxShadow).toBe(shadow('shadow-block'));
+  expect(style.boxShadow).toBe('none');
+  expect(style.backgroundColor).toBe(color('surface'));
+  expect(style.color).toBe(color('text', 'color'));
   const duration = getComputedStyle(document.documentElement).getPropertyValue('--duration-raise').trim();
-  expect(style.transitionProperty).toBe('box-shadow');
-  expect(style.transitionDuration).toBe(`${parseFloat(duration) / 1000}s`);
+  expect(style.transitionProperty).toBe('background-color, color');
+  expect(style.transitionDuration).toBe(`${parseFloat(duration) / 1000}s, ${parseFloat(duration) / 1000}s`);
   await userEvent.hover(button);
   await settle();
-  expect(getComputedStyle(button).boxShadow).toBe(shadow('shadow-raised'));
+  expect(getComputedStyle(button).backgroundColor).toBe(color('text'));
+  expect(getComputedStyle(button).color).toBe(color('surface', 'color'));
+  expect(getComputedStyle(button).boxShadow).toBe('none');
 });
 
-it('RF-9 (002) · 9.1, 6.5: un bloque deshabilitado no se eleva', async () => {
+it('RF-9 (002) · 9.1, 6.5: un bloque deshabilitado no se invierte', async () => {
   mount();
   const disabled = host.querySelector<HTMLButtonElement>('button[disabled]')!;
+  const before = getComputedStyle(disabled).backgroundColor;
   await userEvent.hover(disabled, { force: true });
   await settle();
-  expect(getComputedStyle(disabled).boxShadow).toBe('none');
+  expect(getComputedStyle(disabled).backgroundColor).toBe(before);
+  expect(getComputedStyle(disabled).backgroundColor).toBe(color('background'));
 });
 
-it('RF-9 (002) · 9.2: pulsar un bloque interactivo lo eleva de la misma manera', async () => {
+it('RF-9 (002) · 9.2: pulsar un bloque interactivo lo invierte de la misma manera', async () => {
   await touchDevice(true);
   const button = mount();
   button.focus();
   await userEvent.keyboard('{Space>}');
   await settle();
   expect(button.matches(':active')).toBe(true);
-  expect(getComputedStyle(button).boxShadow).toBe(shadow('shadow-raised'));
+  expect(getComputedStyle(button).backgroundColor).toBe(color('text'));
+  expect(getComputedStyle(button).color).toBe(color('surface', 'color'));
   await userEvent.keyboard('{/Space}');
 });
 
-it('RF-9 (002) · 9.3: sin cursor, pasar por encima no eleva', async () => {
+it('RF-9 (002) · 9.3: sin cursor, pasar por encima no invierte', async () => {
   await touchDevice(true);
   expect(matchMedia('(hover: none)').matches).toBe(true);
   const button = mount();
   await userEvent.hover(button);
   await settle();
   expect(button.matches(':hover')).toBe(true);
-  expect(getComputedStyle(button).boxShadow).toBe(shadow('shadow-block'));
+  expect(getComputedStyle(button).backgroundColor).toBe(color('surface'));
 });
 
 it('RF-9 (002) · 9.4: con movimiento reducido no hay transición y el cambio es inmediato', async () => {
@@ -101,7 +108,7 @@ it('RF-9 (002) · 9.4: con movimiento reducido no hay transición y el cambio es
   expect(getComputedStyle(button).transitionDuration).toBe('0s');
   await userEvent.hover(button);
   // Sin esperar a ninguna transición.
-  expect(getComputedStyle(button).boxShadow).toBe(shadow('shadow-raised'));
+  expect(getComputedStyle(button).backgroundColor).toBe(color('text'));
   expect(document.getAnimations()).toEqual([]);
 });
 

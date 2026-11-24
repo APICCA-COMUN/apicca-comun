@@ -1,21 +1,19 @@
-// RF-13 (021) · 13.1–13.7, RF-1 (015), RF-2 (015), D-10 (021), D-T24 (021): el menú de juego. El botón «Menú» abre un
-// diálogo con los destinos de D-10 (021) (Jugar, Cómo se juega, Reglas, Plaza), «Facilitación» para quien facilita, lo que
-// toca a la cuenta (nombre de usuario, rol, «Archivados» y «Cerrar sesión», o «Entrar» y «Unirme») y el apoyo. Elegir un
-// destino lo cierra; Esc y «Cerrar» también, y el foco vuelve al botón. «Jugar» es la sección vigente en el mapa y en
-// sus paneles. «Ver la bienvenida» vuelve a mostrar la invitación (RF-21 (021) · 21.4).
+// RF-13 (021) · 13.1–13.7, RF-1 (015), RF-2 (015), D-T24 (021): el menú plegado de la cabecera. El botón «Menú» abre un
+// diálogo con las cinco entradas de la navegación principal (Ápices, Acciones Comunes, Documentación, Constitución,
+// Foro), «Facilitación» para quien facilita, lo que toca a la cuenta (nombre de usuario, rol, «Archivados» y «Cerrar
+// sesión», o «Entrar» y «Unirme») y el apoyo. Elegir un destino lo cierra; Esc y «Cerrar» también, y el foco vuelve al
+// botón. «Ápices» es la entrada vigente en el mapa y en sus paneles. «Ver la bienvenida» vuelve a mostrar la
+// invitación (RF-21 (021) · 21.4). Desde 1100 px la cabecera ya muestra las cinco entradas y el menú solo lleva lo demás.
 import { useId, useState } from 'react';
-import { MAIN_MENU, isCurrentSection } from '../../shared/domain/navigation';
-import { Link, isMapPage, matchRoute, navigate, useRoute } from '../app/router';
+import { MAIN_MENU } from '../../shared/domain/navigation';
+import { isCurrentEntry } from '../app/currentSection';
+import { Link, navigate, useRoute } from '../app/router';
 import { forgetWelcome } from '../app/welcome';
 import { useSession, useSignOut } from '../app/session';
 import { Dialog } from './Dialog';
 import { roleLabel } from './SessionEntry';
 import { SupportCredit } from './SupportCredit';
 import './GameMenu.css';
-
-function isCurrent(href: string, path: string): boolean {
-  return href === '/' ? isMapPage(matchRoute(path).page) : isCurrentSection(href, path);
-}
 
 export function GameMenu() {
   const session = useSession();
@@ -46,20 +44,20 @@ export function GameMenu() {
             Cerrar
           </button>
         </div>
-        <nav aria-label="Principal" className="game-menu__nav">
+        <nav aria-label="Secciones" className="game-menu__nav">
           {MAIN_MENU.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className="menu-link game-menu__link"
               onClick={close}
-              {...(isCurrent(item.href, path) ? { 'aria-current': 'page' as const } : {})}
+              {...(isCurrentEntry(item.href, path) ? { 'aria-current': 'page' as const } : {})}
             >
               {item.label}
             </Link>
           ))}
         </nav>
-        {/* RF-21 (021) · 21.4, D-T37 (021): fuera de «Principal», que lleva solo los destinos de D-10 (021); vuelve a mostrar la
+        {/* RF-21 (021) · 21.4, D-T37 (021): fuera de «Secciones», que lleva solo las entradas de la navegación principal; vuelve a mostrar la
             invitación sobre el mapa. */}
         <Link
           href="/?bienvenida=1"

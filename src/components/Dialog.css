@@ -9,9 +9,9 @@
   overflow: auto;
   background-color: var(--surface);
   color: var(--text);
-  border: 1px solid var(--field-border);
+  border: var(--stroke-border) solid var(--text);
   border-radius: var(--radius-block);
-  box-shadow: var(--shadow-block);
+  box-shadow: none;
 }
 
 .dialog::backdrop {

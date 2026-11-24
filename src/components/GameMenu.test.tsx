@@ -1,5 +1,5 @@
-// RF-13 (021), RF-1 (015), RF-2 (015), D-T24 (021): el menú de juego. Un botón «Menú» abre un diálogo con los destinos de
-// D-10 (021), lo que toca a la sesión y el apoyo. No navega de verdad: fija la ubicación con `replaceState`.
+// RF-13 (021), RF-1 (015), RF-2 (015), D-T24 (021): el menú plegado de la cabecera. Un botón «Menú» abre un diálogo con las
+// cinco entradas de la navegación principal, lo que toca a la sesión y el apoyo. No navega de verdad: fija la ubicación con `replaceState`.
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -23,7 +23,7 @@ function setup(session: SessionState, path = '/') {
 
 const open = () => fireEvent.click(screen.getByRole('button', { name: 'Menú' }));
 const menu = () => screen.getByRole('dialog', { name: 'Menú' });
-const destinations = () => within(within(menu()).getByRole('navigation', { name: 'Principal' })).getAllByRole('link');
+const destinations = () => within(within(menu()).getByRole('navigation', { name: 'Secciones' })).getAllByRole('link');
 
 afterEach(() => window.history.replaceState(null, '', '/'));
 
@@ -38,32 +38,33 @@ describe('GameMenu', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('RF-13 (021) · 13.1, 13.7, D-10 (021): «Menú» abre un diálogo con Jugar, Cómo se juega, Reglas y Plaza', () => {
+  it('RF-13 (021) · 13.1, 13.7: «Menú» abre un diálogo con Ápices, Acciones Comunes, Documentación, Constitución y Foro', () => {
     const { container } = setup(VISITOR, '/foro');
     const button = screen.getByRole('button', { name: 'Menú' });
     expect(button.getAttribute('aria-haspopup')).toBe('dialog');
     expect(screen.queryByRole('dialog')).toBeNull();
     open();
     expect(destinations().map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
-      ['Jugar', '/'],
-      ['Cómo se juega', '/documentacion'],
-      ['Reglas', '/constitucion'],
-      ['Plaza', '/foro'],
+      ['Ápices', '/'],
+      ['Acciones Comunes', '/acciones'],
+      ['Documentación', '/documentacion'],
+      ['Constitución', '/constitucion'],
+      ['Foro', '/foro'],
     ]);
     expectBlocks(container);
   });
 
-  it('RF-13 (021) · 13.1, D-T24 (021): marca la sección vigente; «Jugar» lo está en el mapa y en sus paneles', () => {
+  it('RF-13 (021) · 13.1, D-T24 (021): marca la sección vigente; «Ápices» lo está en el mapa y en sus paneles', () => {
     for (const path of ['/', '/apices/a', '/apices/nuevo', '/apices/a/editar']) {
       const { unmount } = setup(VISITOR, path);
       open();
       const current = destinations().filter((link) => link.getAttribute('aria-current') === 'page');
-      expect(current.map((link) => link.textContent), path).toEqual(['Jugar']);
+      expect(current.map((link) => link.textContent), path).toEqual(['Ápices']);
       unmount();
     }
     setup(VISITOR, '/documentacion/como-empezar');
     open();
-    expect(destinations().filter((link) => link.getAttribute('aria-current') === 'page').map((link) => link.textContent)).toEqual(['Cómo se juega']);
+    expect(destinations().filter((link) => link.getAttribute('aria-current') === 'page').map((link) => link.textContent)).toEqual(['Documentación']);
   });
 
   it('RF-13 (021) · 13.4: sin sesión ofrece «Entrar» y «Unirme», y no lo que pide sesión', () => {
@@ -139,7 +140,7 @@ describe('GameMenu', () => {
   it('RF-13 (021) · 13.6, 13.7: elegir un destino cierra el menú; Esc también, y el foco vuelve al botón', () => {
     setup(PERSON);
     open();
-    fireEvent.click(within(menu()).getByRole('link', { name: 'Plaza' }));
+    fireEvent.click(within(menu()).getByRole('link', { name: 'Foro' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(window.location.pathname).toBe('/foro');
     const button = screen.getByRole('button', { name: 'Menú' });

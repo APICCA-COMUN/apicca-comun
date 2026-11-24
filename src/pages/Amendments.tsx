@@ -177,7 +177,7 @@ export function Amendments({
           <p>No hay propuestas abiertas.</p>
         </div>
       ) : (
-        <ol className="lot" aria-label="Propuestas abiertas">
+        <ol className="lot-list" aria-label="Propuestas abiertas">
           {open.map((a) => (
             <li key={a.id} className="block amendment-item">
               <h2>

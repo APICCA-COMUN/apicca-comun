@@ -44,7 +44,7 @@ describe('shared/domain · frontera', () => {
     for (const name of [
       'TOKENS', 'TOKEN_NAMES', 'THEMES', 'MAP_TINT', 'contrastRatio', 'relativeLuminance', 'deltaE2000',
       'REQUIRED_PAIRS', 'failingPairs', 'AXIS_IDENTITY', 'axisIdentity', 'AXIS_ICONS', 'LOGO', 'FAVICON',
-      'resolveTheme', 'buildingScale', 'BUILDING_CELL', 'pinSize', 'pinAccessibleName', 'sortAxes',
+      'resolveTheme', 'pinSize', 'pinAccessibleName', 'sortAxes',
     ]) expect(identity, name).toHaveProperty(name);
   });
 

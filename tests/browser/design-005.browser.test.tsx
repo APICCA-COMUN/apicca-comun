@@ -10,7 +10,6 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
-import '../../src/styles/paths.css';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
@@ -108,21 +107,21 @@ describe('columna de la página', () => {
 });
 
 describe.each(['light', 'dark'] as const)('lotes en tema %s', (theme) => {
-  it(`RF-2 (005) · 2.1: el lote tiene fondo surface, borde line de 1 px, radio de 18 px y ninguna sombra (${theme})`, async () => {
+  it(`RF-2 (005) · 2.1: el lote tiene fondo surface, borde de 3 px en tinta, radio 0 y ninguna sombra (${theme})`, async () => {
     document.documentElement.setAttribute('data-theme', theme);
     await open('/entrar');
     const lot = await waitFor(() => host!.querySelector<HTMLElement>('main .lot'));
     const probe = document.createElement('div');
     probe.style.backgroundColor = 'var(--surface)';
-    probe.style.borderColor = 'var(--line)';
+    probe.style.borderColor = 'var(--field-border)';
     host!.append(probe);
     const expected = getComputedStyle(probe);
     const style = getComputedStyle(lot);
     expect(style.backgroundColor).toBe(expected.backgroundColor);
     expect(style.borderTopColor).toBe(expected.borderTopColor);
     probe.remove();
-    expect(style.borderTopWidth).toBe('1px');
-    expect(style.borderTopLeftRadius).toBe('18px');
+    expect(style.borderTopWidth).toBe('3px');
+    expect(style.borderTopLeftRadius).toBe('0px');
     expect(style.boxShadow).toBe('none');
   });
 });
@@ -147,7 +146,7 @@ describe('documentación y constitución', () => {
     expect(getComputedStyle(wrapper).backgroundColor).toBe('rgba(0, 0, 0, 0)');
   });
 
-  it('RF-11 (005) · 11.1, 11.2: las secciones son tarjetas surface con sombra y número del color cíclico de los ejes', async () => {
+  it('RF-11 (005) · 11.1, 11.2: las secciones son tarjetas surface con borde de 3 px, sin sombra, y su número va en tinta', async () => {
     await open('/constitucion');
     const cards = await waitFor(() => {
       const found = [...host!.querySelectorAll<HTMLElement>('article.section-block')];
@@ -157,7 +156,9 @@ describe('documentación y constitución', () => {
     cards.slice(0, 3).forEach((card, index) => {
       const style = getComputedStyle(card);
       expect(style.backgroundColor).toBe(resolved('backgroundColor', 'var(--surface)'));
-      expect(style.boxShadow).not.toBe('none');
+      expect(style.boxShadow).toBe('none');
+      expect(style.borderTopWidth).toBe('3px');
+      expect(style.borderTopLeftRadius).toBe('0px');
       const number = card.querySelector<HTMLElement>('.section-block__number')!;
       expect(number.textContent).toBe(String(index + 1));
       // RF-15 (019) · 15.2, D-T9 (019): el número va en `text`, sin color de eje.

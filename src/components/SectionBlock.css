@@ -1,8 +1,5 @@
-/* RF-11 (005) · 11.2, 11.3, D-T10 (005): número grande de la sección junto a su título, en `text` (antes, con el color de
-   trazo de un eje; RF-15 (019) · 15.2 lo retira); el número queda en texto. Solo colores de tokens. */
-/* RF-11 (008) · 11.3, 11.4, D-13 (008): tarjeta de 14 px de radio con `clamp(20px, 4vw, 28px)` de relleno, título de
-   20/800/1,25 y texto de 16 px con línea 1,55. */
-/* RF-3 (019), D-T4 (019): tarjeta con radio de bloque. */
+/* Tarjeta de una sección de la constitución: borde de 3 px en tinta (`.block`), sin redondeo ni sombra, con
+   `clamp(20px, 4vw, 28px)` de relleno. El número va en grande junto al título, en `text`. Solo colores de tokens. */
 .block.section-block {
   display: flex;
   flex-direction: column;

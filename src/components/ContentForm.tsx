@@ -58,8 +58,8 @@ interface ContentFormProps {
 const TEXT_FIELDS = [
   { field: 'name', label: 'Nombre', limit: LIMITS.title, multiline: false },
   { field: 'description', label: 'Descripción', limit: LIMITS.text, multiline: true },
-  { field: 'needs', label: 'Necesidades', limit: LIMITS.text, multiline: true },
-  { field: 'offers', label: 'Aportes', limit: LIMITS.text, multiline: true },
+  { field: 'needs', label: 'Necesita', limit: LIMITS.text, multiline: true },
+  { field: 'offers', label: 'Ofrece', limit: LIMITS.text, multiline: true },
 ] as const;
 
 const REQUIRED: Partial<Record<ContentField, string>> = {

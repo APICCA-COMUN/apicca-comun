@@ -57,7 +57,8 @@ export const SCREENS: Screen[] = [
     screen: 'Ficha del ápice',
     path: '/apices/ejemplo',
     session: FACILITATOR,
-    blue: null,
+    // GP1 · #15: la ficha va dentro del panel de Inicio, debajo de «Prototipar un Ápice», que sigue siendo el único azul.
+    blue: 'Prototipar un Ápice',
     // RF-27 (021) · 27.1: salieron «Generar imagen» y «Subir referencia».
     actions: [['Archivar', 'action-secondary']],
     ready: /Archivar/,
@@ -91,28 +92,31 @@ export const SCREENS: Screen[] = [
     actions: [['Suspender', 'action-secondary']],
     ready: /Suspender/,
   },
-  // RF-11 (021), RF-12 (021) · 12.1, D-T22 (021): el Inicio, Prototipado y Mi tablero dieron paso al mapa. Sin sesión el azul
-  // es «Unirme»; con sesión, «Construir ápice», también en «Lo mío».
+  // RF-11 (021), RF-12 (021) · 12.1, D-T22 (021): el Inicio, Prototipado y Mi tablero dieron paso al mapa. El azul es
+  // «Prototipar un Ápice» (sin sesión abre el boceto; «Unirme» queda como acción secundaria), también en «Lo mío».
   {
     screen: 'Mapa sin sesión',
     path: '/',
     session: VISITOR,
-    blue: 'Unirme',
-    actions: [['Ver como lista', 'action-secondary']],
-    ready: /Unirme/,
+    blue: 'Prototipar un Ápice',
+    actions: [
+      ['Unirme', 'action-secondary'],
+      ['Ver como lista', 'action-secondary'],
+    ],
+    ready: /Prototipar un Ápice/,
   },
   {
     screen: 'Mapa con sesión',
     path: '/',
     session: FACILITATOR,
-    blue: 'Construir ápice',
+    blue: 'Prototipar un Ápice',
     actions: [
       ['Lo mío', 'action-secondary'],
       ['Ver como lista', 'action-secondary'],
     ],
-    ready: /Construir ápice/,
+    ready: /Prototipar un Ápice/,
   },
-  { screen: 'Lo mío', path: '/?mio=1', session: FACILITATOR, blue: 'Construir ápice', actions: [['Lo mío', 'action-secondary']], ready: /Construir ápice/ },
+  { screen: 'Lo mío', path: '/?mio=1', session: FACILITATOR, blue: 'Prototipar un Ápice', actions: [['Lo mío', 'action-secondary']], ready: /Prototipar un Ápice/ },
 ];
 
 function Frame({ session, children }: { session: SessionState; children: ReactNode }) {

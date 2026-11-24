@@ -12,15 +12,12 @@ describe('ConditionTag', () => {
     expect(tag.textContent).toBe('Privado');
   });
 
-  it('RF-6 (003) · 6.1: la etiqueta es un punto decorativo seguido de su texto (D-T20 (003))', () => {
+  it('RF-6 (003) · 6.1, QA #21.2: la etiqueta es solo su texto, sin punto decorativo (D-T20 (003))', () => {
     render(<ConditionTag condition="archived">Archivado</ConditionTag>);
     const tag = screen.getByText('Archivado');
-    const dot = tag.firstElementChild as HTMLElement | null;
-    expect(dot).not.toBeNull();
-    expect(dot?.classList.contains('tag-dot')).toBe(true);
-    expect(dot?.getAttribute('aria-hidden')).toBe('true');
-    expect(dot?.textContent).toBe('');
-    expect(tag.lastChild?.textContent).toBe('Archivado');
+    expect(tag.querySelector('.tag-dot')).toBeNull();
+    expect(tag.childElementCount).toBe(0);
+    expect(tag.textContent).toBe('Archivado');
     expect(tag.getAttribute('style')).toBeNull();
   });
 });

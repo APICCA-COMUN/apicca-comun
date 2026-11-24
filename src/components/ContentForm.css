@@ -1,6 +1,8 @@
 /* RF-12 (019) · 12.1, 12.3, 12.4, D-T6 (019): el formulario del ápice.
-   Etiqueta y leyenda encima de su campo; los grupos son lotes (borde `line`, `radius-lot`, como en lots.css); el contador va al
-   final del campo, debajo, y deja al menos 8 px antes de lo que sigue. */
+   Etiqueta y leyenda encima de su campo; el contador va al final del campo, debajo, y deja al menos 8 px antes de lo que
+   sigue. QA #17: los grupos de campos (Ejes, Ubicación) van sin borde ni relleno y su leyenda es el rótulo de campo del
+   sistema (blocks.css): el borde de 1,5 px en `line` es solo de celdas vacías y divisores de fila, y un recuadro de 3 px
+   por grupo, dentro del formulario, sumaba marcos concéntricos. */
 .content-form__field {
   display: flex;
   flex-direction: column;
@@ -19,13 +21,12 @@
   box-sizing: border-box;
   min-inline-size: 0;
   margin: 0 0 1rem;
-  padding: 1rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lot);
+  padding: 0;
+  border: 0;
 }
 
 .content-form legend {
-  padding-inline: 0.25rem;
+  padding: 0 0 0.5rem;
 }
 
 .content-form .axis-picker {

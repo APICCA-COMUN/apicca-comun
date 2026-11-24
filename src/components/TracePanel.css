@@ -1,0 +1,30 @@
+/* «Conectar»: la lista de Ápices elegidos. Sistema «APICCA · Mapa»: una fila por Ápice (`.ap-fila`), con el nombre a la
+   izquierda y «Quitar» a la derecha, alineados, y un divisor de 1,5 px en `line` entre filas. Solo tokens. */
+.trace-panel__chosen {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.trace-panel__chosen > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 8px;
+}
+
+.trace-panel__chosen > li + li {
+  border-block-start: var(--stroke-divider) solid var(--line);
+}
+
+.trace-panel__chosen > li > span {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.trace-panel__chosen > li > button {
+  flex: none;
+}

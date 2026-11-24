@@ -1,6 +1,7 @@
-// RF-18 (021) · 18.5, 18.6, D-T30 (021) · Los caminos del mapa en Chromium real: trazo de 12 px en `node-ring`, con extremos
-// y uniones redondeados, que contrasta 3:1 o más con el fondo en los dos temas; el cerrado va punteado y lo dice su rótulo;
-// con colores forzados el trazo es CanvasText.
+// RF-18 (021) · 18.5, 18.6, D-T30 (021) · Las Acciones Comunes del mapa en Chromium real, con el sistema «APICCA · Mapa»: cada
+// una es una fila de celdas rellenas con el token `ruta`, sin redondeos (uniones en inglete) y con el glifo de su eje en el
+// color del eje, que contrasta 3:1 o más con la celda en los dos temas; la cerrada va con borde discontinuo y lo dice su
+// rótulo; con colores forzados las celdas llevan CanvasText.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cdp, page } from 'vitest/browser';
 import { act } from 'react';
@@ -21,10 +22,11 @@ let root: Root;
 const rgb = (hex: string) => `rgb(${hexToRgb(hex).join(', ')})`;
 
 const zone = (cell: string, lat: number, lng: number): Location => ({ lat, lng, precision: 'approximate', zone: { cell, lat, lng } });
-/** Una zona real de resolución 7, el centro de Bogotá (como en `GameMap.test.tsx`). Los cinco ápices caen en la misma
-    manzana, así el encuadre inicial muestra cada edificio por separado y los caminos tienen tramos. */
+/** Dos zonas reales de resolución 7, el centro de Bogotá y la vecina del occidente (como en `mapPaths.test.ts`): las rutas unen Ápices de una
+    y otra, lejos entre sí, así llevan celdas de ruta en medio (las celdas vecinas no las necesitan). */
 const CENTRO = zone('8766e092affffff', 4.597156, -74.08474);
-const items: ListedApice[] = [1, 2, 3, 4, 5].map((n) => listed(n, { location: CENTRO }));
+const CHAPINERO = zone('8766e0905ffffff', 4.61069, -74.103401);
+const items: ListedApice[] = [1, 2, 3, 4, 5].map((n) => listed(n, { location: n <= 2 ? CENTRO : CHAPINERO }));
 
 async function mount() {
   const scope = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
@@ -37,8 +39,8 @@ async function mount() {
           selectedId={null}
           onSelect={() => {}}
           paths={[
-            { id: 'abierto', title: 'Agua lluvia', closed: false, apiceIds: ['a1', 'a2', 'a3'] },
-            { id: 'cerrado', title: 'Huerta', closed: true, apiceIds: ['a3', 'a4'] },
+            { id: 'abierto', title: 'Agua lluvia', closed: false, axis: 'agua', apiceIds: ['a1', 'a4'] },
+            { id: 'cerrado', title: 'Huerta', closed: true, axis: 'alimento', apiceIds: ['a2', 'a5'] },
           ]}
         />,
       ),
@@ -48,7 +50,7 @@ async function mount() {
   }
 }
 
-const lines = () => [...host.querySelectorAll<SVGPolylineElement>('polyline.game-map__path')];
+const routes = (closed: boolean) => [...host.querySelectorAll<SVGPolygonElement>(`polygon.game-map__route${closed ? '[data-closed="true"]' : ':not([data-closed])'}`)];
 
 beforeEach(async () => {
   await page.viewport(1280, 800);
@@ -63,41 +65,50 @@ afterEach(async () => {
   host.remove();
 });
 
-describe.each(['light', 'dark'] as const)('caminos del mapa en el tema %s (021)', (theme) => {
+describe.each(['light', 'dark'] as const)('Acciones Comunes del mapa en el tema %s (021)', (theme) => {
   beforeEach(() => {
     document.documentElement.dataset['theme'] = theme;
   });
 
-  it('RF-18 (021) · 18.5, D-T30 (021): el trazo es de 12 px en node-ring, redondeado, y contrasta 3:1 con el fondo', async () => {
+  it('RF-18 (021) · 18.5, D-T30 (021): las celdas de la Acción Común van en el token ruta, sin redondeos, y su glifo contrasta 3:1 con ellas', async () => {
     await mount();
-    expect(lines()).toHaveLength(2);
-    for (const line of lines()) {
-      const style = getComputedStyle(line);
-      expect(style.stroke).toBe(rgb(TOKENS[theme]['node-ring']));
-      expect(parseFloat(style.strokeWidth)).toBe(12);
-      expect(style.strokeLinecap).toBe('round');
-      expect(style.strokeLinejoin).toBe('round');
+    expect(host.querySelector('polyline.game-map__line')).toBeNull();
+    expect(routes(false).length).toBeGreaterThan(0);
+    expect(routes(true).length).toBeGreaterThan(0);
+    for (const cell of [...routes(false), ...routes(true)]) {
+      const style = getComputedStyle(cell);
+      expect(style.fill).toBe(rgb(TOKENS[theme].ruta));
+      expect(style.strokeLinejoin).toBe('miter');
     }
-    expect(contrastRatio(TOKENS[theme]['node-ring'], TOKENS[theme].background)).toBeGreaterThanOrEqual(3);
+    // El glifo del eje va en el color del eje y se lee sobre la celda, sin depender del color: la forma lo dice también.
+    for (const [axis, key] of [['agua', 'axis-agua-fill'], ['alimento', 'axis-alimento-fill']] as const) {
+      const glyph = host.querySelector<SVGElement>(`.game-map__glyph--${axis}`)!;
+      expect(getComputedStyle(glyph).color).toBe(rgb(TOKENS[theme][key]));
+      expect(contrastRatio(TOKENS[theme][key], TOKENS[theme].ruta)).toBeGreaterThanOrEqual(3);
+    }
   });
 
-  it('RF-18 (021) · 18.6: el cerrado va punteado y su rótulo dice «Cerrado»; el abierto, continuo', async () => {
+  it('RF-18 (021) · 18.6: la cerrada va con borde discontinuo y su rótulo dice «Cerrada»; la abierta, sin trazo', async () => {
     await mount();
-    const [open, closed] = lines();
-    expect(getComputedStyle(open!).strokeDasharray).toBe('none');
-    expect(getComputedStyle(closed!).strokeDasharray).not.toBe('none');
-    expect(host.querySelector('[aria-label="Camino: Huerta · Cerrado"]')?.textContent).toBe('Huerta · Cerrado');
+    for (const cell of routes(false)) {
+      expect(getComputedStyle(cell).strokeDasharray).toBe('none');
+      expect(getComputedStyle(cell).stroke).toBe('none');
+    }
+    for (const cell of routes(true)) expect(getComputedStyle(cell).strokeDasharray).not.toBe('none');
+    expect(host.querySelector('[aria-label="Acción Común: Huerta · Cerrada"]')?.textContent).toBe('Huerta · Cerrada');
+    expect(host.querySelector('[aria-label="Acción Común: Agua lluvia"]')?.textContent).toBe('Agua lluvia');
   });
 });
 
-describe('caminos del mapa con colores forzados (021)', () => {
-  it('RF-18 (021) · 18.5, D-T30 (021): el trazo calcula CanvasText', async () => {
+describe('Acciones Comunes del mapa con colores forzados (021)', () => {
+  it('RF-18 (021) · 18.5, D-T30 (021): el trazo de las celdas calcula CanvasText', async () => {
     await cdp().send('Emulation.setEmulatedMedia', { features: [{ name: 'forced-colors', value: 'active' }] });
     await mount();
     const probe = document.createElement('span');
     probe.style.color = 'CanvasText';
     host.append(probe);
     const canvasText = getComputedStyle(probe).color;
-    for (const line of lines()) expect(getComputedStyle(line).stroke).toBe(canvasText);
+    expect(routes(false).length).toBeGreaterThan(0);
+    for (const cell of routes(false)) expect(getComputedStyle(cell).stroke).toBe(canvasText);
   });
 });

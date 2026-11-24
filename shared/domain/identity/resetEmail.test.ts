@@ -1,5 +1,5 @@
 // Pruebas de la plantilla del correo de restablecer contraseña (RF-12 (002), RNF-3 (002), D-T15 (002)).
-// RF-2 (003) · 2.5, D-25 (003), D-T2 (003): el fondo del cuerpo toma el background claro nuevo (Niebla).
+// RF-2 (003) · 2.5, D-25 (003), D-T2 (003): el fondo del cuerpo toma el background claro nuevo (papel).
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { resetEmail } from './resetEmail';
@@ -60,10 +60,10 @@ describe('resetEmail', () => {
     }
   });
 
-  it('RF-2 (003) · 2.5: el fondo del cuerpo es Niebla (#E8E7EC), leído de TOKENS.light.background', () => {
-    expect(TOKENS.light.background).toBe('#E8E7EC');
-    expect(mail.body).toContain('<body bgcolor="#E8E7EC" style="margin: 0; padding: 0; background-color: #E8E7EC;');
-    expect(mail.body).toContain('<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#E8E7EC"');
+  it('RF-2 (003) · 2.5: el fondo del cuerpo es papel (#F1EFE9), leído de TOKENS.light.background', () => {
+    expect(TOKENS.light.background).toBe('#F1EFE9');
+    expect(mail.body).toContain('<body bgcolor="#F1EFE9" style="margin: 0; padding: 0; background-color: #F1EFE9;');
+    expect(mail.body).toContain('<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F1EFE9"');
   });
 
   it('RF-2 (003) · 2.5: resetEmail.ts no tiene literales de color propios', () => {

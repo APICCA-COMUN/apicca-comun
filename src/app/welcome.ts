@@ -3,7 +3,7 @@
 
 const KEY = 'apicca:bienvenida';
 
-/** `true` si en este navegador ya se eligió «Jugar» o «Cerrar». */
+/** `true` si en este navegador ya se eligió «Ver el recorrido» o «Cerrar». */
 export function welcomeSeen(): boolean {
   try {
     return window.localStorage.getItem(KEY) !== null;

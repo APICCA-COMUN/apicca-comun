@@ -16,8 +16,7 @@ describe('pares obligatorios', () => {
     expect(has('on-accent', 'action-blue', 4.5) && has('on-accent', 'brand-red', 4.5)).toBe(true);
     expect(has('focus', 'surface', 3) && has('focus', 'background', 3)).toBe(true);
     for (const axis of ['agua', 'alimento', 'cobijo', 'energia', 'comunicacion'])
-      for (const bg of ['surface', 'charcoal'] as const)
-        expect(has(`axis-${axis}-stroke` as TokenName, bg, 3), `${axis} sobre ${bg}`).toBe(true);
+      expect(has(`axis-${axis}-stroke` as TokenName, `axis-${axis}-fill` as TokenName, 3), `${axis} sobre su eje`).toBe(true);
     expect(has('field-border', 'surface', 3)).toBe(true);
   });
 
@@ -44,7 +43,7 @@ describe('pares obligatorios', () => {
 
   it('RNF-1 (003): text y text-muted se miden sobre surface y background, ya no sobre grid', () => {
     expect(REQUIRED_PAIRS.some((p) => (p.bg as string) === 'grid' || (p.bg as string) === 'plate')).toBe(false);
-    expect(REQUIRED_PAIRS).toHaveLength(4 + 2 + 1 + 2 + 2 + 10 + 2 + 2);
+    expect(REQUIRED_PAIRS).toHaveLength(4 + 2 + 1 + 2 + 2 + 5 + 2 + 2);
   });
 
   it('RF-5 (003) · 5.1: falla si field-border claro baja de 3:1 sobre background', () => {

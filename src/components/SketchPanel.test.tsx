@@ -26,21 +26,24 @@ describe('SketchPanel', () => {
     expect(notice.compareDocumentPosition(picker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('RF-23 (021) · 23.1: elegir ejes y etapa cambia el boceto y muestra el edificio', () => {
+  it('RF-23 (021) · 23.1: elegir ejes y etapa cambia el boceto y muestra la superficie del Ápice', () => {
     const spy = vi.fn();
     const { container } = render(<Harness spy={spy} />);
-    expect(container.querySelector('.building')).toBeNull();
+    expect(container.querySelector('.superficie')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Agua' }));
     expect(spy).toHaveBeenLastCalledWith({ axes: ['agua'], status: 'idea' });
     fireEvent.change(screen.getByLabelText('Etapa'), { target: { value: 'prototipo' } });
     expect(spy).toHaveBeenLastCalledWith({ axes: ['agua'], status: 'prototipo' });
-    expect(container.querySelector('.building')).not.toBeNull();
+    const surface = container.querySelector('.superficie')!;
+    expect(surface.getAttribute('data-rule')).toBe('encaje');
+    expect(surface.getAttribute('aria-label')).toBe('agua, Etapa Prototipo');
+    expect(screen.getByText('agua · prototipo')).toBeTruthy();
   });
 
   it('RF-23 (021) · 23.5: su única acción es unirse', () => {
     render(<Harness initial={{ axes: ['agua'], status: 'idea' }} />);
     const links = screen.getAllByRole('link');
-    expect(links.map((link) => [link.textContent, link.getAttribute('href')])).toEqual([['Unirme para construirlo', '/solicitar']]);
-    expect(screen.queryByRole('button', { name: /guardar|proponer|construir/i })).toBeNull();
+    expect(links.map((link) => [link.textContent, link.getAttribute('href')])).toEqual([['Unirme para prototiparlo', '/solicitar']]);
+    expect(screen.queryByRole('button', { name: /guardar|proponer|prototipar|construir/i })).toBeNull();
   });
 });

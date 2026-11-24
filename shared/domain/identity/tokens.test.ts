@@ -27,19 +27,22 @@ describe('tokens', () => {
       'radius-block', 'radius-lot', 'radius-building', 'shadow-block', 'shadow-raised', 'duration-raise',
       'footer-bg', 'size-control', 'size-icon-control', 'focus-offset', 'content-max',
       'radius-pill', 'node-ring', 'veil',
+      'trama', 'ruta', 'contorno-superficie', 'glifo-sobre-eje',
+      'stroke-border', 'stroke-zone', 'stroke-outline', 'stroke-divider', 'focus-width',
     ];
     expect([...TOKEN_NAMES].sort()).toEqual(expected.sort());
   });
 
   it('RNF-4 (002): los valores de plan §2 bis (muestra)', () => {
-    expect(TOKENS.light['action-blue']).toBe('#005FB8');
-    expect(TOKENS.dark['axis-energia-fill']).toBe('#E8B730');
-    expect(TOKENS.light['axis-energia-stroke']).toBe('#A88300');
+    // Sistema «APICCA · Mapa»: la acción principal es tinta; los ejes son iguales en los dos temas.
+    expect(TOKENS.light['action-blue']).toBe('#141414');
+    expect(TOKENS.dark['axis-energia-fill']).toBe('#F2CC3D');
+    expect(TOKENS.light['axis-energia-stroke']).toBe('#141414');
   });
 
-  it('RF-1 (003) · 1.1, 1.2: background claro Niebla y oscuro azul noche', () => {
-    expect(TOKENS.light.background).toBe('#E8E7EC');
-    expect(TOKENS.dark.background).toBe('#14213D');
+  it('RF-1 (003) · 1.1, 1.2: background papel en claro y casi negro en oscuro (sistema «APICCA · Mapa»)', () => {
+    expect(TOKENS.light.background).toBe('#F1EFE9');
+    expect(TOKENS.dark.background).toBe('#131312');
   });
 
   it('RF-1 (003) · 1.3: grid y plate ya no existen en ningún tema', () => {
@@ -61,24 +64,23 @@ describe('tokens', () => {
   });
 
   it('RF-3 (003) · 3.1, D-T2 (003): line, on-charcoal y on-charcoal-muted con los valores de §4.0', () => {
-    expect(TOKENS.light.line).toBe('#D8D7DE');
-    expect(TOKENS.dark.line).toBe('#2A3A5E');
+    // line es la trama del sistema; charcoal es la tinta llena, que en oscuro se invierte.
+    expect(TOKENS.light.line).toBe('#C8C5BA');
+    expect(TOKENS.dark.line).toBe('#3B3A36');
+    expect(TOKENS.light['on-charcoal']).toBe('#F1EFE9');
+    expect(TOKENS.dark['on-charcoal']).toBe('#131312');
+  });
+
+  it('RF-3 (003) · 3.1, D-T2 (003): radius-block 0 y sin sombras (sistema «APICCA · Mapa»)', () => {
     for (const theme of THEMES) {
-      expect(TOKENS[theme]['on-charcoal']).toBe('#F3EFE6');
-      expect(TOKENS[theme]['on-charcoal-muted']).toBe('#C4BDB0');
+      expect(TOKENS[theme]['radius-block']).toBe('0px');
+      expect(TOKENS[theme]['shadow-block']).toBe('none');
+      expect(TOKENS[theme]['shadow-raised']).toBe('none');
     }
   });
 
-  it('RF-3 (003) · 3.1, D-T2 (003): radius-block y las dos sombras con los valores de §4.0', () => {
-    for (const theme of THEMES) expect(TOKENS[theme]['radius-block']).toBe('14px');
-    expect(TOKENS.light['shadow-block']).toBe('10px 10px 0 rgb(20 33 61 / .13)');
-    expect(TOKENS.dark['shadow-block']).toBe('10px 10px 0 rgb(0 0 0 / .32)');
-    expect(TOKENS.light['shadow-raised']).toBe('18px 18px 0 rgb(20 33 61 / .13)');
-    expect(TOKENS.dark['shadow-raised']).toBe('18px 18px 0 rgb(0 0 0 / .32)');
-  });
-
-  it('RF-2 (005) · 2.1, 2.2, D-T1 (005): radius-lot vale 18 px en los dos temas', () => {
-    for (const theme of THEMES) expect(TOKENS[theme]['radius-lot']).toBe('18px');
+  it('RF-2 (005) · 2.1, 2.2, D-T1 (005): radius-lot vale 0 en los dos temas (sistema «APICCA · Mapa»)', () => {
+    for (const theme of THEMES) expect(TOKENS[theme]['radius-lot']).toBe('0px');
   });
 
   it('RNF-4 (002): MAP_TINT tiene valor para los dos temas', () => {
@@ -93,20 +95,20 @@ describe('tokens', () => {
     for (const theme of THEMES) {
       for (const [name, value] of Object.entries(TOKENS[theme])) {
         // `veil` lleva transparencia, como las sombras (D-T2 (019)).
-        if (/^(radius|shadow|duration|size|content)-|^focus-offset$|^veil$/.test(name)) continue;
+        if (/^(radius|shadow|duration|size|content|stroke)-|^focus-(offset|width)$|^veil$/.test(name)) continue;
         expect(value, `${theme} ${name}`).toMatch(/^#[0-9A-F]{6}$/);
       }
     }
   });
 
-  it('RF-1 (008) · 1.1, 1.3: footer-bg vale charcoal en claro y azul profundo en oscuro', () => {
-    expect(TOKENS.light['footer-bg']).toBe('#33363B');
-    expect(TOKENS.dark['footer-bg']).toBe('#0E1830');
+  it('RF-1 (008) · 1.1, 1.3: footer-bg es tinta llena, invertida en oscuro', () => {
+    expect(TOKENS.light['footer-bg']).toBe('#141414');
+    expect(TOKENS.dark['footer-bg']).toBe('#F1EFE9');
   });
 
   it('RF-1 (008) · 1.1, 1.3: las medidas nuevas valen lo mismo que en el sistema de diseño, en los dos temas', () => {
     for (const theme of THEMES) {
-      expect(TOKENS[theme]['radius-building']).toBe('10px');
+      expect(TOKENS[theme]['radius-building']).toBe('0px');
       expect(TOKENS[theme]['size-control']).toBe('48px');
       expect(TOKENS[theme]['size-icon-control']).toBe('44px');
       expect(TOKENS[theme]['focus-offset']).toBe('3px');
@@ -114,18 +116,19 @@ describe('tokens', () => {
     }
   });
 
-  it('RF-1 (008) · 1.2, RF-2 (019) · 2.3, D-T3 (019): la escala de texto tiene los diez estilos con tamaño, altura de línea y peso; display y heading son fluidos', () => {
+  it('RF-1 (008) · 1.2, RF-2 (019) · 2.3, D-T3 (019): la escala de texto tiene los once estilos con tamaño, altura de línea y peso; display y heading son fluidos', () => {
     expect(TYPE_SCALE).toEqual({
-      display: { size: 'clamp(32px, 5vw, 48px)', line: '1.1', weight: '800' },
+      display: { size: 'clamp(28px, 4vw, 38px)', line: '1.05', weight: '800' },
       numeral: { size: '34px', line: '1', weight: '800' },
-      heading: { size: 'clamp(28px, 3.6vw, 40px)', line: '1.2', weight: '800' },
-      'doc-heading': { size: '24px', line: '1.25', weight: '800' },
-      title: { size: '22px', line: '1.2', weight: '800' },
-      subheading: { size: '20px', line: '1.25', weight: '700' },
-      lead: { size: '18px', line: '1.5', weight: '400' },
+      heading: { size: 'clamp(22px, 3vw, 27px)', line: '1.1', weight: '800' },
+      'doc-heading': { size: '22px', line: '1.15', weight: '800' },
+      title: { size: '20px', line: '1.1', weight: '800' },
+      subheading: { size: '18px', line: '1.2', weight: '800' },
+      lead: { size: '19px', line: '1.4', weight: '400' },
       body: { size: '16px', line: '1.5', weight: '400' },
-      label: { size: '15px', line: '1.5', weight: '700' },
-      meta: { size: '14px', line: '1.5', weight: '400' },
+      'label-primary': { size: '17px', line: '1.2', weight: '800' },
+      label: { size: '15px', line: '1.2', weight: '800' },
+      meta: { size: '14px', line: '1.3', weight: '400' },
     });
   });
 
@@ -146,13 +149,13 @@ describe('tokens', () => {
     }
   });
 
-  it('RF-3 (019) · 3.1, D-T2 (019): radius-pill vale 999 px en los dos temas', () => {
-    for (const theme of THEMES) expect(TOKENS[theme]['radius-pill']).toBe('999px');
+  it('RF-3 (019) · 3.1, D-T2 (019): radius-pill vale 0 en los dos temas (sistema «APICCA · Mapa»: sin píldoras)', () => {
+    for (const theme of THEMES) expect(TOKENS[theme]['radius-pill']).toBe('0px');
   });
 
   it('RF-20 (019) · 20.3, D-T2 (019), D-T13 (019): node-ring contrasta 3:1 o más con background y surface, en los dos temas', () => {
-    expect(TOKENS.light['node-ring']).toBe('#33363B');
-    expect(TOKENS.dark['node-ring']).toBe('#C4BDB0');
+    expect(TOKENS.light['node-ring']).toBe('#141414');
+    expect(TOKENS.dark['node-ring']).toBe('#F1EFE9');
     for (const theme of THEMES) {
       const t = TOKENS[theme];
       expect(contrastRatio(t['node-ring'], t.background), `${theme} fondo`).toBeGreaterThanOrEqual(3);
@@ -161,13 +164,27 @@ describe('tokens', () => {
   });
 
   it('RF-14 (019) · 14.1, D-T2 (019): veil vela el fondo con transparencia en los dos temas', () => {
-    expect(TOKENS.light.veil).toBe('rgb(20 33 61 / .45)');
-    expect(TOKENS.dark.veil).toBe('rgb(0 0 0 / .6)');
+    expect(TOKENS.light.veil).toBe('rgb(20 20 20 / .55)');
+    expect(TOKENS.dark.veil).toBe('rgb(0 0 0 / .65)');
   });
 });
 
 describe('RF-1 (021) · 1.3: sin paleta del terreno', () => {
   it('RF-1 (021) · 1.3, D-T7 (021): el contrato de tokens ya no exporta la paleta del terreno de RF-1 (019)', () => {
     expect(Object.keys(tokens).filter((name) => /terrain/i.test(name))).toEqual([]);
+  });
+});
+
+describe('sistema «APICCA · Mapa»', () => {
+  it('el glifo sobre cada eje alcanza 4,5:1 y la ruta deja leer el color del eje a 3:1, en los dos temas', () => {
+    for (const theme of THEMES) {
+      const t = TOKENS[theme];
+      for (const k of ['agua', 'alimento', 'cobijo', 'energia', 'comunicacion'] as const) {
+        const fill = t[`axis-${k}-fill`];
+        expect(contrastRatio(t['glifo-sobre-eje'], fill), `${theme} glifo ${k}`).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(fill, t.ruta), `${theme} ruta ${k}`).toBeGreaterThanOrEqual(3);
+      }
+      expect(contrastRatio(t['contorno-superficie'], t.background), `${theme} contorno`).toBeGreaterThanOrEqual(3);
+    }
   });
 });

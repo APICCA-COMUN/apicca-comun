@@ -1,4 +1,4 @@
-// RF-12 (019) · 12.2, D-T6 (019): el botón de un eje con ícono y `aria-pressed`; lo comparten los filtros (solo ícono, 44 px redondo,
+// RF-12 (019) · 12.2, D-T6 (019): el botón de un eje con ícono y `aria-pressed`; lo comparten los filtros (solo ícono, 44 px cuadrado,
 // RF-12 (003) · 12.3) y el selector de ejes del formulario (ícono con el nombre al lado).
 import type { Axis } from '../../shared/domain/apice';
 import { AXIS_LABEL, AxisIcon } from './AxisIcon';

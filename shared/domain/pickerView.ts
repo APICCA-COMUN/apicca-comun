@@ -11,7 +11,7 @@ export type PickerView =
   | { kind: 'center'; point: Point; zoom: number }
   | { kind: 'bounds'; south: number; west: number; north: number; east: number };
 
-/** Desplazamiento de 0 o ±360 que acerca `lng` a `reference` por el camino corto, para que el meridiano 180 no separe a dos vecinas. */
+/** Desplazamiento de 0 o ±360 que acerca `lng` a `reference` por el arco más corto, para que el meridiano 180 no separe a dos vecinas. */
 const wrapShift = (lng: number, reference: number): number => {
   const difference = lng - reference;
   return difference > 180 ? -360 : difference < -180 ? 360 : 0;

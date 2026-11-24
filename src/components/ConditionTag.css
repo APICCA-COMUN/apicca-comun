@@ -1,40 +1,21 @@
-/* RF-6 (003) · 6.1, 6.2, D-T20 (003): un punto de color seguido del texto, de 14 px y peso 700, en text-muted,
-   sin píldora ni borde. El punto no usa `action-blue` ni `brand-red`, reservados (RF-2 (002) · 2.3, 2.4). Con colores forzados el punto pasa a CanvasText y el texto sigue. Solo tokens. */
+/* RF-6 (003) · 6.1, 6.2, D-T20 (003) · Sistema «APICCA · Mapa», QA #21.2: la condición (público, privado, archivado) es un
+   rótulo del sistema, sin punto ni píldora ni borde: 800, mayúsculas, 0,1em de espaciado, en `text-muted`. La condición
+   está en la palabra, no en el color. Solo tokens. */
 
-/* RF-2 (019), D-T3 (019): etiqueta en tamaño meta. */
+/* RF-2 (019), D-T3 (019): rótulo en tamaño meta (14 px, el mínimo del sitio). */
 .tag {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.5rem;
+  display: inline;
   color: var(--text-muted);
   font-size: var(--type-meta-size);
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   line-height: 1.25;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
 }
-
-/* RF-3 (019), D-T4 (019): punto redondo con radio píldora. */
-.tag-dot {
-  flex: none;
-  align-self: center;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: var(--radius-pill);
-  background-color: var(--text-muted);
-}
-
-/* RF-15 (019) · 15.2, D-15 (019), D-T9 (019): sin colores de eje; el archivado sigue en `field-border`. */
-.tag[data-condition='visibility'] .tag-dot { background-color: var(--text-muted); }
-.tag[data-condition='archived'] .tag-dot { background-color: var(--field-border); }
-.tag[data-condition='status'] .tag-dot { background-color: var(--text-muted); }
 
 @media (forced-colors: active) {
   .tag {
     color: CanvasText;
-  }
-
-  .tag .tag-dot {
-    forced-color-adjust: none;
-    background-color: CanvasText;
   }
 }

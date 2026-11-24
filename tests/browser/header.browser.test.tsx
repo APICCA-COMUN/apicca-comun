@@ -1,7 +1,7 @@
-// Cabecera en Chromium real (RF-7 (003) · 7.1, 7.4, 7.8, RF-16 (021) · 16.2, RF-13 (021)): sin sombra ni recuadro sobre
-// el fondo, en una fila con el logo, «Volver al mapa», el tema, la cuenta y «Menú»; el menú de juego abre un diálogo con
-// los destinos, el vigente con peso 800 y subrayado de 3 px; a 360 px (y al 200 %) todo visible, sin desplazamiento
-// horizontal ni texto cortado. Monta `SiteHeader` con sesión de prueba, sin siembra.
+// Cabecera en Chromium real (RF-7 (003) · 7.1, 7.4, 7.8, RF-16 (021) · 16.2, RF-13 (021)): sobre el papel, sin sombra y
+// con un solo borde, el inferior de 3 px en tinta, en una fila con el logo, la navegación, el tema, la cuenta y «Menú»; el
+// menú plegado abre un diálogo con los destinos, el vigente con peso 800 y borde inferior de 3 px; a 360 px (y al 200 %)
+// todo visible, sin desplazamiento horizontal ni texto cortado. Monta `SiteHeader` con sesión de prueba, sin siembra.
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { act } from 'react';
@@ -75,32 +75,36 @@ afterAll(async () => {
 });
 
 describe.each(THEMES)('cabecera en el tema %s', (theme) => {
-  it('RF-7 (003) · 7.1: la cabecera va sobre el fondo de la página, sin sombra ni recuadro', async () => {
+  it('RF-7 (003) · 7.1: la cabecera va sobre el fondo de la página, sin sombra y con un solo borde, el inferior de 3 px en tinta', async () => {
     document.documentElement.dataset['theme'] = theme;
     await page.viewport(1280, 800);
     await show(PERSON, '/documentacion');
     const style = getComputedStyle(header());
     expect(style.boxShadow).toBe('none');
-    for (const side of ['Top', 'Right', 'Bottom', 'Left'] as const) {
+    for (const side of ['Top', 'Right', 'Left'] as const) {
       expect(style[`border${side}Width`], side).toBe('0px');
     }
+    expect(style.borderBottomWidth).toBe('3px');
+    expect(style.borderBottomStyle).toBe('solid');
+    expect(style.borderBottomColor).toBe(rgb(TOKENS[theme]['text']));
     expect(['rgba(0, 0, 0, 0)', 'transparent', rgb(TOKENS[theme]['background'])]).toContain(style.backgroundColor);
   });
 
-  it('RF-7 (003) · 7.4, RF-13 (021) · 13.1: en el menú, el destino vigente calcula peso 800 y subrayado de 3 px; los demás no', async () => {
+  it('RF-7 (003) · 7.4, RF-13 (021) · 13.1: en el menú, el destino vigente calcula peso 800 y borde inferior de 3 px en tinta; los demás no', async () => {
     document.documentElement.dataset['theme'] = theme;
     await page.viewport(1280, 800);
     await show(PERSON, '/documentacion/etica');
     await actNow(() => menuButton()?.click());
     const current = menuDialog().querySelector<HTMLElement>('nav a[aria-current="page"]')!;
-    expect(current.textContent).toBe('Cómo se juega');
+    expect(current.textContent).toBe('Documentación');
     const style = getComputedStyle(current);
     expect(style.fontWeight).toBe('800');
-    expect(style.textDecorationLine).toContain('underline');
-    expect(style.textDecorationThickness).toBe('3px');
+    expect(style.borderBottomWidth).toBe('3px');
+    expect(style.borderBottomStyle).toBe('solid');
+    expect(style.borderBottomColor).toBe(style.color);
     for (const other of menuDialog().querySelectorAll<HTMLElement>('nav a:not([aria-current])')) {
       expect(getComputedStyle(other).fontWeight, other.textContent!).not.toBe('800');
-      expect(getComputedStyle(other).textDecorationLine, other.textContent!).not.toContain('underline');
+      expect(getComputedStyle(other).borderBottomColor, other.textContent!).toBe('rgba(0, 0, 0, 0)');
     }
   });
 
@@ -169,9 +173,10 @@ describe('RF-21 (019) · cabecera compacta', () => {
       expect(rows()).toEqual([]);
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
       expect(visible(menuButton()!), '«Menú»').toBe(true);
-      const back = header().querySelector<HTMLElement>('a.site-header__back')!;
-      expect(back.textContent).toBe('Volver al mapa');
-      expect(back.getAttribute('href')).toBe('/');
+      const logo = header().querySelector<HTMLElement>('a[aria-label$="ir al inicio"]')!;
+      expect(logo.getAttribute('href')).toBe('/');
+      // Una sola fila de 64 px: el borde de 3 px incluido.
+      expect(header().getBoundingClientRect().height).toBeLessThanOrEqual(66);
     },
   );
 

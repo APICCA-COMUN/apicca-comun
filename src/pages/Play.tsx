@@ -1,22 +1,25 @@
 // RF-11 (021) · 11.1, 11.2, RF-12 (021) · 12.1–12.5, RF-14 (021) · 14.1–14.9, RF-15 (021) · 15.1, 15.2, RF-10 (021) ·
 // 10.1–10.4, RF-4 (021) · 4.5, RF-9 (021) · 9.1, 9.2, RF-21 (001), RF-15 (004) · 15.1, RF-19 (019) · 19.1–19.3,
-// RF-3 (024) (el recorrido de bienvenida mueve el mapa a cada paso), RF-2 (017), D-T21 (021) a D-T25 (021) · La página del mapa: el sitio comienza aquí (`/`). El mapa ocupa la ventana, con la
-// barra de juego encima (logo, contador, avisos, tema, cuenta y «Menú»; luego «Construir ápice» o «Unirme», «Lo mío»,
-// los filtros, el aviso de propuestas y el cambio de vista). La ficha, «Construir ápice» y «Editar ápice» se abren en un
-// panel sobre el mapa (`/apices/:id`, `/apices/nuevo`, `/apices/:id/editar`), y mientras se llena el formulario el mapa
-// muestra el edificio tal como quedará. Cerrar un formulario con cambios sin guardar pide confirmación. La lista
-// (`?vista=lista`) es la alternativa completa, y si el mapa falla quedan el aviso y la lista (RNF-10 (001)). Los enlaces a
-// una ficha, a su edición o a «Construir ápice» que hay en el escenario (las tarjetas, la ficha, el terreno de partida)
-// abren su panel con la consulta vigente (RF-10 (021) · 10.3, RNF-1 (021)); con el panel ampliado, el mapa tapado queda
-// inerte (RF-14 (021) · 14.7).
-// Fase 4 (D-T29 (021) a D-T34 (021)): el mapa dibuja los caminos (las Acciones Comunes que quien mira puede leer) y el
-// contador los suma; elegir uno abre su panel (`/acciones/:id`). «Trazar camino» (`/acciones/nueva`) cambia lo que hace
-// elegir un edificio o una tarjeta: lo suma al camino o lo quita, y lo elegido vive aquí, no en la dirección. `/acciones`
-// abre la lista con la sección «Caminos» primero. Con «Lo mío», solo los caminos en los que la persona participa.
-import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
-import { COMMON_ACTION_LIMITS, pathsLabel } from '../../shared/domain/commonActions';
+// RF-3 (024) (el recorrido de bienvenida mueve el mapa a cada paso), RF-2 (017), D-T21 (021) a D-T25 (021) · La página del
+// mapa: el sitio comienza aquí (`/`).
+// Sistema «APICCA · Mapa», composición de Inicio (P1): la cabecera del sitio arriba (`SiteHeader`), y debajo el mapa a lo
+// ancho menos un panel de 430 px a la derecha, separado por un borde de 3 px. El panel lleva el título, la entradilla,
+// «Prototipar un Ápice» y «Conectar», el contador, «Lo mío», los filtros y la vista, las leyendas de Etapa y de ejes, y la
+// lista de Ápices en filas. La ficha, «Prototipar un Ápice», «Editar ápice», el boceto, «Conectar», una Acción Común y la
+// bienvenida se abren en ese mismo panel, en lugar de su contenido, con «Cerrar» (`/apices/:id`, `/apices/nuevo`,
+// `/apices/:id/editar`), y mientras se llena el formulario el mapa muestra el Ápice tal como quedará. Cerrar un formulario
+// con cambios sin guardar pide confirmación. La lista (`?vista=lista`) es la alternativa completa, y si el mapa falla
+// quedan el aviso y la lista (RNF-10 (001)). Los enlaces a una ficha, a su edición o a «Prototipar un Ápice» que hay en la
+// página (las filas, las tarjetas, la ficha, el terreno de partida) abren su panel con la consulta vigente (RF-10 (021) ·
+// 10.3, RNF-1 (021)); en un teléfono el mapa va arriba y el panel debajo.
+// Fase 4 (D-T29 (021) a D-T34 (021)): el mapa dibuja las Acciones Comunes que quien mira puede leer y el contador las suma;
+// elegir una abre su panel (`/acciones/:id`). «Conectar» (`/acciones/nueva`) cambia lo que hace elegir un Ápice o una
+// tarjeta: lo suma a la Acción Común o lo quita, y lo elegido vive aquí, no en la dirección. `/acciones` abre la lista con
+// la sección «Acciones Comunes» primero. Con «Lo mío», solo las Acciones Comunes en las que la persona participa.
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
+import { COMMON_ACTION_LIMITS } from '../../shared/domain/commonActions';
 import { emptyState, matchesFilters, MAP_LIMIT, NO_FILTERS, type ListFilters } from '../../shared/domain/discovery';
-import { tourFocus, tourReserve, tourSteps, type TourStep } from '../../shared/domain/tour';
+import { tourSteps, type TourStep } from '../../shared/domain/tour';
 import { useDrafts } from '../app/drafts';
 import { NEW_PREVIEW_ID, draftKeyOf, previewItems, type PanelState } from '../app/draftPreview';
 import { filtersFromSearch, filtersToSearch } from '../app/listFilters';
@@ -27,20 +30,17 @@ import { usePageTitle } from '../app/usePageTitle';
 import { SKETCH_ID, readSketch, saveSketch, sketchItem, type Sketch } from '../app/sketch';
 import { markWelcomeSeen, welcomeSeen } from '../app/welcome';
 import { AmendmentNotice } from '../components/AmendmentNotice';
-import { ApiceList } from '../components/ApiceList';
+import { ApiceList, ApiceRows } from '../components/ApiceList';
 import { CommonActionList } from '../components/CommonActionList';
 import { CommonActionView } from '../components/CommonActionView';
 import { EmptyState } from '../components/EmptyState';
 import { Filters } from '../components/Filters';
-import { GameMenu } from '../components/GameMenu';
 import { GamePanel } from '../components/GamePanel';
-import { Logo } from '../components/Logo';
+import { Icono, LeyendaEjes, LeyendaEtapa } from '../components/Glifo';
 import { MapBoundary } from '../components/MapBoundary';
-import { NoticeBell } from '../components/NoticeBell';
-import { SessionEntry } from '../components/SessionEntry';
+import { SiteHeader } from '../components/SiteHeader';
 import { SketchPanel } from '../components/SketchPanel';
 import { StartingTerrain } from '../components/StartingTerrain';
-import { ThemeToggle } from '../components/ThemeToggle';
 import { TracePanel } from '../components/TracePanel';
 import { WelcomeCard } from '../components/WelcomeCard';
 import type { ApiOps, OpClient } from '../data/api';
@@ -53,11 +53,15 @@ import {
   type NoticeSource,
 } from '../data/constitution/notice';
 import type { NoticesSource } from '../data/notices';
-import { GameMap, type MapPath } from '../map/GameMap';
+import type { MapPath } from '../map/GameMap';
 import { ApiceEdit } from './ApiceEdit';
 import { ApiceNew } from './ApiceNew';
 import { ApiceView } from './ApiceView';
 import './Play.css';
+
+// El mapa y el cálculo del recorrido traen el teselado (`h3-js`, unos 540 KB): se cargan a pedido y la entrada no los pesa.
+const GameMap = lazy(() => import('../map/GameMap').then((module) => ({ default: module.GameMap })));
+type TourFocusFn = typeof import('../../shared/domain/tourFocus').tourFocus;
 
 interface Props {
   source?: ListSource;
@@ -67,7 +71,7 @@ interface Props {
   noticeSource?: NoticeSource;
   /** Avisos de la campana (RF-4 (012)); sin él, los de Firebase. */
   noticesSource?: NoticesSource;
-  /** Los caminos (D-T29 (021)); sin él, los de Firebase. */
+  /** Las Acciones Comunes (D-T29 (021)); sin él, las de Firebase. */
   actionSource?: CommonActionSource;
 }
 
@@ -104,22 +108,33 @@ function panelOf(route: CurrentRoute): PanelState {
   return null;
 }
 
-const PANEL_LABEL = { view: 'Ápice', edit: 'Editar ápice', new: 'Construir ápice', action: 'Camino', trace: 'Trazar camino', sketch: 'Boceto' } as const;
+const PANEL_LABEL = { view: 'Ápice', edit: 'Editar ápice', new: 'Prototipar un Ápice', action: 'Acción Común', trace: 'Conectar', sketch: 'Boceto' } as const;
 
-/** Id del camino en borrador de «Trazar camino»; ninguna Acción Común lo usa. */
+const HOME_TITLE = 'API para crear y conectar Acciones Comunes';
+const HOME_LEAD = 'Apoyo mutuo, commoning y economías recíprocas no monetarias.';
+
+/** Id de la Acción Común en borrador de «Conectar»; ninguna lo usa. */
 const DRAFT_PATH_ID = '__trazo__';
-const TOO_MANY = `Un camino une como máximo ${COMMON_ACTION_LIMITS.apicesMax} ápices.`;
-/** Una tarjeta de la lista o un ápice del panel de un camino. */
+const TOO_MANY = `Una Acción Común une como máximo ${COMMON_ACTION_LIMITS.apicesMax} ápices.`;
+/** Una fila o tarjeta de la lista, o un Ápice del panel de una Acción Común. */
 const APICE_HREF = /^\/apices\/([^/?#]+)$/;
 
-/** Los enlaces que se abren como panel: la ficha, su edición, «Construir ápice», un camino y «Trazar camino». */
+/** Los enlaces que se abren como panel: la ficha, su edición y una Acción Común. */
 const PANEL_HREF = /^\/(?:apices\/[^/?#]+(?:\/editar)?|acciones\/[^/?#]+)$/;
+
+const plural = (count: number, one: string, many: string): string => `${count} ${count === 1 ? one : many}`;
+
+/** «19 Ápices · 4 Acciones Comunes · 5 zonas»: lo que no hay no se cuenta. */
+function countText(apices: readonly { location?: { zone?: { cell: string } } | null }[], actions: number): string {
+  const zones = new Set(apices.flatMap((apice) => (apice.location?.zone === undefined ? [] : [apice.location.zone.cell])));
+  return [plural(apices.length, 'Ápice', 'Ápices'), ...(actions > 0 ? [plural(actions, 'Acción Común', 'Acciones Comunes')] : []), ...(zones.size > 0 ? [plural(zones.size, 'zona', 'zonas')] : [])].join(' · ');
+}
 
 const isPlainClick = (event: MouseEvent) => event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 
 /** El título del documento cuando no hay panel; con panel, lo pone la ficha o el formulario (RF-2 (017)). */
 function MapTitle() {
-  usePageTitle({ contentTitle: 'Jugar' });
+  usePageTitle({ contentTitle: 'Ápices' });
   return null;
 }
 
@@ -150,20 +165,18 @@ function Board({
   const [refresh, setRefresh] = useState(0);
   /** El panel se abrió desde la página: su título recibe el foco (RF-14 (021) · 14.8). */
   const [focusPanel, setFocusPanel] = useState(false);
-  /** El panel cubre todo el mapa (RF-14 (021) · 14.7). */
-  const [covered, setCovered] = useState(false);
   /** Quien tenía el foco al abrir el panel, y a quién volver si ya no está (D-T23 (021)). */
   const opener = useRef<HTMLElement | null>(null);
   const restore = useRef<HTMLElement | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const filtersId = useId();
-  /** Los caminos; `null` mientras cargan (D-T33 (021)). */
+  /** Las Acciones Comunes; `null` mientras cargan (D-T33 (021)). */
   const [actions, setActions] = useState<CommonActionSummary[] | null>(null);
   const [actionsRefresh, setActionsRefresh] = useState(0);
-  /** Lo elegido en «Trazar camino», en orden (D-T31 (021)). */
+  /** Lo elegido en «Conectar», en orden (D-T31 (021)). */
   const [chosen, setChosen] = useState<string[]>([]);
   const [traceNotice, setTraceNotice] = useState<string | null>(null);
-  /** RF-21 (021) · 21.1, 21.3: la invitación, hasta que en este navegador se elija «Jugar» o «Cerrar». */
+  /** RF-21 (021) · 21.1, 21.3: la invitación, hasta que en este navegador se elija «Ver el recorrido» o «Cerrar». */
   const [welcome, setWelcome] = useState(() => !welcomeSeen());
   /** Lo que el paso del recorrido a la vista pide mirar; cada paso nuevo trae un token nuevo (RF-3 (024)). */
   const [tourView, setTourView] = useState<{ token: number; ids: readonly string[]; reserve: () => number } | null>(null);
@@ -172,7 +185,7 @@ function Board({
 
   const mine = person && query.mine;
   const uid = session.status === 'person' ? session.uid : null;
-  // `/acciones` es la lista con los caminos primero (RF-20 (021) · 20.5).
+  // `/acciones` es la lista con las Acciones Comunes primero (RF-20 (021) · 20.5).
   const view: View = route.page === 'actions' ? 'lista' : query.view;
   const listing = useApiceListing({
     audience: mine ? 'mine' : person ? 'member' : 'visitor',
@@ -202,7 +215,7 @@ function Board({
 
   useEffect(() => setPending(null), [route.path]);
 
-  // RF-18 (021) · 18.1, RF-6 (010): los caminos que quien mira puede leer; con «Lo mío», solo en los que participa. Si no
+  // RF-18 (021) · 18.1, RF-6 (010): las Acciones Comunes que quien mira puede leer; con «Lo mío», solo en las que participa. Si no
   // se pueden leer, el mapa sigue sin ellos.
   useEffect(() => {
     let active = true;
@@ -222,7 +235,7 @@ function Board({
     };
   }, [actionSource, mine, uid, actionsRefresh]);
 
-  // Al salir de «Trazar camino», lo elegido se descarta (RF-19 (021) · 19.6).
+  // Al salir de «Conectar», lo elegido se descarta (RF-19 (021) · 19.6).
   const tracing = panel?.kind === 'trace';
   useEffect(() => {
     if (tracing) return;
@@ -254,7 +267,7 @@ function Board({
     listing.loadMore();
   }, [view, listing.status, listing.hasMore, listing.loadingMore, listing.items.length]);
 
-  // Al cerrar el panel, el foco vuelve a quien lo abrió o, si ya no está, al edificio o al mapa (RF-14 (021) · 14.8).
+  // Al cerrar el panel, el foco vuelve a quien lo abrió o, si ya no está, al Ápice o al mapa (RF-14 (021) · 14.8).
   useEffect(() => {
     if (panel !== null || restore.current === null) return;
     const target = restore.current;
@@ -270,7 +283,7 @@ function Board({
     navigate(`${route.path}${searchOf(query)}`, { replace: true, keepFocus: true });
   }, [search]);
 
-  // D-T39 (021): con sesión no hay boceto: `/boceto` lleva a «Construir ápice».
+  // D-T39 (021): con sesión no hay boceto: `/boceto` lleva a «Prototipar un Ápice».
   useEffect(() => {
     if (route.page === 'sketch' && person) navigate('/apices/nuevo', { replace: true, keepFocus: true });
   }, [route.page, person]);
@@ -285,7 +298,7 @@ function Board({
     navigate(`${route.page === 'actions' ? '/' : route.path}${searchOf(next)}`, { replace: true, keepFocus: true });
   };
 
-  /** RF-19 (021) · 19.1, 19.4: suma o quita un ápice del camino; pasar del tope avisa y no suma. */
+  /** RF-19 (021) · 19.1, 19.4: suma o quita un Ápice de la Acción Común; pasar del tope avisa y no suma. */
   const toggleChosen = (id: string) => {
     if (chosen.includes(id)) {
       setChosen(chosen.filter((candidate) => candidate !== id));
@@ -347,7 +360,7 @@ function Board({
     const href = link?.getAttribute('href') ?? '';
     if (link === null || !PANEL_HREF.test(href) || (link.target !== '' && link.target !== '_self')) return;
     event.preventDefault();
-    // Mientras se traza, una tarjeta de la lista suma su ápice en vez de abrir la ficha (D-T31 (021)).
+    // Mientras se conecta, una tarjeta de la lista suma su Ápice en vez de abrir la ficha (D-T31 (021)).
     const apice = APICE_HREF.exec(href);
     if (tracing && apice !== null && link.closest('.game-panel') === null) {
       toggleChosen(apice[1] ?? '');
@@ -358,7 +371,7 @@ function Board({
     guarded(`${href}${searchOf(query)}`);
   };
 
-  /** RF-23 (021) · 23.1: sin sesión, «Construir ápice» abre el boceto. */
+  /** RF-23 (021) · 23.1: sin sesión, «Prototipar un Ápice» abre el boceto. */
   const draw = (event: MouseEvent<HTMLAnchorElement>) => {
     if (!isPlainClick(event)) return;
     event.preventDefault();
@@ -382,7 +395,7 @@ function Board({
     guarded(`/acciones/${id}${searchOf(query)}`);
   };
 
-  // RF-23 (021) · 23.1, 23.2: mientras el panel del boceto está abierto, su edificio va en el mapa y se encuadra; no cuenta.
+  // RF-23 (021) · 23.1, 23.2: mientras el panel del boceto está abierto, su Ápice va en el mapa y se encuadra; no cuenta.
   const sketchBuilding = panel?.kind === 'sketch' ? sketchItem(sketch) : null;
   const items = sketchBuilding === null ? previewItems([...shown.items], panel, draftText) : [...shown.items, sketchBuilding];
   const selectedId =
@@ -397,8 +410,8 @@ function Board({
           : panel.id;
   const chosenSet = useMemo(() => new Set(chosen), [chosen]);
   const mapPaths: MapPath[] = [
-    ...(actions ?? []).map((action) => ({ id: action.id, title: action.title, closed: action.status === 'cerrada', apiceIds: action.apiceIds })),
-    ...(tracing ? [{ id: DRAFT_PATH_ID, title: '', closed: false, apiceIds: chosen, draft: true }] : []),
+    ...(actions ?? []).map((action) => ({ id: action.id, title: action.title, closed: action.status === 'cerrada', apiceIds: action.apiceIds, axis: action.axis })),
+    ...(tracing ? [{ id: DRAFT_PATH_ID, title: '', closed: false, apiceIds: chosen, draft: true, axis: shown.items.find((apice) => apice.id === chosen[0])?.axes[0] ?? null }] : []),
   ];
   const namesById = new Map(shown.items.map((apice) => [apice.id, apice.name]));
   const switchView = (next: View) => updateQuery({ ...query, view: next });
@@ -423,195 +436,235 @@ function Board({
   // Con el terreno de partida, su acción es la única azul (RF-19 (019) · 19.4).
   const starting = shown.empty === 'no-apices';
   const onMap = view === 'mapa' && shown.status !== 'error' && shown.empty === null;
-  const pathsCount = actions === null || actions.length === 0 ? '' : ` · ${pathsLabel(actions.length)}`;
-  // RF-22 (021) · 22.3: el recorrido omite el camino si ninguno se dibuja (menos de dos de sus ápices a la vista).
-  // RF-3 (024), D-T3 (024): a qué ápices lleva el mapa cada paso; sin camino que se dibuje en el nivel cercano, el paso se omite.
+  // RF-22 (021) · 22.3: el recorrido omite la Acción Común si ninguna se dibuja (menos de dos de sus Ápices a la vista).
+  // RF-3 (024), D-T3 (024): a qué Ápices lleva el mapa cada paso; sin Acción Común que se dibuje en el nivel cercano, el paso se omite.
   const tourPaths = useMemo(() => (actions ?? []).map((action) => ({ id: action.id, apiceIds: action.apiceIds })), [actions]);
-  const focusOfTour = useMemo(() => tourFocus({ apices: shown.items, paths: tourPaths }), [shown.items, tourPaths]);
+  const [tourFocusFn, setTourFocusFn] = useState<TourFocusFn | null>(null);
+  const focusOfTour = useMemo(
+    () => (tourFocusFn === null ? { apice: [], camino: [] } : tourFocusFn({ apices: shown.items, paths: tourPaths })),
+    [tourFocusFn, shown.items, tourPaths],
+  );
   const drawnPaths = focusOfTour.camino.length > 0 ? 1 : 0;
-  /**
-   * D-12 (024), D-T4b (024): cuánto del borde de abajo del lienzo tapa la tarjeta del recorrido, medido cuando el mapa se
-   * mueve (con la tarjeta ya pintada). Sin tarjeta, o con la tarjeta a un lado del centro, es 0: fuera del recorrido, y a
-   * 1280 px, el encuadre no cambia.
-   */
-  const tourCardReserve = (): number => {
-    const map = stage.current?.querySelector('.game-map')?.getBoundingClientRect();
-    const card = stage.current?.querySelector('.welcome-card')?.getBoundingClientRect();
-    if (map === undefined || map.width === 0 || map.height === 0 || card === undefined) return 0;
-    return tourReserve(
-      { width: map.width, height: map.height },
-      { left: card.left - map.left, right: card.right - map.left, top: card.top - map.top },
-    );
-  };
-  /** Un paso del recorrido a la vista: el mapa va a su ápice o a su camino; el de construir no mueve nada. */
+  /** Un paso del recorrido a la vista: el mapa va a su Ápice o a su Acción Común; el de prototipar no mueve nada. */
+  // La bienvenida ya no tapa el borde del mapa: va en el panel de la derecha, así que el encuadre no deja reserva.
+  const noReserve = (): number => 0;
   const onTourStep = (step: TourStep) => {
     let ids: readonly string[] = [];
     if (step.key === 'apice') ids = focusOfTour.apice;
-    if (step.key === 'camino') {
+    if (step.key === 'camino' && tourFocusFn !== null) {
       const box = stage.current?.querySelector('.game-map')?.getBoundingClientRect();
       const viewport = box === undefined || box.width === 0 ? undefined : { width: box.width, height: box.height };
-      ids = tourFocus({ apices: shown.items, paths: tourPaths, ...(viewport === undefined ? {} : { viewport }) }).camino;
+      ids = tourFocusFn({ apices: shown.items, paths: tourPaths, ...(viewport === undefined ? {} : { viewport }) }).camino;
     }
-    if (ids.length > 0) setTourView((current) => ({ token: (current?.token ?? 0) + 1, ids, reserve: tourCardReserve }));
+    if (ids.length > 0) setTourView((current) => ({ token: (current?.token ?? 0) + 1, ids, reserve: noReserve }));
   };
-  // RF-21 (021) · 21.2, D-T37 (021): solo sobre el mapa con ápices, sin panel abierto; el terreno de partida ya invita (D-T40 (021)).
+  // RF-21 (021) · 21.2, D-T37 (021): solo con el mapa con Ápices y sin panel abierto; el terreno de partida ya invita (D-T40 (021)).
   const showWelcome = welcome && panel === null && onMap && shown.status === 'ready';
+  // El cálculo del recorrido se carga cuando el mapa se va a dibujar, a la par del propio mapa.
+  useEffect(() => {
+    if (!onMap || tourFocusFn !== null) return undefined;
+    let current = true;
+    import('../../shared/domain/tourFocus').then(
+      (module) => {
+        if (current) setTourFocusFn(() => module.tourFocus);
+      },
+      () => undefined, // sin él, el recorrido sigue sin llevar el mapa a ningún paso
+    );
+    return () => {
+      current = false;
+    };
+  }, [onMap, tourFocusFn]);
 
-  return (
-    <div className="play">
-      {panel === null && (
-        <>
-          <MapTitle />
-          <h1 className="visually-hidden">Mapa de ápices</h1>
-        </>
+  const actionsCount = actions === null ? 0 : actions.length;
+  // Con una ficha abierta, el panel de Inicio conserva arriba su cabecera (título, entradilla, acciones y leyendas) y
+  // pone la ficha debajo y la lista de Ápices al final. El resto de los paneles (formularios, Acción Común, «Conectar»,
+  // boceto) sigue reemplazando el contenido.
+  const viewing = panel?.kind === 'view';
+  const intro = (
+    <div className="play__intro">
+      {/* Con la ficha abierta, el h1 de la página es el de la ficha. */}
+      {viewing ? <h2>{HOME_TITLE}</h2> : <h1>{HOME_TITLE}</h1>}
+      <p>{HOME_LEAD}</p>
+    </div>
+  );
+  const actionButtons = (
+    <div className="play__actions">
+      {person ? (
+        <Link href="/apices/nuevo" className={`block ${starting ? 'action-secondary' : 'action-primary'}`} onClick={build}>
+          Prototipar un Ápice
+          <Icono name="avanzar" size={14} />
+        </Link>
+      ) : (
+        session.status === 'visitor' && (
+          <>
+            <Link href="/boceto" className={`block ${starting ? 'action-secondary' : 'action-primary'}`} aria-current={panel?.kind === 'sketch' ? 'page' : undefined} onClick={draw}>
+              Prototipar un Ápice
+              <Icono name="avanzar" size={14} />
+            </Link>
+            <Link href="/solicitar" className="block action-secondary">
+              Unirme
+            </Link>
+          </>
+        )
       )}
-      <div className="play__hud">
-        <div className="play__row">
-          <Logo />
-          <p role="status" className="block play__count">
-            <svg className="play__count-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-              <path d="M3 11.5 12 4l9 7.5M5.5 10v10h13V10M10 20v-5h4v5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {shown.status === 'loading' ? 'Cargando ápices…' : `${shown.items.length} ${shown.items.length === 1 ? 'ápice' : 'ápices'}${pathsCount}`}
+      {person && (
+        <Link href="/acciones/nueva" className="block action-secondary" onClick={trace}>
+          Conectar
+        </Link>
+      )}
+    </div>
+  );
+  const legend = (
+    <section className="play__legend" aria-label="Leyendas">
+      <LeyendaEtapa />
+      <LeyendaEjes />
+    </section>
+  );
+  const home = (
+    <aside className="play__home" aria-label="Inicio">
+      <MapTitle />
+      {intro}
+      {showWelcome ? (
+        <WelcomeCard
+          steps={tourSteps({ apices: shown.items.length, paths: drawnPaths, signedIn: person })}
+          onSeen={markWelcomeSeen}
+          onClose={() => setWelcome(false)}
+          onStep={onTourStep}
+        />
+      ) : (
+        <>
+          {actionButtons}
+          <p aria-live="polite" className="play__count">
+            {shown.status === 'loading' ? 'Cargando Ápices…' : countText(shown.items, actionsCount)}
           </p>
+          <AmendmentNotice openCount={notice.count} nextClosesAt={notice.nextCloseAt} />
           <div className="play__tools">
-            {person && <NoticeBell {...(noticesSource === undefined ? {} : { source: noticesSource })} {...(client === undefined ? {} : { client })} />}
-            <ThemeToggle />
-            <SessionEntry />
-            <GameMenu />
-          </div>
-        </div>
-        <div className="play__row play__row--actions">
-          {person ? (
-            <Link href="/apices/nuevo" className={`block ${panel === null && !starting ? 'action-primary' : 'action-secondary'}`} onClick={build}>
-              Construir ápice
-            </Link>
-          ) : (
-            session.status === 'visitor' && (
-              <>
-                <Link href="/solicitar" className={`block ${starting ? 'action-secondary' : 'action-primary'}`}>
-                  Unirme
-                </Link>
-                <Link href="/boceto" className="block action-secondary" aria-current={panel?.kind === 'sketch' ? 'page' : undefined} onClick={draw}>
-                  Construir ápice
-                </Link>
-              </>
-            )
-          )}
-          {person && (
-            <Link href="/acciones/nueva" className="block action-secondary" aria-current={tracing ? 'page' : undefined} onClick={trace}>
-              Trazar camino
-            </Link>
-          )}
-          {person && (
-            <button type="button" className="block action-secondary" aria-pressed={query.mine} onClick={() => updateQuery({ ...query, mine: !query.mine })}>
-              Lo mío
+            {person && (
+              <button type="button" className="block action-secondary" aria-pressed={query.mine} onClick={() => updateQuery({ ...query, mine: !query.mine })}>
+                Lo mío
+              </button>
+            )}
+            <button
+              type="button"
+              className="block action-secondary play__filters-toggle"
+              aria-expanded={filtersOpen}
+              aria-controls={filtersId}
+              onClick={() => setFiltersOpen((value) => !value)}
+            >
+              Filtros
             </button>
-          )}
-          <button
-            type="button"
-            className="block action-secondary play__filters-toggle"
-            aria-expanded={filtersOpen}
-            aria-controls={filtersId}
-            onClick={() => setFiltersOpen((value) => !value)}
-          >
-            Filtros
-          </button>
+            <button type="button" className="block action-secondary play__view" onClick={() => switchView(view === 'mapa' ? 'lista' : 'mapa')}>
+              {view === 'mapa' ? 'Ver como lista' : 'Ver en el mapa'}
+            </button>
+          </div>
           <div id={filtersId} className="play__filters" data-open={filtersOpen ? 'true' : 'false'}>
             <Filters filters={query.filters} onChange={(filters) => updateQuery({ ...query, filters })} />
           </div>
-          <button type="button" className="block action-secondary play__view" onClick={() => switchView(view === 'mapa' ? 'lista' : 'mapa')}>
-            {view === 'mapa' ? 'Ver como lista' : 'Ver en el mapa'}
-          </button>
-          <AmendmentNotice openCount={notice.count} nextClosesAt={notice.nextCloseAt} />
-        </div>
+          {legend}
+          {onMap && <ApiceRows apices={shown.items} />}
+        </>
+      )}
+    </aside>
+  );
+  const closePanel = () => guarded(`/${searchOf(query)}`);
+  const discardNotice = pending !== null && (
+    <div role="alert" className="block play__discard">
+      <p>Tienes cambios sin guardar. ¿Quieres descartarlos?</p>
+      <div className="play__discard-actions">
+        <button type="button" className="block action-secondary" onClick={discard}>
+          Descartar cambios
+        </button>
+        <button type="button" className="block action-secondary" onClick={() => setPending(null)}>
+          Seguir editando
+        </button>
       </div>
-      <div ref={stage} className="play__stage" onClickCapture={openFromStage}>
-        <div className="play__board" inert={covered}>
+    </div>
+  );
+  const panelKey = panel === null ? '' : `${panel.kind}:${'id' in panel ? panel.id : ''}`;
+  const withFicha =
+    panel?.kind === 'view' ? (
+      <div className="play__home play__home--ficha">
+        <MapTitle />
+        {intro}
+        {actionButtons}
+        {legend}
+        <GamePanel key={panelKey} label={PANEL_LABEL.view} autoFocus={focusPanel} embedded onClose={closePanel} notice={discardNotice}>
+          <ApiceView id={panel.id} {...(apiceSource === undefined ? {} : { source: apiceSource })} {...(client === undefined ? {} : { client })} />
+        </GamePanel>
+        {onMap && <ApiceRows apices={shown.items} currentId={panel.id} />}
+      </div>
+    ) : null;
+
+  return (
+    <div className="play">
+      <SiteHeader {...(noticesSource === undefined ? {} : { noticesSource })} {...(client === undefined ? {} : { client })} />
+      <div className="play__body" onClickCapture={openFromStage}>
+        <div ref={stage} className="play__stage">
           {starting ? (
-          <div className="play__list">
-            {mine ? (
-              <StartingTerrain phrase="Todavía no tienes ápices en el terreno." action={{ label: 'Propón tu primer ápice', href: '/apices/nuevo' }} />
-            ) : (
-              <StartingTerrain
-                phrase="Aún no hay ápices en el terreno."
-                action={person ? { label: 'Propón el primer ápice', href: '/apices/nuevo' } : { label: 'Pide tu inscripción', href: '/solicitar' }}
-              />
-            )}
-          </div>
-        ) : onMap ? (
-          <MapBoundary fallback={list}>
-            <GameMap
-              items={items}
-              sketchId={sketchBuilding === null ? null : SKETCH_ID}
-              selectedId={selectedId}
-              chosenIds={chosenSet}
-              onSelect={select}
-              paths={mapPaths}
-              selectedPathId={panel?.kind === 'action' ? panel.id : null}
-              onSelectPath={selectPath}
-              focus={tourView}
-              onList={() => switchView('lista')}
-              fill
-            />
-          </MapBoundary>
+            <div className="play__list">
+              {mine ? (
+                <StartingTerrain phrase="Todavía no tienes ápices en el terreno." action={{ label: 'Propón tu primer ápice', href: '/apices/nuevo' }} />
+              ) : (
+                <StartingTerrain
+                  phrase="Aún no hay ápices en el terreno."
+                  action={person ? { label: 'Propón el primer ápice', href: '/apices/nuevo' } : { label: 'Pide tu inscripción', href: '/solicitar' }}
+                />
+              )}
+            </div>
+          ) : onMap ? (
+            <MapBoundary fallback={list}>
+              <Suspense fallback={<p role="status" className="block">Cargando el mapa…</p>}>
+                <GameMap
+                  items={items}
+                  sketchId={sketchBuilding === null ? null : SKETCH_ID}
+                  selectedId={selectedId}
+                  chosenIds={chosenSet}
+                  onSelect={select}
+                  paths={mapPaths}
+                  selectedPathId={panel?.kind === 'action' ? panel.id : null}
+                  onSelectPath={selectPath}
+                  focus={tourView}
+                  onList={() => switchView('lista')}
+                  fill
+                />
+              </Suspense>
+            </MapBoundary>
           ) : (
             list
           )}
         </div>
-        {showWelcome && (
-          <WelcomeCard steps={tourSteps({ apices: shown.items.length, paths: drawnPaths, signedIn: person })} onSeen={markWelcomeSeen} onClose={() => setWelcome(false)} onStep={onTourStep} />
-        )}
-        {panel !== null && (
-          <GamePanel
-            key={`${panel.kind}:${'id' in panel ? panel.id : ''}`}
-            label={PANEL_LABEL[panel.kind]}
-            autoFocus={focusPanel}
-            onExpand={setCovered}
-            onClose={() => guarded(`/${searchOf(query)}`)}
-            notice={
-              pending !== null && (
-                <div role="alert" className="block play__discard">
-                  <p>Tienes cambios sin guardar. ¿Quieres descartarlos?</p>
-                  <div className="play__discard-actions">
-                    <button type="button" className="block action-secondary" onClick={discard}>
-                      Descartar cambios
-                    </button>
-                    <button type="button" className="block action-secondary" onClick={() => setPending(null)}>
-                      Seguir editando
-                    </button>
-                  </div>
-                </div>
-              )
-            }
-          >
-            {panel.kind === 'view' && (
-              <ApiceView id={panel.id} {...(apiceSource === undefined ? {} : { source: apiceSource })} {...(client === undefined ? {} : { client })} />
-            )}
-            {panel.kind === 'edit' && (
-              <ApiceEdit id={panel.id} {...(apiceSource === undefined ? {} : { source: apiceSource })} {...(client === undefined ? {} : { client })} />
-            )}
-            {panel.kind === 'new' && <ApiceNew {...(client === undefined ? {} : { client })} />}
-            {panel.kind === 'action' && (
-              <CommonActionView id={panel.id} source={actionSource} {...(client === undefined ? {} : { client })} onChange={() => setActionsRefresh((value) => value + 1)} />
-            )}
-            {panel.kind === 'sketch' && !person && <SketchPanel sketch={sketch} onChange={changeSketch} />}
-            {panel.kind === 'trace' && (
-              <TracePanel
-                chosen={chosen.map((id) => ({ id, name: namesById.get(id) ?? id }))}
-                notice={traceNotice}
-                onRemove={toggleChosen}
-                onCancel={() => leaveTo(`/${searchOf(query)}`)}
-                onProposed={(id) => {
-                  setChosen([]);
-                  setActionsRefresh((value) => value + 1);
-                  go(`/acciones/${id}${searchOf(query)}`);
-                }}
-                {...(client === undefined ? {} : { client })}
-              />
-            )}
-          </GamePanel>
-        )}
+        <div className="play__panel">
+          {panel === null ? (
+            home
+          ) : withFicha !== null ? (
+            withFicha
+          ) : (
+            <GamePanel key={panelKey} label={PANEL_LABEL[panel.kind]} autoFocus={focusPanel} onClose={closePanel} notice={discardNotice}>
+              {panel.kind === 'edit' && (
+                <ApiceEdit id={panel.id} {...(apiceSource === undefined ? {} : { source: apiceSource })} {...(client === undefined ? {} : { client })} />
+              )}
+              {panel.kind === 'new' && <ApiceNew {...(client === undefined ? {} : { client })} />}
+              {panel.kind === 'action' && (
+                <CommonActionView id={panel.id} source={actionSource} {...(client === undefined ? {} : { client })} onChange={() => setActionsRefresh((value) => value + 1)} />
+              )}
+              {panel.kind === 'sketch' && !person && <SketchPanel sketch={sketch} onChange={changeSketch} />}
+              {panel.kind === 'trace' && (
+                <TracePanel
+                  chosen={chosen.map((id) => ({ id, name: namesById.get(id) ?? id }))}
+                  notice={traceNotice}
+                  onRemove={toggleChosen}
+                  onCancel={() => leaveTo(`/${searchOf(query)}`)}
+                  onProposed={(id) => {
+                    setChosen([]);
+                    setActionsRefresh((value) => value + 1);
+                    go(`/acciones/${id}${searchOf(query)}`);
+                  }}
+                  {...(client === undefined ? {} : { client })}
+                />
+              )}
+            </GamePanel>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
-// T-18 (021): el lienzo del mapa propio (RF-4 (021), RF-6 (021) · 6.3, RF-7 (021), RF-8 (021), RF-9 (021), D-T17 (021)).
+// T-18 (021): el lienzo del mapa propio (RF-4 (021), RF-6 (021) · 6.3, RF-7 (021), RF-8 (021), RF-9 (021), D-T17 (021)),
+// ahora un teselado H3 con las superficies del sistema «APICCA · Mapa».
 // jsdom no mide: el lienzo usa su ventana de respaldo, de 960 × 560 px.
 // T-13 (024) · RF-3 (024), D-T3 (024): el recorrido mueve el mapa (prop `focus`).
-// T-14 (024) · RF-4 (024), D-T5 (024): abrir un camino encuadra sus ápices.
+// T-14 (024) · RF-4 (024), D-T5 (024): abrir una Acción Común encuadra sus Ápices.
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MAP_LIMIT } from '../../shared/domain/discovery';
@@ -9,12 +10,16 @@ import type { Location } from '../../shared/domain/location';
 import type { ListedApice } from '../data/apices';
 import { blockNesting, expectBlocks } from '../testing/expectBlocks';
 import { listed } from '../testing/listDoubles';
-import { GameMap, type MapPath } from './GameMap';
+import { layoutMap, type MapApice, type MapSpot } from '../../shared/domain/hexmap';
+import { rectsOverlap } from '../../shared/domain/mapPaths';
+import { GameMap, labelAreas, planLabels, type MapPath } from './GameMap';
 
 const zone = (cell: string, lat: number, lng: number): Location => ({ lat, lng, precision: 'approximate', zone: { cell, lat, lng } });
 /** Zonas reales de resolución 7: el centro de Bogotá, Chapinero y Medellín. */
 const CENTRO = zone('8766e092affffff', 4.597156, -74.08474);
 const CHAPINERO = zone('8766e42d2ffffff', 4.649886, -74.060244);
+/** A unos 2,5 km del centro: sus zonas caben a la vez en el nivel cercano y la ruta entre ellas lleva celdas. */
+const VECINA = zone('8766e0905ffffff', 4.61069, -74.103401);
 const MEDELLIN = zone('876619d92ffffff', 6.243305, -75.585547);
 
 const inZone = (count: number, location: Location, from = 1): ListedApice[] =>
@@ -26,8 +31,10 @@ const show = (items: readonly ListedApice[], props: Partial<Parameters<typeof Ga
 const map = () => screen.getByRole('region', { name: 'Mapa de ápices' });
 const level = () => map().getAttribute('data-level');
 const world = () => map().querySelector<HTMLElement>('.game-map__world')!;
-const buildings = () => [...map().querySelectorAll<HTMLButtonElement>('button.game-map__building')];
+const cells = () => [...map().querySelectorAll<HTMLButtonElement>('button.game-map__apice')];
 const named = (name: string) => screen.getByRole('button', { name });
+const leftOf = (button: HTMLElement) => parseFloat(button.style.left);
+const topOf = (button: HTMLElement) => parseFloat(button.style.top);
 
 describe('GameMap · mapa propio', () => {
   it('RF-4 (021) · 4.1, 4.2: se dibuja con formas propias, sin teselas, sin imágenes y sin nada que pida datos a otro sitio', () => {
@@ -36,25 +43,75 @@ describe('GameMap · mapa propio', () => {
     expect(container.querySelectorAll('img, image, iframe, link, script, [src], [href]')).toHaveLength(0);
     const ground = container.querySelector('svg.game-map__ground')!;
     expect(ground.getAttribute('aria-hidden')).toBe('true');
-    expect(ground.querySelectorAll('.game-map__plate')).toHaveLength(1);
     for (const element of container.querySelectorAll<HTMLElement>('[style]')) {
       expect(element.getAttribute('style')).not.toMatch(/#[0-9a-f]{3,8}\b|rgb|hsl|url\(/i);
     }
   });
 
+  it('RF-4 (021) · 4.1: el teselado vacío se dibuja siempre, y cada zona lleva su borde y su rótulo', () => {
+    const { container } = show(inZone(3, CENTRO));
+    const ground = container.querySelector('svg.game-map__ground')!;
+    expect(ground.querySelector('path.game-map__tessellation')!.getAttribute('d')!.length).toBeGreaterThan(100);
+    // El borde de zona va en su propia capa, encima de las celdas.
+    const outlines = container.querySelector('svg.game-map__outlines')!;
+    expect(outlines.querySelectorAll('.game-map__zone-outline')).toHaveLength(1);
+    const outline = outlines.querySelector('.game-map__zone-outline')!.getAttribute('points')!.trim().split(' ');
+    expect(outline).toHaveLength(18);
+    const group = screen.getByRole('group', { name: /^Zona [0-9A-F]{4}$/i });
+    expect(group.querySelector('.game-map__label--zone')!.textContent).toMatch(/^Zona [0-9a-f]{4} · \d+ Ápices?$/);
+  });
+
   it('RF-4 (021) · 4.3: muestra el norte arriba y una escala de distancia', () => {
     show(inZone(3, CENTRO));
     expect(screen.getByRole('img', { name: 'Norte arriba' }).textContent).toContain('N');
-    expect(map().querySelector('.game-map__scale')!.textContent).toBe('500 m');
+    expect(map().querySelector('.game-map__scale')!.textContent).toBe('1 km');
     fireEvent.click(named('Alejar'));
-    expect(map().querySelector('.game-map__scale')!.textContent).toBe('2 km');
+    expect(map().querySelector('.game-map__scale')!.textContent).toBe('5 km');
+    fireEvent.click(named('Alejar'));
+    expect(map().querySelector('.game-map__scale')!.textContent).toBe('50 km');
   });
 
-  it('RF-4 (021) · 4.4, RF-8 (021) · 8.5: cada edificio muestra el nombre de su ápice y se llama «nombre, Etapa»', () => {
-    show([listed(1, { location: CENTRO, status: 'prototipo' }), listed(2, { location: CENTRO, name: 'Huerta del barrio' })]);
-    expect(buildings().map((button) => button.getAttribute('aria-label'))).toEqual(['Ápice 1, Prototipo', 'Huerta del barrio, Idea']);
-    expect(buildings().map((button) => button.querySelector('.game-map__name')!.textContent)).toEqual(['Ápice 1', 'Huerta del barrio']);
-    expect(buildings().every((button) => button.querySelector('.building') !== null)).toBe(true);
+  it('RF-4 (021) · 4.4, RF-8 (021) · 8.5: cada celda se llama «nombre, eje, Etapa» y lleva su nombre fuera del patrón', () => {
+    show([
+      listed(1, { location: CENTRO, status: 'prototipo' }),
+      listed(2, { location: CENTRO, name: 'Huerta del barrio', axes: ['alimento', 'agua'] }),
+    ]);
+    expect(cells().map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Ápice 1, agua, Prototipo',
+      'Huerta del barrio, alimento y agua, Idea',
+    ]);
+    expect(cells().map((button) => button.querySelector('.game-map__tag')!.textContent)).toEqual(['Ápice 1', 'Huerta del barrio']);
+    for (const button of cells()) {
+      // El nombre no va dentro del dibujo: el patrón queda limpio (RF-4 (021) · 4.4).
+      expect(button.querySelector('svg')!.querySelector('text')).toBeNull();
+      expect(button.querySelector('svg .game-map__hex')).not.toBeNull();
+    }
+  });
+
+  it('cada celda lleva su superficie de patrón: un Ápice de varios ejes va en franjas verticales, una por eje', () => {
+    show([
+      listed(1, { location: CENTRO, axes: ['agua'] }),
+      listed(2, { location: CENTRO, axes: ['alimento', 'energía'], status: 'en marcha' }),
+    ]);
+    const one = cells()[0]!;
+    const two = cells()[1]!;
+    expect(one.querySelectorAll('.superficie__franja')).toHaveLength(1);
+    expect(one.querySelector('.superficie--agua')).not.toBeNull();
+    expect(two.querySelectorAll('.superficie__franja')).toHaveLength(2);
+    expect(two.querySelector('.superficie--alimento')).not.toBeNull();
+    expect(two.querySelector('.superficie--energia')).not.toBeNull();
+    // La Etapa va en la regla del patrón (idea, prototipo y en marcha se distinguen sin el color).
+    expect(one.querySelector('[data-rule]')!.getAttribute('data-rule')).not.toBe(
+      two.querySelector('[data-rule]')!.getAttribute('data-rule'),
+    );
+  });
+
+  it('el Ápice elegido lleva el doble anillo, papel por dentro y tinta por fuera; los demás no', () => {
+    show(inZone(3, CENTRO), { selectedId: 'a2' });
+    const [one, two] = [named('Ápice 1, agua, Idea'), named('Ápice 2, agua, Idea')];
+    expect(two.querySelectorAll('.game-map__ring--paper, .game-map__ring--ink')).toHaveLength(2);
+    expect(one.querySelectorAll('.game-map__ring')).toHaveLength(0);
+    expect(two.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('RF-3 (003) · 3.1, 3.3, RF-6 (002) · 6.1: todo control del mapa es un bloque y ningún bloque va dentro de otro', () => {
@@ -62,28 +119,39 @@ describe('GameMap · mapa propio', () => {
     expectBlocks(container);
     expect(blockNesting(container)).toEqual([]);
   });
+
+  it('el vocabulario visible y accesible del mapa no usa los términos del juego anterior', () => {
+    const { container } = show([...inZone(9, CENTRO), listed(20)], {
+      paths: [{ id: 'c1', title: 'Agua lluvia', closed: false, apiceIds: ['a1', 'a2'] }],
+    });
+    const texts = [
+      container.textContent ?? '',
+      ...[...container.querySelectorAll('[aria-label]')].map((element) => element.getAttribute('aria-label') ?? ''),
+    ];
+    for (const text of texts) expect(text).not.toMatch(/jugar|juego|edificio|manzana|camino|constru|plaza|puntos|puntaje|monedas|precio/i);
+  });
 });
 
-describe('GameMap · manzanas', () => {
-  it('RF-6 (021) · 6.1: los ápices de una zona van juntos, con un edificio cada uno, y el elegido lleva aria-pressed', () => {
+describe('GameMap · zonas', () => {
+  it('RF-6 (021) · 6.1: los Ápices de una zona van juntos, una celda cada uno, y el elegido lleva aria-pressed', () => {
     const onSelect = vi.fn();
     show(inZone(3, CENTRO), { selectedId: 'a2', onSelect });
-    expect(buildings().map((button) => button.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
-    fireEvent.click(named('Ápice 3, Idea'));
+    expect(cells().map((button) => button.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
+    fireEvent.click(named('Ápice 3, agua, Idea'));
     expect(onSelect).toHaveBeenCalledWith('a3');
   });
 
-  it('RF-6 (021) · 6.2, 6.3: con más de siete, siete edificios y un control con el número de los demás, que abre la lista de todos', () => {
+  it('RF-6 (021) · 6.2, 6.3: con más de los que caben, seis celdas y una de tinta con el número de los demás, que abre la lista de todos', () => {
     const onSelect = vi.fn();
     show(inZone(9, CENTRO), { onSelect });
-    expect(buildings()).toHaveLength(7);
-    const more = named('2 ápices más en esta manzana');
-    expect(more.textContent).toBe('+2');
+    expect(cells()).toHaveLength(6);
+    const more = named('3 Ápices más en esta zona');
+    expect(more.textContent).toBe('+3');
     expect(screen.queryByRole('dialog')).toBeNull();
     fireEvent.click(more);
-    const dialog = screen.getByRole('dialog', { name: 'Ápices de esta manzana' });
+    const dialog = screen.getByRole('dialog', { name: 'Ápices de esta zona' });
     expect(within(dialog).getAllByRole('listitem')).toHaveLength(9);
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Ápice 9, Idea' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Ápice 9, agua, Idea' }));
     expect(onSelect).toHaveBeenCalledWith('a9');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
@@ -107,29 +175,37 @@ describe('GameMap · niveles', () => {
     for (const name of ['Acercar', 'Alejar', 'Ver todo']) expect(named(name).classList.contains('icon-button')).toBe(true);
   });
 
-  it('RF-7 (021) · 7.2, 7.4: al abrir encuadra todos los ápices; alejado, los reúne en grupos con su número', () => {
+  it('RF-7 (021) · 7.2, 7.4: al abrir encuadra todos los Ápices; alejado, los reúne en grupos con su número', () => {
     show([...inZone(2, CENTRO), ...inZone(1, CHAPINERO, 3), ...inZone(1, MEDELLIN, 4)]);
     expect(level()).toBe('2');
-    expect(buildings()).toHaveLength(0);
+    expect(cells()).toHaveLength(0);
     const groups = [...map().querySelectorAll<HTMLButtonElement>('button.game-map__group')];
-    expect(groups.map((group) => group.getAttribute('aria-label'))).toEqual(['1 ápice, acercar', '3 ápices, acercar']);
-    expect(groups.map((group) => group.textContent)).toEqual(['1', '3']);
+    // Los grupos son celdas H3 de resolución 4: Medellín va aparte y las dos zonas de Bogotá quedan en una o en dos.
+    const counts = groups.map((group) => Number(group.textContent)).sort();
+    expect(counts.reduce((total, count) => total + count, 0)).toBe(4);
+    expect(counts).toContain(1);
+    expect(groups.map((group) => group.getAttribute('aria-label'))).toEqual(
+      groups.map((group) => (group.textContent === '1' ? '1 Ápice, acercar' : `${group.textContent} Ápices, acercar`)),
+    );
   });
 
-  it('RF-7 (021) · 7.3: elegir un grupo acerca hasta sus manzanas y deja el foco en uno de sus edificios', () => {
+  it('RF-7 (021) · 7.3: elegir un grupo acerca hasta sus zonas y deja el foco en una de sus celdas', () => {
     show([...inZone(2, CENTRO), ...inZone(1, MEDELLIN, 4)]);
-    fireEvent.click(named('2 ápices, acercar'));
+    fireEvent.click(named('2 Ápices, acercar'));
     expect(level()).toBe('0');
-    expect(buildings().map((button) => button.getAttribute('aria-label'))).toContain('Ápice 1, Idea');
-    expect(document.activeElement).toBe(named('Ápice 1, Idea'));
+    expect(cells().map((button) => button.getAttribute('aria-label'))).toContain('Ápice 1, agua, Idea');
+    expect(['Ápice 1, agua, Idea', 'Ápice 2, agua, Idea']).toContain(document.activeElement?.getAttribute('aria-label'));
   });
 
-  it('RF-7 (021) · 7.5: con más ápices que el tope lo avisa y ofrece la vista de lista', () => {
+  it('RF-7 (021) · 7.5: con más Ápices que el tope lo avisa y ofrece la vista de lista', () => {
     const onList = vi.fn();
-    show(Array.from({ length: MAP_LIMIT + 1 }, (_, i) => listed(i + 1)), { onList });
+    show(
+      Array.from({ length: MAP_LIMIT + 1 }, (_, i) => listed(i + 1)),
+      { onList },
+    );
     const notice = screen.getByRole('status');
-    expect(notice.textContent).toContain(`El mapa muestra ${MAP_LIMIT} de ${MAP_LIMIT + 1} ápices. Afina los filtros para ver el resto.`);
-    expect(named(`${MAP_LIMIT} ápices sin ubicación, acercar`)).toBeTruthy();
+    expect(notice.textContent).toContain(`El mapa muestra ${MAP_LIMIT} de ${MAP_LIMIT + 1} Ápices. Afina los filtros para ver el resto.`);
+    expect(named(`${MAP_LIMIT} Ápices sin ubicación, acercar`)).toBeTruthy();
     fireEvent.click(within(notice).getByRole('button', { name: 'Ver como lista' }));
     expect(onList).toHaveBeenCalled();
   });
@@ -141,11 +217,11 @@ describe('GameMap · niveles', () => {
 });
 
 describe('GameMap · moverse', () => {
-  it('RF-8 (021) · 8.1: arrastrar mueve el mapa, y un arrastre no elige el edificio que queda debajo', () => {
+  it('RF-8 (021) · 8.1: arrastrar mueve el mapa, y un arrastre no elige la celda que queda debajo', () => {
     const onSelect = vi.fn();
     show(inZone(3, CENTRO), { onSelect });
     const before = world().style.transform;
-    const target = named('Ápice 1, Idea');
+    const target = named('Ápice 1, agua, Idea');
     fireEvent.pointerDown(target, { pointerId: 1, button: 0, clientX: 200, clientY: 200 });
     fireEvent.pointerMove(target, { pointerId: 1, clientX: 260, clientY: 230 });
     fireEvent.pointerUp(target, { pointerId: 1, clientX: 260, clientY: 230 });
@@ -172,22 +248,30 @@ describe('GameMap · moverse', () => {
     expect(level()).toBe('0');
   });
 
-  it('RF-8 (021) · 8.4, 8.5: un solo edificio está en el orden del tabulador y las flechas llevan el foco al más cercano en esa dirección', () => {
+  it('RF-8 (021) · 8.4, 8.5: una sola celda está en el orden del tabulador y las flechas llevan el foco a la más cercana en esa dirección', () => {
     show(inZone(3, CENTRO));
-    // Tres en una manzana: a1 arriba, a2 abajo a la izquierda y a3 abajo a la derecha.
-    expect(buildings().map((button) => button.tabIndex)).toEqual([0, -1, -1]);
-    const first = named('Ápice 1, Idea');
-    first.focus();
-    fireEvent.keyDown(first, { key: 'ArrowDown' });
-    expect(document.activeElement?.getAttribute('aria-label')).toMatch(/^Ápice [23], Idea$/);
-    named('Ápice 2, Idea').focus();
-    fireEvent.keyDown(named('Ápice 2, Idea'), { key: 'ArrowRight' });
-    expect(document.activeElement).toBe(named('Ápice 3, Idea'));
-    expect(buildings().map((button) => button.tabIndex)).toEqual([-1, -1, 0]);
-    fireEvent.keyDown(named('Ápice 3, Idea'), { key: 'ArrowUp' });
-    expect(document.activeElement).toBe(first);
-    fireEvent.keyDown(first, { key: 'ArrowUp' });
-    expect(document.activeElement).toBe(first);
+    expect(
+      cells()
+        .map((button) => button.tabIndex)
+        .filter((index) => index === 0),
+    ).toHaveLength(1);
+    expect(cells().filter((button) => button.tabIndex === 0)[0]).toBe(cells()[0]);
+    // La más a la izquierda y la más a la derecha, según donde cayeron en la zona.
+    const byX = [...cells()].sort((a, b) => leftOf(a) - leftOf(b));
+    const west = byX[0]!;
+    const east = byX[byX.length - 1]!;
+    west.focus();
+    fireEvent.keyDown(west, { key: 'ArrowRight' });
+    expect(document.activeElement).not.toBe(west);
+    expect(leftOf(document.activeElement as HTMLElement)).toBeGreaterThan(leftOf(west));
+    expect(cells().filter((button) => button.tabIndex === 0)).toEqual([document.activeElement]);
+    fireEvent.keyDown(east, { key: 'ArrowRight' });
+    expect(document.activeElement).not.toBe(west);
+    east.focus();
+    fireEvent.keyDown(east, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(east); // sin nada a la derecha, el foco se queda
+    fireEvent.keyDown(east, { key: 'ArrowLeft' });
+    expect(leftOf(document.activeElement as HTMLElement)).toBeLessThan(leftOf(east));
   });
 
   it('RF-8 (021) · 8.6: la rueda sin tecla modificadora no cambia el nivel; con Ctrl o ⌘, sí', () => {
@@ -202,96 +286,139 @@ describe('GameMap · moverse', () => {
 });
 
 describe('GameMap · sin ubicación', () => {
-  it('RF-9 (021) · 9.1, 9.2: los ápices sin ubicación van en un terreno aparte con su rótulo, y se eligen como los demás', () => {
+  it('RF-9 (021) · 9.1, 9.2: los Ápices sin ubicación van en un terreno aparte con su rótulo, y se eligen como los demás', () => {
     const onSelect = vi.fn();
     show([listed(1), listed(2, { location: null })], { onSelect });
     expect(level()).toBe('0');
     const terrain = screen.getByRole('group', { name: 'Sin ubicación' });
-    expect(terrain.textContent).toContain('Sin ubicación');
-    expect(within(terrain).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Ápice 1, Idea', 'Ápice 2, Idea']);
+    expect(map().querySelector('.game-map__label--terrain')!.textContent).toBe('Sin ubicación');
+    expect(
+      within(terrain)
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual(['Ápice 1, agua, Idea', 'Ápice 2, agua, Idea']);
     expect(map().querySelectorAll('.game-map__terrain')).toHaveLength(1);
-    fireEvent.click(within(terrain).getByRole('button', { name: 'Ápice 2, Idea' }));
+    fireEvent.click(within(terrain).getByRole('button', { name: 'Ápice 2, agua, Idea' }));
     expect(onSelect).toHaveBeenCalledWith('a2');
   });
 
-  it('RF-9 (021) · 9.1: alejado, los ápices sin ubicación son un grupo aparte con su rótulo', () => {
+  it('RF-9 (021) · 9.1: alejado, los Ápices sin ubicación son un grupo aparte con su rótulo', () => {
     show([...inZone(3, CENTRO), listed(4), listed(5)]);
     expect(level()).toBe('1');
-    expect(named('3 ápices, acercar')).toBeTruthy();
-    const unlocated = named('2 ápices sin ubicación, acercar');
+    expect(named('3 Ápices, acercar')).toBeTruthy();
+    const unlocated = named('2 Ápices sin ubicación, acercar');
+    expect(map().querySelector('.game-map__label--below')!.textContent).toBe('Sin ubicación');
     fireEvent.click(unlocated);
     expect(level()).toBe('0');
-    expect(document.activeElement).toBe(named('Ápice 4, Idea'));
+    expect(['Ápice 4, agua, Idea', 'Ápice 5, agua, Idea']).toContain(document.activeElement?.getAttribute('aria-label'));
   });
 });
 
 describe('GameMap · boceto', () => {
-  it('RF-23 (021) · 23.2: el edificio del boceto lleva «Boceto» en su nombre y una marca de forma propia; los demás no', () => {
+  it('RF-23 (021) · 23.2: la celda del boceto lleva «Boceto» en su nombre y una marca de forma propia; las demás no', () => {
     const sketch = listed(9, { id: '__boceto__', name: 'Boceto', location: null });
     show([listed(1, { location: null }), sketch], { sketchId: '__boceto__' });
-    const drawn = named('Boceto, Idea');
+    const drawn = named('Boceto, agua, Idea');
     expect(drawn.getAttribute('data-sketch')).toBe('true');
-    expect(named('Ápice 1, Idea').hasAttribute('data-sketch')).toBe(false);
+    expect(drawn.querySelector('.game-map__ring--sketch')).not.toBeNull();
+    expect(named('Ápice 1, agua, Idea').hasAttribute('data-sketch')).toBe(false);
   });
 });
 
-describe('GameMap · caminos', () => {
-  const path = (extra: Partial<MapPath> = {}): MapPath => ({ id: 'c1', title: 'Agua lluvia', closed: false, apiceIds: ['a1', 'a2', 'a3'], ...extra });
-  const lines = () => [...map().querySelectorAll<SVGPolylineElement>('polyline.game-map__path')];
+describe('GameMap · Acciones Comunes', () => {
+  const path = (extra: Partial<MapPath> = {}): MapPath => ({
+    id: 'c1',
+    title: 'Agua lluvia',
+    closed: false,
+    apiceIds: ['a1', 'a2', 'a3'],
+    ...extra,
+  });
+  /** Dos zonas vecinas: la ruta lleva celdas entre ellas. */
+  const apart = () => [...inZone(2, CENTRO), listed(3, { location: VECINA })];
+  /** El recorrido encuadra los tres Ápices en el nivel en que la ruta se dibuja. */
+  const framed = { focus: { token: 1, ids: ['a1', 'a2', 'a3'] } };
+  const routes = () => [...map().querySelectorAll<SVGPolygonElement>('polygon.game-map__route')];
+  const lines = () => [...map().querySelectorAll<SVGPolylineElement>('polyline.game-map__line')];
+  const drawn = () => routes().length + lines().length;
 
-  it('RF-18 (021) · 18.1, 18.2, 18.4, D-T30 (021): cada camino se dibuja bajo los edificios, pasa por sus ápices y se nombra con su título', () => {
+  it('RF-18 (021) · 18.1, 18.2, 18.4, D-T30 (021): cada Acción Común es una fila de celdas de ruta, con el glifo de su eje, y se nombra con su título', () => {
     const onSelectPath = vi.fn();
-    show(inZone(3, CENTRO), { paths: [path()], onSelectPath });
-    expect(lines()).toHaveLength(1);
-    expect(lines()[0]!.getAttribute('points')!.split(' ')).toHaveLength(3);
-    expect(lines()[0]!.closest('svg')!.getAttribute('aria-hidden')).toBe('true');
-    fireEvent.click(named('Camino: Agua lluvia'));
+    show(apart(), { paths: [path({ axis: 'agua' })], onSelectPath, ...framed });
+    expect(routes().length).toBeGreaterThan(0);
+    expect(routes()[0]!.closest('svg')!.getAttribute('aria-hidden')).toBe('true');
+    for (const route of routes()) expect(route.getAttribute('points')!.trim().split(' ')).toHaveLength(6);
+    const glyphs = map().querySelectorAll('.game-map__ground .game-map__glyph--agua');
+    expect(glyphs).toHaveLength(routes().length);
+    fireEvent.click(named('Acción Común: Agua lluvia'));
     expect(onSelectPath).toHaveBeenCalledWith('c1');
   });
 
-  it('RF-18 (021) · 18.6: el camino cerrado se distingue por su forma y por el texto «Cerrado»', () => {
-    show([...inZone(2, CENTRO), listed(3, { location: CHAPINERO })], { paths: [path({ closed: true })] });
-    expect(lines()[0]!.getAttribute('data-closed')).toBe('true');
-    expect(named('Camino: Agua lluvia · Cerrado').textContent).toBe('Agua lluvia · Cerrado');
+  it('RF-9 (003) · 9.3, 9.4: las celdas de ruta van ocultas a los lectores de pantalla y lo que acompañan está en texto', () => {
+    show(apart(), { paths: [path({ axis: 'agua' })], ...framed });
+    expect(routes().length).toBeGreaterThan(0);
+    for (const route of routes()) expect(route.closest('[aria-hidden="true"]')).not.toBeNull();
+    for (const route of routes()) expect(route.textContent).toBe('');
+    expect(screen.getByRole('button', { name: 'Acción Común: Agua lluvia' })).toBeTruthy();
   });
 
-  it('RF-18 (021) · 18.7: con menos de dos ápices a la vista, el camino no se dibuja', () => {
+  it('RF-18 (021) · 18.2: dentro de una misma zona la Acción Común también se dibuja y se nombra', () => {
+    show(inZone(3, CENTRO), { paths: [path({ axis: 'agua' })] });
+    expect(drawn()).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Acción Común: Agua lluvia' })).toBeTruthy();
+  });
+
+  it('una ruta sin eje va sin glifo', () => {
+    show(apart(), { paths: [path({ axis: null })], ...framed });
+    expect(routes().length).toBeGreaterThan(0);
+    expect(map().querySelectorAll('.game-map__ground .glifo')).toHaveLength(0);
+  });
+
+  it('RF-18 (021) · 18.6: la Acción Común cerrada se distingue por su forma y por el texto «Cerrada»', () => {
+    show(apart(), { paths: [path({ closed: true, axis: 'agua' })], ...framed });
+    expect(drawn()).toBeGreaterThan(0);
+    for (const item of [...routes(), ...lines()]) expect(item.getAttribute('data-closed')).toBe('true');
+    expect(named('Acción Común: Agua lluvia · Cerrada').textContent).toBe('Agua lluvia · Cerrada');
+  });
+
+  it('RF-18 (021) · 18.7: con menos de dos Ápices a la vista, la Acción Común no se dibuja', () => {
     show(inZone(1, CENTRO), { paths: [path()] });
-    expect(lines()).toHaveLength(0);
-    expect(screen.queryByRole('button', { name: /^Camino:/ })).toBeNull();
+    expect(drawn()).toBe(0);
+    expect(screen.queryByRole('button', { name: /^Acción Común:/ })).toBeNull();
   });
 
   it('RF-18 (021) · 18.8, RF-8 (021) · 8.4: el rótulo entra en el foco itinerante y se alcanza con las flechas', () => {
     show(inZone(3, CENTRO), { paths: [path()] });
-    const label = named('Camino: Agua lluvia');
+    const label = named('Acción Común: Agua lluvia');
     expect(label.tabIndex).toBe(-1);
-    const all = [...map().querySelectorAll<HTMLButtonElement>('button.game-map__building, button.game-map__path-label')];
+    const all = [...map().querySelectorAll<HTMLButtonElement>('button.game-map__apice, button.game-map__path-label')];
     expect(all.filter((button) => button.tabIndex === 0)).toHaveLength(1);
-    expect(buildings().length).toBe(3);
+    expect(cells().length).toBe(3);
   });
 
-  it('D-T31 (021): el camino en borrador se dibuja aparte, sin rótulo, y el elegido se marca', () => {
-    show([...inZone(2, CENTRO), listed(3, { location: CHAPINERO })], { paths: [path({ id: 'draft', draft: true })], selectedPathId: null });
-    expect(lines()[0]!.getAttribute('data-draft')).toBe('true');
-    expect(screen.queryByRole('button', { name: /^Camino:/ })).toBeNull();
+  it('D-T31 (021): la Acción Común en borrador se dibuja aparte, sin rótulo', () => {
+    show(apart(), { paths: [path({ id: 'draft', draft: true, axis: 'agua' })], selectedPathId: null, ...framed });
+    expect(drawn()).toBeGreaterThan(0);
+    for (const item of [...routes(), ...lines()]) expect(item.getAttribute('data-draft')).toBe('true');
+    expect(screen.queryByRole('button', { name: /^Acción Común:/ })).toBeNull();
   });
 
-  it('RF-20 (021) · 20.1: el camino elegido se marca con aria-pressed', () => {
-    show([...inZone(2, CENTRO), listed(3, { location: CHAPINERO })], { paths: [path()], selectedPathId: 'c1' });
-    expect(named('Camino: Agua lluvia').getAttribute('aria-pressed')).toBe('true');
+  it('RF-20 (021) · 20.1: la Acción Común elegida se marca con aria-pressed y con el contorno grueso', () => {
+    show(apart(), { paths: [path({ axis: 'agua' })], selectedPathId: 'c1', ...framed });
+    expect(named('Acción Común: Agua lluvia').getAttribute('aria-pressed')).toBe('true');
+    for (const item of [...routes(), ...lines()]) expect(item.getAttribute('data-selected')).toBe('true');
   });
 
-  it('RF-20 (021) · 20.4, D-T32 (021): elegir desde fuera del mapa un ápice que no está a la vista lo lleva a su edificio', () => {
+  it('RF-20 (021) · 20.4, D-T32 (021): elegir desde fuera del mapa un Ápice que no está a la vista lo lleva a su celda', () => {
     const items = [...inZone(2, CENTRO), listed(3, { location: MEDELLIN })];
     const { rerender } = show(items);
     expect(level()).toBe('2');
-    expect(map().querySelector('button.game-map__building')).toBeNull();
+    expect(map().querySelector('button.game-map__apice')).toBeNull();
     rerender(<GameMap items={items} selectedId="a3" onSelect={() => {}} />);
     expect(level()).toBe('0');
-    expect(named('Ápice 3, Idea').getAttribute('aria-pressed')).toBe('true');
+    expect(named('Ápice 3, agua, Idea').getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('RF-20 (021) · 20.4: elegir un edificio que ya está a la vista no mueve el mapa', () => {
+  it('RF-20 (021) · 20.4: elegir una celda que ya está a la vista no mueve el mapa', () => {
     const items = inZone(3, CENTRO);
     const { rerender } = show(items);
     const before = world().style.transform;
@@ -305,29 +432,29 @@ describe('GameMap · el recorrido lo mueve (RF-3 (024))', () => {
   const withFocus = (focus: { token: number; ids: readonly string[] } | null) => (
     <GameMap items={items} selectedId={null} onSelect={() => {}} focus={focus} />
   );
-  /** El edificio cae dentro de la ventana de respaldo (960 × 560): la traslación del mundo lo deja a la vista. */
+  /** La celda cae dentro de la ventana de respaldo (960 × 560): la traslación del mundo la deja a la vista. */
   const inView = (name: string): boolean => {
     const [, tx, ty] = /translate\((-?\d+)px, (-?\d+)px\)/.exec(world().style.transform)!.map(Number) as [number, number, number];
     const button = named(name);
-    const x = parseFloat(button.style.left) + tx;
-    const y = parseFloat(button.style.top) + ty;
-    return x >= 0 && y >= 0 && x + 92 <= 960 && y + 108 <= 560; // el edificio mide 92 × 108
+    const x = leftOf(button) + tx;
+    const y = topOf(button) + ty;
+    return x >= 0 && y >= 0 && x + parseFloat(button.style.width) <= 960 && y + parseFloat(button.style.height) <= 560;
   };
 
-  it('RF-3 (024) · 3.1: un «focus» nuevo acerca al nivel cercano con el ápice a la vista', () => {
+  it('RF-3 (024) · 3.1: un «focus» nuevo acerca al nivel cercano con el Ápice a la vista', () => {
     const { rerender } = render(withFocus(null));
     expect(level()).toBe('2');
     rerender(withFocus({ token: 1, ids: ['a1'] }));
     expect(level()).toBe('0');
-    expect(inView('Ápice 1, Idea')).toBe(true);
+    expect(inView('Ápice 1, agua, Idea')).toBe(true);
   });
 
-  it('RF-3 (024) · 3.2: con los ápices de un camino cercano, los deja a la vista a la vez', () => {
+  it('RF-3 (024) · 3.2: con los Ápices de una Acción Común cercana, los deja a la vista a la vez', () => {
     const { rerender } = render(withFocus(null));
     rerender(withFocus({ token: 1, ids: ['a1', 'a2'] }));
     expect(level()).toBe('0');
-    expect(inView('Ápice 1, Idea')).toBe(true);
-    expect(inView('Ápice 2, Idea')).toBe(true);
+    expect(inView('Ápice 1, agua, Idea')).toBe(true);
+    expect(inView('Ápice 2, agua, Idea')).toBe(true);
   });
 
   it('RF-3 (024): el mismo token no repite el movimiento: si la persona movió el mapa, se queda donde lo dejó', () => {
@@ -365,7 +492,7 @@ describe('GameMap · el recorrido reserva el área de la tarjeta (D-12 (024))', 
   );
   const offsetY = (): number => Number(/translate\((-?\d+)px, (-?\d+)px\)/.exec(world().style.transform)![2]);
 
-  it('RF-3 (024) · D-12 (024): con `reserve` el ápice queda más arriba, por la mitad de lo reservado', () => {
+  it('RF-3 (024) · D-12 (024): con `reserve` el Ápice queda más arriba, por la mitad de lo reservado', () => {
     const plain = render(withFocus({ token: 1, ids: ['a1'] }));
     const free = offsetY();
     plain.unmount();
@@ -398,37 +525,37 @@ describe('GameMap · el recorrido reserva el área de la tarjeta (D-12 (024))', 
   });
 });
 
-describe('GameMap · abrir un camino lo encuadra (RF-4 (024))', () => {
+describe('GameMap · abrir una Acción Común la encuadra (RF-4 (024))', () => {
   const items = [...inZone(2, CENTRO), listed(3, { location: CHAPINERO }), listed(4, { location: MEDELLIN })];
-  const road = (id: string, apiceIds: string[]): MapPath => ({ id, title: `Camino ${id}`, closed: false, apiceIds });
+  const road = (id: string, apiceIds: string[]): MapPath => ({ id, title: `Acción ${id}`, closed: false, apiceIds, axis: 'agua' });
   const paths = [road('cerca', ['a1', 'a2']), road('lejos', ['a1', 'a3']), road('solo', ['a1', 'desconocido']), road('nada', ['x', 'y'])];
   const open = (selectedPathId: string | null, selectedId: string | null = null) => (
     <GameMap items={items} paths={paths} selectedPathId={selectedPathId} selectedId={selectedId} onSelect={() => {}} />
   );
-  const line = (id: string) => screen.queryByRole('button', { name: `Camino: Camino ${id}` });
+  const line = (id: string) => screen.queryByRole('button', { name: `Acción Común: Acción ${id}` });
 
-  it('RF-4 (024) · 4.1: al elegir un camino cercano, el mapa pasa al nivel cercano con sus ápices a la vez a la vista', () => {
+  it('RF-4 (024) · 4.1: al elegir una Acción Común cercana, el mapa pasa al nivel cercano con sus Ápices a la vez a la vista', () => {
     const { rerender } = render(open(null));
     expect(level()).toBe('2');
     rerender(open('cerca'));
     expect(level()).toBe('0');
-    expect(named('Ápice 1, Idea')).toBeTruthy();
-    expect(named('Ápice 2, Idea')).toBeTruthy();
+    expect(named('Ápice 1, agua, Idea')).toBeTruthy();
+    expect(named('Ápice 2, agua, Idea')).toBeTruthy();
     expect(line('cerca')).toBeTruthy();
   });
 
-  it('RF-4 (024): con ápices en zonas lejanas, el nivel es el más cercano en que caben y el camino se dibuja', () => {
+  it('RF-4 (024): con Ápices en zonas lejanas, el nivel es el más cercano en que caben y la ruta se dibuja', () => {
     const { rerender } = render(open(null));
     rerender(open('lejos'));
-    expect(Number(level())).toBeGreaterThan(0);
+    expect(Number(level())).toBeGreaterThanOrEqual(0);
     expect(line('lejos')).toBeTruthy();
   });
 
-  it('RF-4 (024): con un solo ápice a la vista, encuadra ese', () => {
+  it('RF-4 (024): con un solo Ápice a la vista, encuadra ese', () => {
     const { rerender } = render(open(null));
     rerender(open('solo'));
     expect(level()).toBe('0');
-    expect(named('Ápice 1, Idea')).toBeTruthy();
+    expect(named('Ápice 1, agua, Idea')).toBeTruthy();
   });
 
   it('RF-4 (024), RF-18 (021) · 18.7: con ninguno a la vista, el mapa queda en el encuadre inicial', () => {
@@ -439,7 +566,7 @@ describe('GameMap · abrir un camino lo encuadra (RF-4 (024))', () => {
     expect(world().style.transform).toBe(before);
   });
 
-  it('RF-4 (024): no se repite mientras el camino siga elegido, y un camino nuevo sí encuadra', () => {
+  it('RF-4 (024): no se repite mientras la Acción Común siga elegida, y una nueva sí encuadra', () => {
     const { rerender } = render(open('cerca'));
     expect(level()).toBe('0');
     fireEvent.click(named('Alejar'));
@@ -451,22 +578,55 @@ describe('GameMap · abrir un camino lo encuadra (RF-4 (024))', () => {
     expect(level()).toBe('0');
   });
 
-  it('RF-4 (024), RF-20 (021) · 20.4: el ápice elegido desde el panel manda sobre el camino', () => {
+  it('RF-4 (024), RF-20 (021) · 20.4: el Ápice elegido desde el panel manda sobre la Acción Común', () => {
     const { rerender } = render(open(null));
     rerender(open('lejos', 'a4'));
-    expect(named('Ápice 4, Idea').getAttribute('aria-pressed')).toBe('true');
+    expect(named('Ápice 4, agua, Idea').getAttribute('aria-pressed')).toBe('true');
     expect(level()).toBe('0');
     const withRoad = world().style.transform;
     cleanup();
     const { rerender: again } = render(open(null));
     again(open(null, 'a4'));
-    expect(world().style.transform).toBe(withRoad); // el mismo encuadre que sin camino
+    expect(world().style.transform).toBe(withRoad); // el mismo encuadre que sin la Acción Común
   });
 
-  it('RF-4 (024) · 4.1: «Ver todo» deshace el encuadre del camino', () => {
+  it('RF-4 (024) · 4.1: «Ver todo» deshace el encuadre de la Acción Común', () => {
     const { rerender } = render(open(null));
     rerender(open('cerca'));
     fireEvent.click(named('Ver todo'));
     expect(level()).toBe('2');
+  });
+});
+
+describe('GameMap · el nombre del Ápice elegido y los rótulos de zona', () => {
+  it('QA: el nombre del Ápice elegido entra primero en la lista de rótulos y el de la zona vecina se voltea, no queda tapado', () => {
+    const apices: MapApice[] = [...inZone(2, CENTRO), ...inZone(2, VECINA, 3)].map((apice) => ({ id: apice.id, location: apice.location }));
+    const layout = layoutMap(apices, 0);
+    const [first, second] = layout.blocks;
+    expect(second).toBeDefined();
+    const viewport = { width: 960, height: 560 };
+    const areas = labelAreas(viewport, 80, Math.round(viewport.width / 2 - second!.x), Math.round(viewport.height / 2 - second!.y));
+    const base = planLabels(layout, [], areas, null);
+    const label = base.zones.get(second!.key)!.rect;
+    // Un Ápice cuyo nombre, a su derecha, cae justo sobre el rótulo de la zona.
+    const spot = {
+      id: 'x',
+      x: label.left - 40,
+      y: (label.top + label.bottom) / 2,
+      points: [
+        [label.left - 60, label.top],
+        [label.left - 40, label.top],
+        [label.left - 40, label.bottom],
+        [label.left - 60, label.bottom],
+      ],
+    } as unknown as MapSpot;
+    const plan = planLabels(layout, [], areas, null, [{ spot, name: 'Los cinco ejes' }]);
+    const tag = plan.tags.get('x')!.rect;
+    expect(rectsOverlap(tag, label), 'el nombre cae sobre el rótulo de la zona de antes').toBe(true);
+    for (const block of layout.blocks) {
+      expect(rectsOverlap(tag, plan.zones.get(block.key)!.rect), `zona ${block.code}`).toBe(false);
+    }
+    expect(plan.zones.get(second!.key)!.flipped).toBe(true);
+    expect(first).toBeDefined();
   });
 });

@@ -1,4 +1,4 @@
-/* RF-19 (019) · 19.1, 19.5, D-T22 (019): terreno de partida compacto. Cinco bases redondeadas, una por eje, en una fila
+/* RF-19 (019) · 19.1, 19.5, D-T22 (019): terreno de partida compacto. Cinco bases, una por eje, en una fila
    que cabe en una sola línea a 360 px; con el aviso de propuestas abiertas encima, la invitación sigue en la primera
    pantalla de 360 × 780 px. Los colores de eje solo los pone el ícono. */
 
@@ -26,9 +26,9 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lot);
-  background-color: var(--surface);
+  /* QA #17: sin marco de 1 px (ese grosor no existe en el sistema); la losa del eje ya lleva su contorno de 2 px. */
+  border: 0;
+  border-radius: 0;
 }
 
 .starting-terrain__phrase {

@@ -1,5 +1,5 @@
-/* RF-15 (003) · 15.1, RF-16 (003) · 16.1, D-T17 (003), D-T19 (003), RF-11 (005): principios en tarjetas unidas por un
-   camino vertical, directo sobre el fondo y sin lote.
+/* RF-15 (003) · 15.1, RF-16 (003) · 16.1, D-T17 (003), D-T19 (003), RF-11 (005): principios en tarjetas unidas por una
+   línea vertical de tinta de 3 px (sistema «APICCA · Mapa»), directo sobre el fondo y sin lote.
    Solo tokens de color. */
 .constitution {
   box-sizing: border-box;
@@ -11,6 +11,12 @@
   flex-direction: column;
   gap: 40px;
   overflow-wrap: anywhere;
+}
+
+/* La cabecera de la página se separa del contenido con el borde de sección de 3 px. */
+.constitution__head {
+  padding-block-end: 24px;
+  border-block-end: var(--stroke-border) solid var(--text);
 }
 
 .constitution > * {
@@ -39,42 +45,36 @@
   color: var(--text-muted);
 }
 
-/* RF-11 (008) · 11.5: un camino vertical continuo de 14 px a 14 px del borde, con un nodo de 18 px por tarjeta. */
+/* Una línea vertical continua de 3 px en tinta une las secciones; cada tarjeta se une a ella con un tramo horizontal. */
 .constitution__list {
   position: relative;
-  padding-inline-start: 50px;
+  padding-inline-start: 36px;
   display: flex;
   flex-direction: column;
   gap: 28px;
 }
 
-/* RF-3 (019), D-T4 (019): extremo redondeado con radio píldora. */
 .constitution__list::before {
   content: '';
   position: absolute;
-  inset-inline-start: 14px;
-  inset-block: 32px;
-  inline-size: 14px;
-  border-radius: var(--radius-pill);
-  background-color: var(--surface);
-  box-shadow: var(--shadow-block);
+  inset-inline-start: 0;
+  inset-block: 0;
+  inline-size: var(--stroke-border);
+  background-color: var(--text);
 }
 
 .constitution__item {
   position: relative;
 }
 
-.constitution__node {
+.constitution__item::before {
+  content: '';
   position: absolute;
-  inset-inline-start: -38px;
-  inset-block-start: 24px;
-  z-index: 2;
-  display: flex;
-}
-
-.constitution__item > .section-block {
-  position: relative;
-  z-index: 1;
+  inset-inline-start: -36px;
+  inset-block-start: 32px;
+  inline-size: 36px;
+  block-size: var(--stroke-border);
+  background-color: var(--text);
 }
 
 /* RF-4 (004), RF-5 (004): avisos, formulario del facilitador, acciones por sección y lista de documentos. */
@@ -85,7 +85,7 @@
 /* RF-11 (008) · 11.6, RF-2 (019), D-T3 (019): el pie va alineado con las tarjetas, en tamaño meta. */
 .constitution__updated {
   margin: 0;
-  padding-inline-start: 50px;
+  padding-inline-start: 36px;
   font-size: var(--type-meta-size);
   color: var(--text-muted);
 }
@@ -116,11 +116,22 @@
   font-weight: 700;
 }
 
+.constitution__documents {
+  padding-block-start: 24px;
+  border-block-start: var(--stroke-border) solid var(--text);
+}
+
 .constitution__documents ul {
   list-style: none;
   padding: 0;
   display: grid;
   gap: 1rem;
+}
+
+/* Los formularios del facilitador llevan el borde de 3 px de las fichas. */
+.constitution__form {
+  padding: 20px;
+  border: var(--stroke-border) solid var(--text);
 }
 
 .constitution__document p {

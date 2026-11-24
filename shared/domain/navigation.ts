@@ -9,12 +9,13 @@ export type MenuItem = {
   readonly requiresSession: boolean;
 };
 
-/** Menú de juego, en orden, con los nombres de D-10 (021) (RF-13 (021) · 13.1). Lo que pide sesión va aparte. */
+/** Navegación principal, en orden: cabecera y menú plegado (sistema «APICCA · Mapa»). Lo que pide sesión va aparte. */
 export const MAIN_MENU: readonly MenuItem[] = [
-  { label: 'Jugar', href: '/', requiresSession: false },
-  { label: 'Cómo se juega', href: '/documentacion', requiresSession: false },
-  { label: 'Reglas', href: '/constitucion', requiresSession: false },
-  { label: 'Plaza', href: '/foro', requiresSession: false },
+  { label: 'Ápices', href: '/', requiresSession: false },
+  { label: 'Acciones Comunes', href: '/acciones', requiresSession: false },
+  { label: 'Documentación', href: '/documentacion', requiresSession: false },
+  { label: 'Constitución', href: '/constitucion', requiresSession: false },
+  { label: 'Foro', href: '/foro', requiresSession: false },
 ];
 
 /** Menú interno de las páginas de Facilitación (RF-7 (003) · 7.9). */

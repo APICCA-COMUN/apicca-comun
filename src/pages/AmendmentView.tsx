@@ -212,7 +212,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
           {authorSuspended && isOpen ? ' (sin el de quien propone, que tiene la cuenta suspendida)' : ' (incluye el de quien propone)'}
         </p>
         {others.length > 0 && (
-          <ul className="lot">
+          <ul className="lot-list">
             {others.map((s) => (
               <li key={s.uid} className="block">
                 {s.username}
@@ -228,7 +228,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
       {objections.length > 0 && (
         <section className="lot" aria-label="Objeciones">
           <h2>Objeciones</h2>
-          <ul className="lot">
+          <ul className="lot-list">
             {objections.map((o) => (
               <li key={o.id} className="block">
                 <p>
@@ -236,7 +236,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
                 </p>
                 <p>{o.reason}</p>
                 {isOpen && o.status === 'open' && o.uid === session.uid && (
-                  <>
+                  <div className="button-group">
                     <button
                       type="button"
                       className="block action-secondary"
@@ -264,7 +264,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
                     >
                       Retirar objeción
                     </button>
-                  </>
+                  </div>
                 )}
               </li>
             ))}
@@ -331,7 +331,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
         )}
         {isOpen && composer !== null && (
           <div className="block">
-            <label htmlFor="amendment-comment">Tu comentario</label>
+            <label htmlFor="amendment-comment" className="rotulo-campo">Tu comentario</label>
             <textarea
               id="amendment-comment"
               className="block"
@@ -340,12 +340,14 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
               onChange={(event) => setCommentText(event.target.value)}
             />
             {commentNote !== null && <p role="alert">{commentNote}</p>}
-            <button type="button" className="block action-secondary" onClick={() => void submitComment()}>
-              {composer.mode === 'edit' ? 'Guardar comentario' : 'Publicar comentario'}
-            </button>
-            <button type="button" className="block action-secondary" onClick={closeComposer}>
-              Cancelar
-            </button>
+            <div className="button-group">
+              <button type="button" className="block action-secondary" onClick={() => void submitComment()}>
+                {composer.mode === 'edit' ? 'Guardar comentario' : 'Publicar comentario'}
+              </button>
+              <button type="button" className="block action-secondary" onClick={closeComposer}>
+                Cancelar
+              </button>
+            </div>
           </div>
         )}
       </section>
@@ -353,7 +355,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
       {revisions.length > 0 && (
         <section className="lot" aria-label="Revisiones anteriores">
           <h2>Revisiones anteriores</h2>
-          <ol className="lot">
+          <ol className="lot-list">
             {revisions.map((r) => (
               <li key={r.revisionNo} className="block">
                 <h3>{r.title}</h3>

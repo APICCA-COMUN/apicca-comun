@@ -1,7 +1,9 @@
 /* RF-14 (003) · 14.2, 14.3, RF-16 (003) · 16.1, D-T19 (003), RF-10 (008) · 10.1 a 10.6, D-13 (008): documentación en una
    columna de 1040 px como máximo, centrada, con el índice de 200 px junto al artículo de 680 px. Bajo 720 px el índice
    va primero por el orden del DOM (sin `order`). Va directo sobre el fondo, sin lote (RF-10 (005)), con
-   `clamp(48px, 6vw, 96px)` arriba y abajo. Solo tokens de color. */
+   `clamp(48px, 6vw, 96px)` arriba y abajo. Sistema «APICCA · Mapa»: las secciones del índice y el pie de páginas se
+   separan con un borde de 3 px en tinta, los enlaces del índice con divisores de 1,5 px en `line` y el enlace
+   vigente lleva el subrayado de 3 px de la navegación. Solo tokens de color. */
 .documentation {
   box-sizing: border-box;
   max-inline-size: 1040px;
@@ -60,14 +62,26 @@
   list-style: none;
 }
 
+.documentation__index li + li {
+  border-block-start: var(--stroke-divider) solid var(--line);
+}
+
 .documentation__index a {
   display: inline-block;
-  padding-block: 10px;
+  padding-block: 10px 7px;
+  border-block-end: var(--stroke-border) solid transparent;
   font-size: var(--type-label-size);
+  text-decoration: none;
+}
+
+.documentation__index a:hover {
+  border-block-end-color: var(--text-muted);
 }
 
 .documentation__section + .documentation__section {
   margin-block-start: 1.5rem;
+  padding-block-start: 1.5rem;
+  border-block-start: var(--stroke-border) solid var(--text);
 }
 
 .documentation__section-title {
@@ -80,9 +94,9 @@
   color: var(--text-muted);
 }
 
-.documentation__index [aria-current='page'] {
+.documentation__index a[aria-current='page'] {
   font-weight: 800;
-  text-decoration: none;
+  border-block-end-color: var(--text);
 }
 
 .documentation__crumb {
@@ -99,7 +113,7 @@
   gap: 1rem;
   justify-content: space-between;
   padding-block-start: 24px;
-  border-block-start: 1px solid var(--line);
+  border-block-start: var(--stroke-border) solid var(--text);
 }
 
 .documentation__pager a {

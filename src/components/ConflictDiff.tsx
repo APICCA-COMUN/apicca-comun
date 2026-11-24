@@ -21,8 +21,8 @@ const LABEL: Record<ContentChange['field'], string> = {
   name: 'Nombre',
   description: 'Descripción',
   axes: 'Ejes',
-  needs: 'Necesidades',
-  offers: 'Aportes',
+  needs: 'Necesita',
+  offers: 'Ofrece',
   status: 'Etapa',
 };
 

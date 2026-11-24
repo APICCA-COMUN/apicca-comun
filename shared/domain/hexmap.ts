@@ -1,52 +1,94 @@
-// Dominio del mapa propio (RF-5 (021) · 5.3, RF-6 (021), RF-7 (021), RF-8 (021) · 8.4, RF-9 (021), RNF-5 (021),
-// D-T16 (021)): dónde va cada ápice en el lienzo, según su zona. Puro, sin React, sin DOM y sin biblioteca de celdas:
-// la zona llega calculada del servidor (D-T13 (021)) y aquí solo se proyecta, se agrupa y se ordena.
+// Dominio del mapa teselado con H3 (sistema «APICCA · Mapa», 23-11-2026; RF-5 (021) · 5.3, RF-6 (021), RF-7 (021),
+// RF-8 (021) · 8.4, RF-9 (021), RNF-5 (021), D-T16 (021)): dónde va cada Ápice en el lienzo. Cada zona (celda H3 de
+// resolución 7, que llega calculada del servidor, D-T13 (021)) son siete celdas de resolución 8: la central y su anillo.
+// Cada Ápice ocupa una celda y, si la zona tiene más de las que caben, la central pasa a ser el «+N». Los niveles
+// alejados dibujan la celda de resolución 6 o 4 que reúne a las zonas. Puro, sin React ni DOM; las celdas salen de
+// `h3cells.ts`, que es lo único que conoce la biblioteca.
+import {
+  LEVEL_RESOLUTION,
+  cellBoundary,
+  cellCenter,
+  cellOfPoint,
+  cellsAround,
+  edgeKm,
+  isCellOf,
+  outlineOf,
+  zoneCells,
+  zoneCode,
+} from './h3cells';
 import type { Location, Point } from './location';
 
-/** Nivel de acercamiento (RF-7 (021) · 7.1): 0 es *barrio* (manzanas), 1 es *ciudad* y 2 es *región* (grupos). */
+/** Nivel de acercamiento (RF-7 (021) · 7.1): 0 es *barrio* (celdas de Ápices), 1 es *ciudad* y 2 es *región* (grupos). */
 export type MapLevel = 0 | 1 | 2;
 
-/** Lo que el mapa necesita de un ápice. */
+/** Lo que el mapa necesita de un Ápice. */
 export interface MapApice {
   id: string;
   location?: Location | null | undefined;
 }
 
-/** Un lugar del lienzo, en píxeles: el centro de la caja de un edificio o de un grupo. */
-export interface MapSpot {
+/** Un vértice, en píxeles del lienzo. */
+export type MapVertex = readonly [x: number, y: number];
+
+/** Un lugar enfocable del lienzo: su id y el centro, en píxeles. */
+export interface MapPlace {
   id: string;
   x: number;
   y: number;
 }
 
-/** Manzana: los ápices de una zona (RF-6 (021)). `spots` lleva los edificios a la vista y `more`, cuántos no caben. */
-export interface MapBlock {
-  key: string;
+/** Una celda dibujada: el índice H3, su centro y sus vértices, en píxeles. */
+export interface MapCell {
+  cell: string;
   x: number;
   y: number;
-  radius: number;
-  /** Todos los ápices de la manzana, en su orden estable (RF-6 (021) · 6.4). */
-  ids: string[];
-  spots: MapSpot[];
-  more: number;
+  points: readonly MapVertex[];
 }
 
-/** Grupo de un nivel alejado (RF-7 (021) · 7.2). `unlocated` marca el de los ápices sin ubicación (RF-9 (021)). */
-export interface MapGroup {
+/** La celda de un Ápice. */
+export interface MapSpot extends MapPlace, MapCell {}
+
+/**
+ * Zona: una celda H3 de resolución 7 con sus siete celdas (RF-6 (021)). `spots` lleva los Ápices a la vista y `more`,
+ * cuántos no caben; en ese caso la celda central es el «+N» (`moreCell`) y los Ápices van en el anillo.
+ */
+export interface MapBlock {
+  /** La celda de la zona. */
   key: string;
+  /** Su código corto (`zoneCode`). */
+  code: string;
+  /** El centro de la zona, en píxeles. */
   x: number;
   y: number;
+  /** Todos los Ápices de la zona, en su orden estable (RF-6 (021) · 6.4). */
+  ids: string[];
+  /** Las siete celdas de la zona, la central primero. */
+  cells: string[];
+  spots: MapSpot[];
+  more: number;
+  moreCell: MapCell | null;
+  /** El borde exterior de las siete celdas. */
+  outline: readonly MapVertex[];
+  /** Dónde se apoya el rótulo de la zona: centrado, justo encima del borde. */
+  label: { x: number; y: number };
+}
+
+/** Grupo de un nivel alejado (RF-7 (021) · 7.2): una celda de resolución 6 o 4. `unlocated` marca el de los Ápices sin ubicación (RF-9 (021)). */
+export interface MapGroup extends MapCell {
+  key: string;
   ids: string[];
   unlocated: boolean;
 }
 
-/** Terreno aparte de los ápices sin ubicación, en el nivel cercano (RF-9 (021) · 9.1). `x` e `y` son su esquina. */
+/** Terreno aparte de los Ápices sin ubicación, en el nivel cercano (RF-9 (021) · 9.1). `x` e `y` son su esquina. */
 export interface MapTerrain {
   x: number;
   y: number;
   width: number;
   height: number;
   spots: MapSpot[];
+  /** Dónde se apoya su rótulo: a la izquierda, justo encima del borde. */
+  label: { x: number; y: number };
 }
 
 export interface MapBounds {
@@ -60,6 +102,10 @@ export interface MapLayout {
   level: MapLevel;
   /** Píxeles por kilómetro. */
   scale: number;
+  /** El punto de la Tierra que es el (0, 0) del lienzo. */
+  origin: Point;
+  /** Radio, en píxeles, de una celda de este nivel. */
+  radius: number;
   blocks: MapBlock[];
   groups: MapGroup[];
   terrain: MapTerrain | null;
@@ -80,33 +126,24 @@ export interface MapViewport {
   height: number;
 }
 
-/** Píxeles por kilómetro de cada nivel: cada uno, siete veces más lejos que el anterior (RF-7 (021) · 7.1). */
-export const LEVEL_SCALE: readonly [number, number, number] = [200, 200 / 7, 200 / 49];
+/**
+ * Píxeles por kilómetro de cada nivel: cada uno, siete veces más lejos que el anterior (RF-7 (021) · 7.1), así que la
+ * celda de cada nivel mide lo mismo en pantalla (unos 53 px de arista).
+ */
+export const LEVEL_SCALE: readonly [number, number, number] = [100, 100 / 7, 100 / 49];
 
-/** Resolución H3 de la celda que reúne a los ápices en cada nivel alejado (RF-7 (021) · 7.2). */
-const GROUP_RESOLUTION: Record<1 | 2, number> = { 1: 5, 2: 3 };
-
-/** Radio de la placa de una manzana: 0,9 km, menos que la mitad de lo que separa a dos celdas vecinas. */
-export const BLOCK_RADIUS = 180;
-/** Edificios a la vista en una manzana: una celda H3 tiene siete hijas (RF-6 (021) · 6.2). */
-export const BLOCK_CAPACITY = 7;
-/** Caja de un edificio con su nombre debajo. */
-export const SPOT_WIDTH = 92;
-export const SPOT_HEIGHT = 108;
-/** Radio del marcador de un grupo y separación mínima entre dos grupos. */
-export const GROUP_RADIUS = 40;
-export const GROUP_SPACING = 96;
-/** Clave del grupo de los ápices sin ubicación. */
+/** Ancho aproximado de una celda del nivel cercano, en píxeles: lo que una columna central del mapa deja a un Ápice. */
+export const CELL_WIDTH = Math.round(Math.sqrt(3) * edgeKm(LEVEL_RESOLUTION[0]) * LEVEL_SCALE[0]);
+/** Clave del grupo de los Ápices sin ubicación. */
 export const UNLOCATED_KEY = 'sin-ubicar';
 
 const EARTH_RADIUS_KM = 6371.0088;
 const FRAME_MARGIN = 24;
 const TERRAIN_COLUMNS = 6;
-const TERRAIN_GAP = 12;
-const TERRAIN_PADDING = 24;
-/** Alto reservado para el rótulo del terreno. */
-const TERRAIN_LABEL = 40;
-const TERRAIN_DISTANCE = 64;
+const TERRAIN_PADDING = 12;
+/** Cuánto sube un rótulo sobre su borde; cuenta para lo que ocupa el mapa. */
+const LABEL_HEIGHT = 30;
+const LABEL_WIDTH = 190;
 
 const CELL_PATTERN = /^[0-9a-f]{15}$/;
 const RESOLUTION_SHIFT = 52n;
@@ -126,8 +163,9 @@ export function parentCell(cell: string, resolution: number): string {
 }
 
 const radians = (degrees: number): number => (degrees * Math.PI) / 180;
+const degrees = (rad: number): number => (rad * 180) / Math.PI;
 /** Diferencia de longitudes por el camino corto, para que el meridiano 180 no separe a dos vecinos. */
-const wrapDegrees = (degrees: number): number => ((((degrees + 180) % 360) + 360) % 360) - 180;
+const wrapDegrees = (value: number): number => ((((value + 180) % 360) + 360) % 360) - 180;
 
 /**
  * Proyección local en kilómetros alrededor de `origin`, con el norte arriba (RF-5 (021) · 5.3). Conserva dirección y
@@ -140,20 +178,35 @@ export function projectKm(point: Point, origin: Point): { x: number; y: number }
   return { x: x + 0, y: y + 0 };
 }
 
+/** Lo contrario de `projectKm`: el punto de la Tierra que cae en esos kilómetros. */
+export function unprojectKm(km: { x: number; y: number }, origin: Point): Point {
+  const lat = origin.lat - degrees(km.y / EARTH_RADIUS_KM);
+  const lng = origin.lng + degrees(km.x / (EARTH_RADIUS_KM * Math.cos(radians(origin.lat))));
+  return { lat: Math.max(-90, Math.min(90, lat)), lng: wrapDegrees(lng) };
+}
+
 const byText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 const byPlace = <T extends { x: number; y: number; key: string }>(a: T, b: T): number => a.y - b.y || a.x - b.x || byText(a.key, b.key);
 
-/** Una zona con ápices: su clave, su centro en kilómetros y sus ápices en orden estable. */
+/** Una zona con Ápices: su celda y sus Ápices en orden estable. */
 interface ZoneEntry {
   key: string;
-  x: number;
-  y: number;
+  center: Point;
   ids: string[];
 }
 
-/** La zona de una ubicación; si aún no tiene celda (RF-5 (021) · 5.4), su punto de pantalla hace de zona propia. */
-const zoneOfLocation = (location: Location): { cell: string } & Point =>
-  location.zone ?? { cell: `punto:${location.lat},${location.lng}`, lat: location.lat, lng: location.lng };
+/**
+ * La celda de zona de una ubicación: la publicada por el servidor si es una celda H3 de resolución 7; si no (el ápice
+ * aún no pasó por el recálculo, RF-5 (021) · 5.4), la que contiene su punto. `null` si ni el punto sirve.
+ */
+function zoneCellOf(location: Location): string | null {
+  if (location.zone && isCellOf(location.zone.cell, 7)) return location.zone.cell;
+  try {
+    return cellOfPoint(location, 7);
+  } catch {
+    return null;
+  }
+}
 
 /** Centro del conjunto: la mitad de su extensión. No depende del orden de llegada. */
 function originOf(centers: readonly Point[]): Point {
@@ -173,42 +226,23 @@ function originOf(centers: readonly Point[]): Point {
   return { lat: (minLat + maxLat) / 2, lng: first.lng + (minLng + maxLng) / 2 };
 }
 
-function zonesOf(apices: readonly MapApice[]): { zones: ZoneEntry[]; unlocated: string[] } {
-  const byCell = new Map<string, { center: Point; ids: string[] }>();
+function zonesOf(apices: readonly MapApice[]): { zones: ZoneEntry[]; unlocated: string[]; origin: Point } {
+  const byCell = new Map<string, string[]>();
   const unlocated: string[] = [];
   for (const apice of apices) {
-    if (!apice.location) {
+    const cell = apice.location ? zoneCellOf(apice.location) : null;
+    if (cell === null) {
       unlocated.push(apice.id);
       continue;
     }
-    const zone = zoneOfLocation(apice.location);
-    const entry = byCell.get(zone.cell);
-    if (entry) entry.ids.push(apice.id);
-    else byCell.set(zone.cell, { center: { lat: zone.lat, lng: zone.lng }, ids: [apice.id] });
+    const ids = byCell.get(cell);
+    if (ids) ids.push(apice.id);
+    else byCell.set(cell, [apice.id]);
   }
-  const cells = [...byCell.entries()].sort(([a], [b]) => byText(a, b));
-  const origin = originOf(cells.map(([, entry]) => entry.center));
-  const zones = cells.map(([key, entry]) => ({ key, ...projectKm(entry.center, origin), ids: entry.ids.sort(byText) }));
-  return { zones, unlocated: unlocated.sort(byText) };
-}
-
-type Slot = readonly [x: number, y: number];
-
-/** Puestos de una manzana según cuántos edificios muestra, en orden de lectura. Ninguna caja pisa a otra ni sale de la placa. */
-const BLOCK_SLOTS: readonly (readonly Slot[])[] = [
-  [[0, 0]],
-  [[-55, 0], [55, 0]],
-  [[0, -75], [-65, 38], [65, 38]],
-  [[-55, -58], [55, -58], [-55, 58], [55, 58]],
-  [[0, -100], [-95, -31], [95, -31], [-59, 81], [59, 81]],
-  [[0, -110], [-95, -55], [95, -55], [-95, 55], [95, 55], [0, 110]],
-  [[0, -110], [-95, -55], [95, -55], [0, 0], [-95, 55], [95, 55], [0, 110]],
-];
-
-/** Los puestos de una manzana con `count` edificios, relativos a su centro (RF-6 (021) · 6.1). */
-export function blockSlots(count: number): { x: number; y: number }[] {
-  const index = Math.min(BLOCK_CAPACITY, Math.max(1, Math.floor(count))) - 1;
-  return (BLOCK_SLOTS[index] ?? []).map(([x, y]) => ({ x, y }));
+  const zones = [...byCell.entries()]
+    .sort(([a], [b]) => byText(a, b))
+    .map(([key, ids]): ZoneEntry => ({ key, center: cellCenter(zoneCells(key)[0] ?? key), ids: ids.sort(byText) }));
+  return { zones, unlocated: unlocated.sort(byText), origin: originOf(zones.map((zone) => zone.center)) };
 }
 
 const EMPTY_BOUNDS: MapBounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
@@ -220,120 +254,178 @@ const grow = (bounds: MapBounds, minX: number, minY: number, maxX: number, maxY:
   maxY: Math.max(bounds.maxY, maxY),
 });
 
-const around = (bounds: MapBounds, x: number, y: number, radius: number): MapBounds =>
-  grow(bounds, x - radius, y - radius, x + radius, y + radius);
+const growPoints = (bounds: MapBounds, points: readonly MapVertex[]): MapBounds =>
+  points.reduce((all, [x, y]) => grow(all, x, y, x, y), bounds);
 
 const orNull = (bounds: MapBounds): MapBounds | null => (Number.isFinite(bounds.minX) ? bounds : null);
 
-function layoutBlocks(zones: readonly ZoneEntry[], unlocated: readonly string[], scale: number): MapLayout {
+/** Lo que ocupa un punto de apoyo de rótulo hacia arriba: el rótulo no debe quedar fuera del encuadre. */
+const withLabel = (bounds: MapBounds, x: number, y: number, centered: boolean): MapBounds =>
+  grow(bounds, centered ? x - LABEL_WIDTH / 2 : x, y - LABEL_HEIGHT, centered ? x + LABEL_WIDTH / 2 : x + LABEL_WIDTH, y);
+
+/** Proyecta una celda H3 al lienzo. */
+export function drawCell(cell: string, origin: Point, scale: number): MapCell {
+  const project = (point: Point): MapVertex => {
+    const { x, y } = projectKm(point, origin);
+    return [x * scale, y * scale];
+  };
+  const center = project(cellCenter(cell));
+  return { cell, x: center[0], y: center[1], points: cellBoundary(cell).map(project) };
+}
+
+/** Un hexágono de punta arriba, como las celdas de resolución par: para lo que no tiene celda H3 (el terreno sin ubicar). */
+function syntheticCell(cell: string, x: number, y: number, radius: number): MapCell {
+  const points = Array.from({ length: 6 }, (_, k): MapVertex => {
+    const angle = (Math.PI / 3) * k - Math.PI / 2;
+    return [x + radius * Math.cos(angle), y + radius * Math.sin(angle)];
+  });
+  return { cell, x, y, points };
+}
+
+/** Lo que ocupa una zona dibujada, con su rótulo. */
+export function blockBounds(block: MapBlock): MapBounds {
+  return withLabel(growPoints(EMPTY_BOUNDS, block.outline), block.label.x, block.label.y, true);
+}
+
+function layoutBlocks(zones: readonly ZoneEntry[], unlocated: readonly string[], origin: Point, scale: number): MapLayout {
+  const radius = edgeKm(LEVEL_RESOLUTION[0]) * scale;
   let bounds = EMPTY_BOUNDS;
   const blocks = zones
     .map((zone): MapBlock => {
-      const x = zone.x * scale;
-      const y = zone.y * scale;
-      const shown = Math.min(zone.ids.length, BLOCK_CAPACITY);
-      const spots = blockSlots(shown).map((slot, index) => ({ id: zone.ids[index] ?? '', x: x + slot.x, y: y + slot.y }));
-      return { key: zone.key, x, y, radius: BLOCK_RADIUS, ids: zone.ids, spots, more: zone.ids.length - shown };
+      const cells = zoneCells(zone.key);
+      const drawn = cells.map((cell) => drawCell(cell, origin, scale));
+      const [middle, ...ring] = drawn;
+      const room = ring.length;
+      // Con más Ápices que celdas, la central pasa a ser el «+N» y los Ápices van en el anillo.
+      const overflow = zone.ids.length > drawn.length;
+      const slots = overflow ? ring : drawn;
+      const spots = slots.slice(0, zone.ids.length).map((cell, index): MapSpot => ({ id: zone.ids[index] ?? '', ...cell }));
+      const outline = outlineOf(cells).map((point): MapVertex => {
+        const { x, y } = projectKm(point, origin);
+        return [x * scale, y * scale];
+      });
+      const box = growPoints(EMPTY_BOUNDS, outline);
+      return {
+        key: zone.key,
+        code: zoneCode(zone.key),
+        x: middle?.x ?? 0,
+        y: middle?.y ?? 0,
+        ids: zone.ids,
+        cells,
+        spots,
+        more: overflow ? zone.ids.length - Math.min(room, zone.ids.length) : 0,
+        moreCell: overflow && middle ? middle : null,
+        outline,
+        label: { x: (box.minX + box.maxX) / 2, y: box.minY - 6 },
+      };
     })
     .sort(byPlace);
-  for (const block of blocks) bounds = around(bounds, block.x, block.y, block.radius);
+  for (const block of blocks) {
+    const box = blockBounds(block);
+    bounds = grow(bounds, box.minX, box.minY, box.maxX, box.maxY);
+  }
 
   let terrain: MapTerrain | null = null;
   if (unlocated.length > 0) {
     const columns = Math.min(TERRAIN_COLUMNS, unlocated.length);
     const rows = Math.ceil(unlocated.length / columns);
-    const width = 2 * TERRAIN_PADDING + columns * SPOT_WIDTH + (columns - 1) * TERRAIN_GAP;
-    const height = TERRAIN_LABEL + rows * SPOT_HEIGHT + (rows - 1) * TERRAIN_GAP + TERRAIN_PADDING;
+    const cellWidth = Math.sqrt(3) * radius;
+    const width = 2 * TERRAIN_PADDING + columns * cellWidth + (rows > 1 ? cellWidth / 2 : 0);
+    const height = 2 * TERRAIN_PADDING + 2 * radius + (rows - 1) * 1.5 * radius;
     const located = orNull(bounds);
-    // Al sur de las manzanas y centrado con ellas; si no hay ninguna, en el centro del lienzo.
+    // Al sur de las zonas y centrado con ellas; si no hay ninguna, en el centro del lienzo.
     const x = (located ? (located.minX + located.maxX) / 2 : 0) - width / 2;
-    const y = located ? located.maxY + TERRAIN_DISTANCE : -height / 2;
-    const spots = unlocated.map((id, index) => ({
-      id,
-      x: x + TERRAIN_PADDING + SPOT_WIDTH / 2 + (index % columns) * (SPOT_WIDTH + TERRAIN_GAP),
-      y: y + TERRAIN_LABEL + SPOT_HEIGHT / 2 + Math.floor(index / columns) * (SPOT_HEIGHT + TERRAIN_GAP),
-    }));
-    terrain = { x, y, width, height, spots };
-    bounds = grow(bounds, x, y, x + width, y + height);
+    const y = located ? located.maxY + 2 * radius + LABEL_HEIGHT : -height / 2;
+    const spots = unlocated.map(
+      (id, index): MapSpot => ({
+        id,
+        ...syntheticCell(
+          `${UNLOCATED_KEY}:${index}`,
+          x + TERRAIN_PADDING + cellWidth / 2 + (index % columns) * cellWidth + (Math.floor(index / columns) % 2 === 1 ? cellWidth / 2 : 0),
+          y + TERRAIN_PADDING + radius + Math.floor(index / columns) * 1.5 * radius,
+          radius,
+        ),
+      }),
+    );
+    terrain = { x, y, width, height, spots, label: { x, y: y - 6 } };
+    bounds = withLabel(grow(bounds, x, y, x + width, y + height), x, y - 6, false);
   }
-  return { level: 0, scale, blocks, groups: [], terrain, bounds: orNull(bounds) };
+  return { level: 0, scale, origin, radius, blocks, groups: [], terrain, bounds: orNull(bounds) };
 }
 
-/** Grupo en construcción: suma de los centros de sus zonas, para sacar el centroide. */
-interface Cluster {
-  key: string;
-  sumX: number;
-  sumY: number;
-  zones: number;
-  ids: string[];
-}
-
-const centerOf = (cluster: Cluster, scale: number): { x: number; y: number } => ({
-  x: (cluster.sumX / cluster.zones) * scale,
-  y: (cluster.sumY / cluster.zones) * scale,
-});
-
-/**
- * Reúne las zonas por celda madre y después junta los grupos que quedarían encimados, del par más cercano en adelante:
- * dos celdas vecinas pueden tener madres distintas (RF-7 (021) · 7.2). El resultado no depende del orden de llegada.
- */
-function clusterZones(zones: readonly ZoneEntry[], resolution: number, scale: number): Cluster[] {
-  const byParent = new Map<string, Cluster>();
+function layoutGroups(zones: readonly ZoneEntry[], unlocated: readonly string[], origin: Point, level: 1 | 2, scale: number): MapLayout {
+  const resolution = LEVEL_RESOLUTION[level];
+  const radius = edgeKm(resolution) * scale;
+  const byParent = new Map<string, string[]>();
   for (const zone of zones) {
     const key = parentCell(zone.key, resolution);
-    const cluster = byParent.get(key);
-    if (cluster) {
-      cluster.sumX += zone.x;
-      cluster.sumY += zone.y;
-      cluster.zones += 1;
-      cluster.ids.push(...zone.ids);
-    } else byParent.set(key, { key, sumX: zone.x, sumY: zone.y, zones: 1, ids: [...zone.ids] });
+    const ids = byParent.get(key);
+    if (ids) ids.push(...zone.ids);
+    else byParent.set(key, [...zone.ids]);
   }
-  const clusters = [...byParent.values()].sort((a, b) => byText(a.key, b.key));
-  for (;;) {
-    let closest: { first: number; second: number; distance: number } | null = null;
-    for (let first = 0; first < clusters.length; first += 1) {
-      const a = centerOf(clusters[first]!, scale);
-      for (let second = first + 1; second < clusters.length; second += 1) {
-        const b = centerOf(clusters[second]!, scale);
-        const distance = Math.hypot(a.x - b.x, a.y - b.y);
-        if (distance < GROUP_SPACING && (closest === null || distance < closest.distance)) closest = { first, second, distance };
-      }
-    }
-    if (closest === null) return clusters;
-    const keep = clusters[closest.first]!;
-    const [gone] = clusters.splice(closest.second, 1);
-    keep.sumX += gone!.sumX;
-    keep.sumY += gone!.sumY;
-    keep.zones += gone!.zones;
-    keep.ids.push(...gone!.ids);
-  }
-}
-
-function layoutGroups(zones: readonly ZoneEntry[], unlocated: readonly string[], level: 1 | 2, scale: number): MapLayout {
   let bounds = EMPTY_BOUNDS;
-  const groups = clusterZones(zones, GROUP_RESOLUTION[level], scale)
-    .map((cluster): MapGroup => ({ key: cluster.key, ...centerOf(cluster, scale), ids: cluster.ids.sort(byText), unlocated: false }))
+  const groups = [...byParent.entries()]
+    .map(([key, ids]): MapGroup => ({ key, ids: ids.sort(byText), unlocated: false, ...drawCell(key, origin, scale) }))
     .sort(byPlace);
-  for (const group of groups) bounds = around(bounds, group.x, group.y, GROUP_RADIUS);
+  for (const group of groups) bounds = growPoints(bounds, group.points);
   if (unlocated.length > 0) {
     const located = orNull(bounds);
-    // Al sur de todos los grupos, con espacio de sobra para que no se encime con ninguno.
+    // Al sur de todos los grupos, con espacio para su rótulo.
     const x = located ? (located.minX + located.maxX) / 2 : 0;
-    const y = located ? located.maxY - GROUP_RADIUS + 1.5 * GROUP_SPACING : 0;
-    groups.push({ key: UNLOCATED_KEY, x, y, ids: [...unlocated], unlocated: true });
-    bounds = around(bounds, x, y, GROUP_RADIUS);
+    const y = located ? located.maxY + 2 * radius + LABEL_HEIGHT : 0;
+    const cell = syntheticCell(UNLOCATED_KEY, x, y, radius);
+    groups.push({ key: UNLOCATED_KEY, ids: [...unlocated], unlocated: true, ...cell });
+    bounds = growPoints(bounds, cell.points);
   }
-  return { level, scale, blocks: [], groups, terrain: null, bounds: orNull(bounds) };
+  return { level, scale, origin, radius, blocks: [], groups, terrain: null, bounds: orNull(bounds) };
 }
 
 /**
- * Dónde va cada ápice en el nivel pedido (RF-5 (021) · 5.3, RF-6 (021), RF-7 (021) · 7.2, RF-9 (021) · 9.1). `scale`
+ * Dónde va cada Ápice en el nivel pedido (RF-5 (021) · 5.3, RF-6 (021), RF-7 (021) · 7.2, RF-9 (021) · 9.1). `scale`
  * solo se cambia en el nivel más lejano, cuando el conjunto no cabe (RF-7 (021) · 7.4).
  */
 export function layoutMap(apices: readonly MapApice[], level: MapLevel, scale: number = LEVEL_SCALE[level]): MapLayout {
-  const { zones, unlocated } = zonesOf(apices);
-  return level === 0 ? layoutBlocks(zones, unlocated, scale) : layoutGroups(zones, unlocated, level, scale);
+  const { zones, unlocated, origin } = zonesOf(apices);
+  return level === 0 ? layoutBlocks(zones, unlocated, origin, scale) : layoutGroups(zones, unlocated, origin, level, scale);
+}
+
+/** Cuántos anillos de celdas, a lo más, se piden para teselar la ventana: más allá, las celdas ya no se distinguen. */
+const TESSELLATION_RING_LIMIT = 45;
+/** Radio mínimo, en píxeles, para que valga la pena dibujar el teselado vacío. */
+const TESSELLATION_MIN_RADIUS = 4;
+
+/** Un área del lienzo, en píxeles: su centro y su tamaño. */
+export interface MapArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * El teselado vacío que se ve debajo del mapa (sistema «APICCA · Mapa»: «el teselado siempre se ve»): las celdas H3 del
+ * nivel que tocan el área, como un solo trazado SVG (`d`). Las celdas con contenido se pintan encima. Vacío si las
+ * celdas serían menores de lo que se distingue.
+ */
+export function tessellationPath(layout: MapLayout, area: MapArea): string {
+  if (layout.radius < TESSELLATION_MIN_RADIUS || area.width <= 0 || area.height <= 0) return '';
+  const resolution = LEVEL_RESOLUTION[layout.level];
+  const reach = Math.hypot(area.width, area.height) / 2 + 2 * layout.radius;
+  const rings = Math.min(TESSELLATION_RING_LIMIT, Math.ceil(reach / (1.5 * layout.radius)) + 1);
+  const centre = unprojectKm({ x: area.x / layout.scale, y: area.y / layout.scale }, layout.origin);
+  const slack = 2 * layout.radius;
+  const round = (value: number): number => Math.round(value * 10) / 10;
+  let d = '';
+  for (const cell of cellsAround(centre, resolution, rings)) {
+    const middle = projectKm(cellCenter(cell), layout.origin);
+    if (Math.abs(middle.x * layout.scale - area.x) > area.width / 2 + slack || Math.abs(middle.y * layout.scale - area.y) > area.height / 2 + slack) continue;
+    const vertices = cellBoundary(cell).map((point) => {
+      const { x, y } = projectKm(point, layout.origin);
+      return `${round(x * layout.scale)} ${round(y * layout.scale)}`;
+    });
+    d += `M${vertices.join('L')}Z`;
+  }
+  return d;
 }
 
 const fitsIn = (bounds: MapBounds, viewport: MapViewport, margin: number): boolean =>
@@ -350,7 +442,7 @@ const centered = (layout: MapLayout, bounds: MapBounds): MapFrame => ({
 const MAX_FAR_STEPS = 48;
 
 /**
- * Encuadre inicial: el nivel más cercano en que caben todos los ápices; si no caben ni en el más lejano, ese nivel se
+ * Encuadre inicial: el nivel más cercano en que caben todos los Ápices; si no caben ni en el más lejano, ese nivel se
  * aleja hasta que quepan (RF-7 (021) · 7.4).
  */
 export function frameMap(apices: readonly MapApice[], viewport: MapViewport, margin: number = FRAME_MARGIN): MapFrame {
@@ -370,7 +462,7 @@ export function frameMap(apices: readonly MapApice[], viewport: MapViewport, mar
 }
 
 /**
- * Encuadre del nivel cercano sobre las manzanas de unos ápices: lo que pasa al elegir un grupo (RF-7 (021) · 7.3). Si
+ * Encuadre del nivel cercano sobre las zonas de unos Ápices: lo que pasa al elegir un grupo (RF-7 (021) · 7.3). Si
  * no caben todas, va a la más cercana al centro del grupo.
  */
 export function frameOn(
@@ -383,16 +475,14 @@ export function frameOn(
   const wanted = new Set(ids);
   const places: { x: number; y: number; bounds: MapBounds }[] = [];
   for (const block of layout.blocks) {
-    if (block.ids.some((id) => wanted.has(id))) {
-      places.push({ x: block.x, y: block.y, bounds: around(EMPTY_BOUNDS, block.x, block.y, block.radius) });
-    }
+    if (block.ids.some((id) => wanted.has(id))) places.push({ x: block.x, y: block.y, bounds: blockBounds(block) });
   }
   const { terrain } = layout;
   if (terrain?.spots.some((spot) => wanted.has(spot.id))) {
     places.push({
       x: terrain.x + terrain.width / 2,
       y: terrain.y + terrain.height / 2,
-      bounds: { minX: terrain.x, minY: terrain.y, maxX: terrain.x + terrain.width, maxY: terrain.y + terrain.height },
+      bounds: { minX: terrain.x, minY: terrain.y - LABEL_HEIGHT, maxX: terrain.x + terrain.width, maxY: terrain.y + terrain.height },
     });
   }
   if (places.length === 0) return frameMap(apices, viewport, margin);
@@ -406,35 +496,33 @@ export function frameOn(
   return { ...frame, x: nearest.x, y: nearest.y };
 }
 
-/** Lo que ocupan los ápices pedidos en un nivel: sus edificios, el «+n» que los guarda, o sus grupos. `null` si ninguno está. */
+/** Lo que ocupan los Ápices pedidos en un nivel: sus celdas, la zona entera si uno va en el «+N», o sus grupos. `null` si ninguno está. */
 function boundsOfIds(layout: MapLayout, wanted: ReadonlySet<string>): MapBounds | null {
   let bounds = EMPTY_BOUNDS;
-  const spotBox = (spot: MapSpot) => grow(bounds, spot.x - SPOT_WIDTH / 2, spot.y - SPOT_HEIGHT / 2, spot.x + SPOT_WIDTH / 2, spot.y + SPOT_HEIGHT / 2);
   for (const block of layout.blocks) {
     let hidden = false;
     for (const id of block.ids) {
       if (!wanted.has(id)) continue;
       const spot = block.spots.find((candidate) => candidate.id === id);
-      if (spot) bounds = spotBox(spot);
+      if (spot) bounds = growPoints(bounds, spot.points);
       else hidden = true;
     }
-    // Un ápice que va en el «+n» no tiene edificio propio: se toma toda la placa de su manzana.
-    if (hidden) bounds = around(bounds, block.x, block.y, block.radius);
+    // Un Ápice que va en el «+N» no tiene celda propia: se toma toda la zona.
+    if (hidden) bounds = growPoints(bounds, block.outline);
   }
-  for (const spot of layout.terrain?.spots ?? []) if (wanted.has(spot.id)) bounds = spotBox(spot);
-  for (const group of layout.groups) if (group.ids.some((id) => wanted.has(id))) bounds = around(bounds, group.x, group.y, GROUP_RADIUS);
+  for (const spot of layout.terrain?.spots ?? []) if (wanted.has(spot.id)) bounds = growPoints(bounds, spot.points);
+  for (const group of layout.groups) if (group.ids.some((id) => wanted.has(id))) bounds = growPoints(bounds, group.points);
   return orNull(bounds);
 }
 
 /**
- * Encuadre del nivel más cercano en que caben los ápices `ids` (RF-4 (024) · 4.1, D-T5 (024)): a diferencia de `frameOn`,
- * que siempre acerca al nivel cercano, aquí se prefiere el primero en que todos caben, centrado en ellos. En el nivel
- * cercano se mide lo que ocupan sus edificios (no la placa entera de la manzana, que es más ancha que un teléfono); en los
- * alejados, sus grupos. Si no caben ni en el más lejano, ese nivel se aleja como en `frameMap`. Con `drawn`, entre los
- * niveles en que caben se prefiere el primero en que el camino se dibuja; si en ninguno, el primero en que caben. Los ids
- * que no están en `apices` se ignoran; si no queda ninguno, devuelve el encuadre inicial (RF-7 (021) · 7.4).
+ * Encuadre del nivel más cercano en que caben los Ápices `ids` (RF-4 (024) · 4.1, D-T5 (024)): a diferencia de `frameOn`,
+ * que siempre acerca al nivel cercano, aquí se prefiere el primero en que todos caben, centrado en ellos. Si no caben ni
+ * en el más lejano, ese nivel se aleja como en `frameMap`. Con `drawn`, entre los niveles en que caben se prefiere el
+ * primero en que la Acción Común se dibuja; si en ninguno, el primero en que caben. Los ids que no están en `apices` se
+ * ignoran; si no queda ninguno, devuelve el encuadre inicial (RF-7 (021) · 7.4).
  * Con `reservedBottom` (D-12 (024)), el borde de abajo de la ventana está ocupado por la tarjeta del recorrido: el ajuste se
- * mide con el área libre y el centro baja la mitad de lo reservado, de modo que los ápices quedan en medio del área libre.
+ * mide con el área libre y el centro baja la mitad de lo reservado, de modo que los Ápices quedan en medio del área libre.
  * Con 0, que es lo normal, no cambia nada.
  */
 export function frameFit(
@@ -485,25 +573,25 @@ const DIRECTIONS: Record<string, readonly [x: number, y: number]> = {
 /**
  * El lugar más cercano en la dirección de la flecha, o `null` (RF-8 (021) · 8.4). Primero busca dentro del cono de 45
  * grados a cada lado; si ahí no hay nadie, toma al que menos se desvía de los que quedan hacia ese lado, para que
- * ningún edificio se quede sin camino.
+ * ninguna celda se quede sin camino.
  */
-export function mapNeighbor(spots: readonly MapSpot[], id: string, key: string): string | null {
+export function mapNeighbor(places: readonly MapPlace[], id: string, key: string): string | null {
   const direction = DIRECTIONS[key];
-  const from = spots.find((spot) => spot.id === id);
+  const from = places.find((place) => place.id === id);
   if (!direction || !from) return null;
   let inCone: { id: string; cost: number } | null = null;
   let aside: { id: string; cost: number } | null = null;
-  for (const spot of spots) {
-    if (spot.id === id) continue;
-    const dx = spot.x - from.x;
-    const dy = spot.y - from.y;
+  for (const place of places) {
+    if (place.id === id) continue;
+    const dx = place.x - from.x;
+    const dy = place.y - from.y;
     const forward = dx * direction[0] + dy * direction[1];
     if (forward <= 0) continue;
     const drift = Math.abs(dx * direction[1] - dy * direction[0]);
     const cost = forward + 2 * drift;
     if (drift <= forward) {
-      if (inCone === null || cost < inCone.cost) inCone = { id: spot.id, cost };
-    } else if (aside === null || cost < aside.cost) aside = { id: spot.id, cost };
+      if (inCone === null || cost < inCone.cost) inCone = { id: place.id, cost };
+    } else if (aside === null || cost < aside.cost) aside = { id: place.id, cost };
   }
   return (inCone ?? aside)?.id ?? null;
 }

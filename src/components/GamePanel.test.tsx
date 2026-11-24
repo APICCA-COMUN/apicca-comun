@@ -1,4 +1,4 @@
-// RF-14 (021) · 14.1, 14.7, 14.8, 14.9, D-T23 (021): el panel que va sobre el mapa.
+// RF-14 (021) · 14.1, 14.8, 14.9, D-T23 (021): el panel de Inicio que reemplaza su contenido por defecto.
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { expectBlocks } from '../testing/expectBlocks';
@@ -20,19 +20,17 @@ describe('GamePanel', () => {
     const { container, onClose } = setup();
     const panel = screen.getByRole('complementary', { name: 'Ápice' });
     within(panel).getByRole('heading', { name: 'Huerta' });
-    fireEvent.click(within(panel).getByRole('button', { name: 'Cerrar' }));
+    const close = within(panel).getByRole('button', { name: 'Cerrar' });
+    expect(close.classList.contains('icon-button')).toBe(true);
+    expect(close.querySelector('svg.icono--cerrar')).not.toBeNull();
+    fireEvent.click(close);
     expect(onClose).toHaveBeenCalledTimes(1);
     expectBlocks(container);
   });
 
-  it('RF-14 (021) · 14.7: «Ampliar» lleva el panel a toda la ventana y «Reducir» lo devuelve', () => {
+  it('D-T23 (021): ya no se amplía: no hay «Ampliar» ni «Reducir»', () => {
     setup();
-    const panel = screen.getByRole('complementary', { name: 'Ápice' });
-    expect(panel.getAttribute('data-expanded')).toBe('false');
-    fireEvent.click(screen.getByRole('button', { name: 'Ampliar' }));
-    expect(panel.getAttribute('data-expanded')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'Reducir' }));
-    expect(panel.getAttribute('data-expanded')).toBe('false');
+    expect(screen.queryByRole('button', { name: /ampliar|reducir/i })).toBeNull();
   });
 
   it('RNF-1 (021), D-T23 (021): Escape cierra el panel; si otro control ya lo atendió, no', () => {
@@ -44,18 +42,6 @@ describe('GamePanel', () => {
     handled.preventDefault();
     within(panel).getByRole('heading', { name: 'Huerta' }).dispatchEvent(handled);
     expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('RF-14 (021) · 14.7, RNF-1 (021): avisa con onExpand cuando cubre todo el mapa y cuando deja de hacerlo', () => {
-    const onExpand = vi.fn();
-    const { unmount } = setup({ onExpand });
-    fireEvent.click(screen.getByRole('button', { name: 'Ampliar' }));
-    expect(onExpand).toHaveBeenLastCalledWith(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Reducir' }));
-    expect(onExpand).toHaveBeenLastCalledWith(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Ampliar' }));
-    unmount();
-    expect(onExpand).toHaveBeenLastCalledWith(false);
   });
 
   it('RF-14 (021) · 14.8: con autoFocus, al abrirse lleva el foco a su título; sin él, no lo mueve', () => {

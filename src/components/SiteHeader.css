@@ -1,73 +1,86 @@
-/* RF-1 (002) · 1.1, RF-7 (003) · 7.1, 7.8, RF-4 (008) · 4.1, 4.4, RF-16 (021) · 16.2, D-T24 (021): la cabecera delgada va
-   sobre el fondo, sin sombra ni recuadro, en una columna de `content-max`, y se parte en líneas antes que desbordar
-   (D-T16 (002), D-T4 (008)). Por debajo de 640 px «Volver al mapa» queda como flecha (el texto sigue nombrando el
-   enlace) para que logo, flecha, tema, cuenta y «Menú» quepan en una fila a 360 px. Desde 1024 px, separaciones de
-   16 px. */
+/* Sistema «APICCA · Mapa» (`.ap-cabecera`, `.ap-nav`, `.ap-cabecera-fin`): la cabecera mide 64 px como mínimo, con borde
+   inferior de 3 px en tinta sobre papel, de lado a lado. Logo a la izquierda, navegación principal en mayúsculas (la
+   vigente con subrayado de 3 px; `.menu-link` lo pone), y a la derecha tema, avisos, cuenta y «Menú». Por debajo de
+   1100 px la navegación no cabe: se oculta y queda en el menú plegado (`GameMenu`). A 360 px caben el logo y los
+   cuatro controles en una fila, con 12 px a cada lado. Solo tokens. */
+.site-header {
+  box-sizing: border-box;
+  min-block-size: 64px;
+  border-block-end: var(--stroke-border) solid var(--text);
+  background-color: var(--background);
+  color: var(--text);
+}
+
 .site-header__inner {
-  box-sizing: content-box;
+  position: relative; /* ancla del panel de avisos */
+  box-sizing: border-box;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
-  max-inline-size: var(--content-max);
-  margin-inline: auto;
-  padding: 20px clamp(16px, 4vw, 48px);
+  min-block-size: 61px; /* 64 px menos el borde de 3 px: el alto total de la cabecera es 64 px. */
+  padding-inline: 12px;
 }
 
-@media (min-width: 1024px) {
-  .site-header__inner {
-    gap: 12px 16px;
-  }
+.site-nav {
+  display: none;
+  align-items: center;
+  flex-grow: 1;
+  gap: 24px;
+}
+
+/* El enlace de la cabecera no lleva los 44 px del menú: el subrayado de 3 px va pegado al texto (`.ap-nav a`). */
+.site-nav__link.menu-link {
+  min-block-size: 0;
+  padding: 4px 0;
 }
 
 .site-header__actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   margin-inline-start: auto;
 }
 
-/* D-1 (008): «Entrar» y «Volver al mapa» miden 44 px, como en el lienzo. */
-.site-header__inner a.block {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: var(--size-icon-control);
-  padding-inline: 18px;
+/* Botones de texto de la cabecera (`.ap-boton-chico`): 44 px de alto y 18 px de relleno (10 px a 360 px). */
+.site-header__actions a.block:not(.icon-button),
+.site-header__actions button.block:not(.icon-button) {
+  min-block-size: var(--size-icon-control);
+  padding-inline: 10px;
   font-weight: 800;
 }
 
-@media (max-width: 639.98px) {
-  /* A 360 px quedan 328 px: logo (87), flecha y tema (44 cada uno), «Entrar» o la cuenta y «Menú», con separaciones de
-     4 px y relleno de 10 px en los botones de texto. Sin sesión suman unos 321 px. */
-  .site-header__inner,
+@media (min-width: 640px) {
+  .site-header__inner {
+    gap: 4px 16px;
+    padding-inline: 24px;
+  }
+
   .site-header__actions {
-    column-gap: 4px;
+    gap: 12px;
   }
 
-  .site-header__inner a.block:not(.icon-button),
-  .site-header__inner button.game-menu__toggle {
-    padding-inline: 10px;
-  }
-
-  .site-header__inner a.site-header__back {
-    justify-content: center;
-    inline-size: var(--size-icon-control);
-    padding-inline: 0;
-  }
-
-  .site-header__back-text {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  .site-header__actions a.block:not(.icon-button),
+  .site-header__actions button.block:not(.icon-button) {
+    padding-inline: 18px;
   }
 }
 
-/* RF-15 (021) · 15.3: la cuenta muestra la inicial y, desde 1024 px, el nombre de usuario y el rol a su lado. */
+@media (min-width: 1100px) {
+  .site-header__inner {
+    gap: 4px 40px;
+  }
+
+  .site-nav {
+    display: flex;
+  }
+
+  .site-header__actions {
+    margin-inline-start: 0;
+  }
+}
+
+/* RF-15 (021) · 15.3: la cuenta muestra la inicial y, desde 1280 px, el nombre de usuario y el rol a su lado. */
 a.account-entry {
   display: inline-flex;
   align-items: center;
@@ -91,12 +104,29 @@ a.account-entry {
   font-size: var(--type-meta-size);
 }
 
+/* Un nombre de 24 caracteres haría saltar la cabecera a una segunda fila a 1280 px: hasta 1440 px el nombre se recorta con
+   puntos suspensivos. El enlace lleva el nombre entero en su `aria-label` y la cuenta tiene su propia página. */
+.account-entry__name,
+.account-entry__role {
+  max-inline-size: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 a.account-entry:hover .account-entry__name {
   text-decoration: underline;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .account-entry__text {
     display: flex;
+  }
+}
+
+@media (min-width: 1440px) {
+  .account-entry__name,
+  .account-entry__role {
+    max-inline-size: none;
   }
 }

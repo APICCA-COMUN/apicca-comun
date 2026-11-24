@@ -13,8 +13,8 @@ let root: Root;
 
 beforeEach(() => {
   host = document.createElement('div');
-  // El texto en Nunito obliga al navegador a pedir el archivo de la fuente.
-  host.style.fontFamily = 'Nunito';
+  // El texto en Jost obliga al navegador a pedir el archivo de la fuente.
+  host.style.fontFamily = 'Jost';
   document.body.append(host);
   root = createRoot(host);
 });
@@ -32,22 +32,22 @@ function mediaRequests(): PerformanceResourceTiming[] {
 }
 
 describe('recursos propios (navegador)', () => {
-  it('RNF-3 (002): toda petición de fuente o imagen es del mismo origen y se pide la woff2 de Nunito', async () => {
+  it('RNF-3 (002): toda petición de fuente o imagen es del mismo origen y se pide la woff2 de Jost', async () => {
     root.render(
       <>
         <Logo />
         {AXES.map((axis) => (
           <AxisIcon key={axis} axis={axis} labelled />
         ))}
-        <p>Nunito: áéíóú ñ ¿qué?</p>
+        <p>Jost: áéíóú ñ ¿qué?</p>
       </>,
     );
     await expect.poll(() => host.querySelectorAll('svg').length).toBeGreaterThan(AXES.length);
-    await document.fonts.load('16px Nunito');
+    await document.fonts.load('16px Jost');
     await document.fonts.ready;
 
     const requests = mediaRequests();
-    expect(requests.some((entry) => /nunito[^/]*\.woff2(\?|$)/i.test(new URL(entry.name).pathname))).toBe(true);
+    expect(requests.some((entry) => /jost[^/]*\.woff2(\?|$)/i.test(new URL(entry.name).pathname))).toBe(true);
     const foreign = requests.filter((entry) => new URL(entry.name).origin !== location.origin).map((entry) => entry.name);
     expect(foreign).toEqual([]);
   });

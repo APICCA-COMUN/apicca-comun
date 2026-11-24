@@ -117,4 +117,4 @@ export function sortCommonActions<T extends { status: CommonActionStatus; create
 }
 
 /** RF-6 (010): «n caminos» con su plural. */
-export const pathsLabel = (count: number): string => (count === 1 ? '1 camino' : `${count} caminos`);
+export const pathsLabel = (count: number): string => (count === 1 ? '1 Acción Común' : `${count} Acciones Comunes`);

@@ -79,10 +79,10 @@ export function Forum({ source = firestoreForumSource, client = api }: Props) {
       {person && showForm && <ThreadForm onSubmit={open} onCancel={() => setShowForm(false)} />}
       <div role="toolbar" aria-label="Filtrar por eje" className="forum__filters">
         <button type="button" className="block icon-button forum__filter" aria-label="Todos los temas" title="Todos los temas" aria-pressed={axis === null} onClick={() => setAxis(null)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <circle cx="12" cy="12" r="3" />
-            <circle cx="6" cy="12" r="2" />
-            <circle cx="18" cy="12" r="2" />
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <rect x="3" y="9" width="6" height="6" />
+            <rect x="15" y="9" width="6" height="6" />
+            <rect x="9" y="3" width="6" height="6" />
           </svg>
         </button>
         {AXES.map((value) => (
@@ -111,7 +111,7 @@ export function Forum({ source = firestoreForumSource, client = api }: Props) {
           {threads.map((thread) => (
             <article key={thread.id} className="forum__row">
               <div aria-hidden="true" className="forum__axis" data-axis={axisIdentity(thread.axis).key}>
-                <AxisIcon axis={thread.axis} size={22} />
+                <AxisIcon axis={thread.axis} size={44} />
               </div>
               <div className="forum__summary">
                 <h2>

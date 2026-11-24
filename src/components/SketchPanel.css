@@ -1,5 +1,5 @@
-/* RF-23 (021) · 23.2, D-T39 (021): el panel del boceto. El edificio va sobre un suelo con borde punteado, la misma forma
-   que lo distingue en el mapa. Solo tokens. */
+/* El panel del boceto. Sistema «APICCA · Mapa»: la vista previa es una ficha (superficie arriba, borde de 3 px, y debajo
+   el nombre y el rótulo «agua · idea»), como la del Ápice, pero con borde discontinuo: todavía no existe. Solo tokens. */
 
 .sketch-panel__field {
   display: flex;
@@ -12,16 +12,57 @@
 .sketch-panel__preview {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
   margin: 0 0 1rem;
-  padding: 1rem;
-  border: 3px dashed var(--node-ring);
+  border: var(--stroke-border) dashed var(--field-border);
   border-radius: var(--radius-lot);
 }
 
+.sketch-panel__preview .superficie {
+  border-block-end: var(--stroke-border) dashed var(--field-border);
+}
+
 .sketch-panel__preview figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
   font-weight: 800;
+}
+
+/* El rótulo del sistema (`.ap-rotulo`), como el de la ficha: 800, en mayúsculas y espaciado, en suave. */
+.sketch-panel__rotulo {
+  color: var(--text-muted);
+  font-size: var(--type-meta-size);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* El selector de ejes, sin el borde por defecto del navegador, con su leyenda como rótulo de campo (`rotulo-campo`: 800,
+   mayúsculas, espaciado). La etiqueta de «Etapa» va igual. */
+.sketch-panel .axis-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-inline-size: 0;
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.sketch-panel .axis-picker legend,
+.sketch-panel__field label {
+  padding: 0;
+  font-size: var(--type-label-size);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sketch-panel .axis-picker legend {
+  float: left;
+  inline-size: 100%;
+  margin-block-end: 0.25rem;
 }
 
 .sketch-panel a.block {

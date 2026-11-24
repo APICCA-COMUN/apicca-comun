@@ -1,62 +1,28 @@
-/* RF-14 (021) · 14.1, 14.7, D-T23 (021): el panel flota sobre el mapa. Desde 900 px es una columna de 26rem a la
-   derecha, a lo alto del mapa; por debajo, una hoja inferior al 55 % del alto. «Ampliar» lo lleva a todo el mapa. Su
-   contenido se desplaza por dentro; el mapa sigue a la vista. Solo tokens. */
+/* RF-14 (021) · 14.1, D-T23 (021): el panel abierto ocupa el lugar del contenido por defecto de la columna de la derecha
+   (`.play__panel` pone el ancho de 430 px y el borde de 3 px). Arriba, «Cerrar» a la derecha; debajo, el contenido, que se
+   desplaza por dentro mientras el mapa sigue a la vista. Sin sombra ni radio. Solo tokens. */
 .game-panel {
-  position: absolute;
-  z-index: 3;
-  inset-inline: 0;
-  inset-block-end: 0;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  block-size: 55%;
-  /* Aunque el escenario quede bajo, el panel no se aplasta por debajo de su barra y unas líneas (RF-14 (021) · 14.7). */
-  min-block-size: min(100%, 16rem);
-  border-radius: var(--radius-lot) var(--radius-lot) 0 0;
+  block-size: 100%;
+  min-block-size: 0;
   background-color: var(--surface);
   color: var(--text);
-  box-shadow: var(--shadow-raised);
-}
-
-.game-panel[data-expanded='true'] {
-  block-size: 100%;
-  border-radius: 0;
-}
-
-@media (min-width: 900px) {
-  .game-panel {
-    inset-block: 12px;
-    inset-inline: auto 12px;
-    inline-size: min(26rem, calc(100% - 24px));
-    block-size: auto;
-    border-radius: var(--radius-lot);
-  }
-
-  .game-panel[data-expanded='true'] {
-    inset-inline-start: 12px;
-    inline-size: auto;
-    block-size: auto;
-    border-radius: var(--radius-lot);
-  }
 }
 
 .game-panel__bar {
   display: flex;
-  flex-wrap: wrap;
+  flex: none;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 12px 0;
-}
-
-.game-panel__bar button {
-  min-block-size: var(--size-icon-control);
+  padding: 12px 16px 0;
 }
 
 .game-panel__body {
   flex: 1 1 auto;
   min-block-size: 0;
   overflow: auto;
-  padding: 8px 20px 24px;
+  padding: 8px 16px 24px;
   overscroll-behavior: contain;
 }
 
@@ -67,8 +33,18 @@
   line-height: var(--type-title-line);
 }
 
-@media (forced-colors: active) {
-  .game-panel {
-    border: 1px solid CanvasText;
-  }
+/* Dentro de la columna de Inicio (la ficha bajo la cabecera): sin alto propio ni desplazamiento ni relleno, que pone la
+   columna; «Cerrar» queda arriba a la derecha de la ficha. */
+.game-panel--embedded {
+  block-size: auto;
+  background-color: transparent;
+}
+
+.game-panel--embedded .game-panel__bar {
+  padding: 0 0 8px;
+}
+
+.game-panel--embedded .game-panel__body {
+  overflow: visible;
+  padding: 0;
 }

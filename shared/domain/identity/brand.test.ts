@@ -67,8 +67,8 @@ describe('imágenes de marca', () => {
     expect(byFile('logo.svg').background).toBeUndefined();
   });
 
-  it('RF-2 (003) · 2.5: og-image toma el background claro nuevo (#E8E7EC) como fondo', () => {
-    expect(TOKENS.light.background).toBe('#E8E7EC');
+  it('RF-2 (003) · 2.5: og-image toma el background claro nuevo (#F1EFE9) como fondo', () => {
+    expect(TOKENS.light.background).toBe('#F1EFE9');
     expect(brandSvg(byFile('og-image.png'))).toContain(`<rect width="1200" height="630" fill="${TOKENS.light.background}"/>`);
   });
 });

@@ -20,12 +20,13 @@ const LIMIT_BYTES = 150 * 1024;
 
 /**
  * Módulos que forman el trozo `identity` (D-T14 (002)). `AxisBadge` vive dentro de `AxisIcon`. La piel de la
- * 003 suma `SiteNav`, `SiteFooter`, `RoadSegment`, `Node` y `navigation.ts` (D-T24 (003)); sus hojas ya cuentan
+ * 003 suma `SiteNav`, `SiteFooter` y `navigation.ts` (D-T24 (003)); sus hojas ya cuentan
  * porque se suman todos los CSS emitidos. Medido el 9 de octubre de 2026 (T-3.20 (003)): 59,7 KB, con 90,3 KB
- * de margen.
+ * de margen. Desde el sistema «APICCA · Mapa» (23-11-2026) la cabecera `SiteHeader` queda fuera: monta los avisos y
+ * la sesión, y con ellos arrastraría firebase al trozo, que no es identidad visual.
  */
 const IDENTITY_MODULE =
-  /\/(?:shared\/domain\/identity\/|shared\/domain\/navigation\.|src\/components\/(?:Logo|AxisIcon|AxisBadge|Building|ConditionTag|ThemeToggle|SiteHeader|SiteNav|SiteFooter|RoadSegment|Node)\.|src\/app\/useTheme\.)/;
+  /\/(?:shared\/domain\/identity\/|shared\/domain\/navigation\.|src\/components\/(?:Logo|AxisIcon|AxisBadge|Superficie|Glifo|ConditionTag|ThemeToggle|SiteFooter)\.|src\/app\/useTheme\.)/;
 
 const outs: string[] = [];
 afterAll(() => {
@@ -64,7 +65,7 @@ describe('peso de la identidad', () => {
     const pick = (pattern: RegExp) => emitted.filter((name) => pattern.test(name));
     const css = pick(/\.css$/);
     const identity = pick(/(^|\/)identity-[^/]*\.js$/);
-    const fonts = pick(/nunito[^/]*\.woff2$/i);
+    const fonts = pick(/jost[^/]*\.woff2$/i);
     expect(css.length, 'hay al menos una hoja').toBeGreaterThan(0);
     expect(identity, 'existe el trozo identity').toHaveLength(1);
     expect(fonts, 'existe la fuente woff2').toHaveLength(1);

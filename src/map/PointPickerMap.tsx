@@ -39,6 +39,9 @@ export default function PointPickerMap({ point, onPick, zones }: PointMapProps) 
     const container = host.current;
     instance.on('resize', () => instance.setMinZoom(minZoomForWidth(container.clientWidth)));
     instance.zoomControl.getContainer()?.classList.add('block');
+    // El prefijo por defecto de Leaflet lleva una bandera (emoji): se deja el nombre con su enlace. El crédito de
+    // OpenStreetMap (obligatorio) viene de `TILE_ATTRIBUTION` y no se toca (QA #4).
+    instance.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
     instance.on('dragstart zoomstart', () => {
       if (!framing.current) moved.current = true;
     });

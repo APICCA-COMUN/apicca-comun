@@ -1,6 +1,8 @@
-// RF-11 (021) · 11.2, 11.3, RF-14 (021) · 14.7, D-T22 (021) · En `/` (la página real, con la siembra parcial) el mapa
-// ocupa toda la ventana bajo la barra de juego, a 360, 1100 y 1280 px, sin desplazamiento horizontal ni vertical. Con un
-// panel abierto, por debajo de 900 px el panel sube desde abajo y desde 900 px va a la derecha; el mapa no se encoge.
+// RF-11 (021) · 11.2, 11.3, RF-14 (021) · 14.7, D-T22 (021) · En `/` (la página real, con la siembra parcial), con el sistema
+// «APICCA · Mapa»: desde 900 px el mapa ocupa la ventana bajo la cabecera, a la izquierda del panel de 430 px, sin
+// desplazamiento horizontal ni vertical (a 1100 y 1280 px). Por debajo de 900 px (360 px) el mapa va arriba, a todo el ancho y con
+// al menos el 60 % del alto de la ventana, y el panel debajo; la página se desplaza solo en vertical. Con la ficha abierta
+// el mapa no se encoge: el panel ocupa su lugar a la derecha (desde 900 px) o debajo (por debajo de 900 px).
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { commands, page } from 'vitest/browser';
 import { act } from 'react';
@@ -50,15 +52,16 @@ async function mount(node: React.ReactNode) {
   await actNow(() => created.render(node));
 }
 
-/** El mapa llena la ventana a lo ancho y hasta abajo, sin desplazamiento (con un píxel de redondeo). */
-function expectFullWindow(map: HTMLElement) {
+const PANEL = 430;
+
+/** Sin desplazamiento horizontal; el mapa nace pegado al borde izquierdo y bajo la cabecera del sitio (con un píxel de redondeo). */
+function expectUnderHeader(map: HTMLElement) {
   const box = map.getBoundingClientRect();
   expect(box.width).toBeGreaterThan(0);
   expect(Math.abs(box.left)).toBeLessThanOrEqual(1);
-  expect(Math.abs(box.right - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
-  expect(Math.abs(box.bottom - innerHeight)).toBeLessThanOrEqual(1);
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
-  expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(innerHeight);
+  const header = host!.querySelector<HTMLElement>('header')!;
+  expect(Math.abs(box.top - header.getBoundingClientRect().bottom)).toBeLessThanOrEqual(1);
 }
 
 beforeAll(async () => {
@@ -76,7 +79,9 @@ afterEach(async () => {
 });
 
 describe.each(WIDTHS)('mapa a %i px', (width) => {
-  it(`RF-11 (021) · 11.2, 11.3: en / el mapa ocupa la ventana bajo la barra de juego a ${width} px`, async () => {
+  const wide = width >= 900;
+
+  it(`RF-11 (021) · 11.2, 11.3: en / el mapa ${wide ? 'ocupa la ventana bajo la cabecera, junto al panel' : 'va arriba, con el 60 % del alto, y el panel debajo'} a ${width} px`, async () => {
     await page.viewport(width, 800);
     history.replaceState(null, '', '/');
     await mount(
@@ -85,12 +90,24 @@ describe.each(WIDTHS)('mapa a %i px', (width) => {
       </SessionProvider>,
     );
     const map = await waitFor(() => host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]'));
-    expectFullWindow(map);
-    const hud = host!.querySelector<HTMLElement>('.play__hud')!;
-    expect(Math.abs(map.getBoundingClientRect().top - hud.getBoundingClientRect().bottom)).toBeLessThanOrEqual(1);
+    expectUnderHeader(map);
+    const box = map.getBoundingClientRect();
+    const panel = host!.querySelector<HTMLElement>('.play__panel')!.getBoundingClientRect();
+    if (wide) {
+      expect(Math.abs(box.right - (document.documentElement.clientWidth - PANEL))).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.bottom - innerHeight)).toBeLessThanOrEqual(1);
+      expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(innerHeight);
+      expect(Math.abs(panel.width - PANEL)).toBeLessThanOrEqual(1);
+      expect(Math.abs(panel.top - box.top)).toBeLessThanOrEqual(1);
+    } else {
+      expect(Math.abs(box.right - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+      expect(box.height).toBeGreaterThanOrEqual(innerHeight * 0.6);
+      expect(panel.top).toBeGreaterThanOrEqual(box.bottom - 1);
+      expect(Math.abs(panel.width - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+    }
   });
 
-  it(`RF-14 (021) · 14.1, 14.7: con la ficha abierta el mapa no se encoge y el panel va ${width < 900 ? 'abajo' : 'a la derecha'} a ${width} px`, async () => {
+  it(`RF-14 (021) · 14.1, 14.7: con la ficha abierta el mapa no se encoge y el panel va ${wide ? 'a la derecha' : 'abajo'} a ${width} px`, async () => {
     await page.viewport(width, 800);
     history.replaceState(null, '', '/');
     await mount(
@@ -98,19 +115,70 @@ describe.each(WIDTHS)('mapa a %i px', (width) => {
         <App />
       </SessionProvider>,
     );
-    const building = await waitFor(() => host!.querySelector<HTMLButtonElement>('section[aria-label="Mapa de ápices"] button[aria-pressed]'));
-    await actNow(() => building.click());
-    const panel = await waitFor(() => host!.querySelector<HTMLElement>('aside.game-panel'));
-    const map = host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]')!;
-    expectFullWindow(map);
+    const map = await waitFor(() => host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]'));
+    const before = map.getBoundingClientRect();
+    const cell = await waitFor(() => map.querySelector<HTMLButtonElement>('button.game-map__apice'));
+    await actNow(() => cell.click());
+    await waitFor(() => host!.querySelector<HTMLElement>('aside.game-panel'));
+    // La columna es `.play__panel`, con su borde de 3 px; el panel de dentro va a su lado.
+    const panel = host!.querySelector<HTMLElement>('.play__panel')!;
+    const after = map.getBoundingClientRect();
+    expect(Math.abs(after.width - before.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(after.height - before.height)).toBeLessThanOrEqual(1);
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
     const box = panel.getBoundingClientRect();
-    if (width < 900) {
-      expect(Math.abs(box.bottom - innerHeight)).toBeLessThanOrEqual(1);
-      expect(Math.abs(box.width - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+    if (wide) {
+      // Junto al mapa, pegado al borde derecho: la columna de 430 px con su borde de 3 px.
+      expect(Math.abs(document.documentElement.clientWidth - box.right)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.left - after.right)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.width - PANEL)).toBeLessThanOrEqual(1);
     } else {
-      // A 12 px del borde derecho, como una tarjeta sobre el mapa (GamePanel.css).
-      expect(Math.abs(document.documentElement.clientWidth - box.right - 12)).toBeLessThanOrEqual(1);
-      expect(box.width).toBeLessThan(width / 2);
+      // Debajo del mapa, a todo el ancho; la página baja hasta él.
+      expect(Math.abs(box.width - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+      expect(box.top).toBeGreaterThanOrEqual(after.bottom - 1);
     }
+  });
+
+  it(`QA #3, #6.1, #18.2, #18.3: a ${width} px el nombre del Ápice elegido y los rótulos caben en el lienzo, sin tapar controles ni leyenda, y los controles miden 44 px`, async () => {
+    await page.viewport(width, 800);
+    history.replaceState(null, '', '/');
+    await mount(
+      <SessionProvider source={firebaseSessionSource}>
+        <App />
+      </SessionProvider>,
+    );
+    const map = await waitFor(() => host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]'));
+    const cell = await waitFor(() => map.querySelector<HTMLButtonElement>('button.game-map__apice'));
+    await actNow(() => cell.click());
+    const tag = await waitFor(() => cell.querySelector<HTMLElement>('.game-map__tag'));
+    const canvas = map.getBoundingClientRect();
+    const covers = [...map.querySelectorAll<HTMLElement>('.game-map__control, .game-map__legend')].map((node) => node.getBoundingClientRect());
+    const inside = (box: DOMRect) => {
+      expect(box.left, 'borde izquierdo').toBeGreaterThanOrEqual(canvas.left - 1);
+      expect(box.right, 'borde derecho').toBeLessThanOrEqual(canvas.right + 1);
+      expect(box.top, 'borde superior').toBeGreaterThanOrEqual(canvas.top - 1);
+      expect(box.bottom, 'borde inferior').toBeLessThanOrEqual(canvas.bottom + 1);
+      for (const cover of covers) {
+        const apart = box.right <= cover.left + 1 || box.left >= cover.right - 1 || box.bottom <= cover.top + 1 || box.top >= cover.bottom - 1;
+        expect(apart, 'bajo la leyenda o los controles').toBe(true);
+      }
+    };
+    inside(tag.getBoundingClientRect());
+    expect(getComputedStyle(tag).borderTopWidth).toBe('0px');
+    for (const label of map.querySelectorAll<HTMLElement>('.game-map__label, button.game-map__path-label')) {
+      const box = label.getBoundingClientRect();
+      if (box.width > 0 && box.right > canvas.left && box.left < canvas.right && box.bottom > canvas.top && box.top < canvas.bottom) {
+        expect(getComputedStyle(label).borderTopWidth, label.textContent ?? '').toBe('0px');
+      }
+    }
+    for (const control of map.querySelectorAll<HTMLElement>('.game-map__control')) {
+      const box = control.getBoundingClientRect();
+      expect(Math.round(box.width)).toBe(44);
+      expect(Math.round(box.height)).toBe(44);
+    }
+    // El foco del lienzo se dibuja hacia dentro: nunca fuera de su caja, que el escenario recorta.
+    map.focus({ focusVisible: true } as FocusOptions);
+    expect(map.matches(':focus-visible')).toBe(true);
+    expect(parseFloat(getComputedStyle(map).outlineOffset)).toBeLessThan(0);
   });
 });

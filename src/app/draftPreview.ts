@@ -1,10 +1,10 @@
-// RF-14 (021) · 14.4, D-T23 (021): mientras se llena «Construir ápice» o «Editar ápice», el mapa muestra el edificio tal
+// RF-14 (021) · 14.4, D-T23 (021): mientras se llena «Prototipar un Ápice» o «Editar ápice», el mapa muestra el Ápice tal
 // como quedará. Lee el borrador que guarda el formulario (`ContentForm`, en `DraftsContext`) y devuelve los ápices del
 // mapa con ese cambio; si no hay nada que mostrar, devuelve el mismo arreglo.
 import { APICE_STATUSES, AXES, INITIAL_APICE_STATUS, type ApiceStatus, type Axis } from '../../shared/domain/apice';
 import type { ListedApice } from '../data/apices';
 
-/** Qué panel está abierto sobre el mapa: los del ápice; desde la fase 4, el de un camino y «Trazar camino» (D-T29 (021)); desde la 5, el boceto (D-T39 (021)). */
+/** Qué panel está abierto sobre el mapa: los del ápice; desde la fase 4, el de una Acción Común y «Conectar» (D-T29 (021)); desde la 5, el boceto (D-T39 (021)). */
 export type PanelState =
   | { kind: 'view'; id: string }
   | { kind: 'edit'; id: string }
@@ -14,10 +14,10 @@ export type PanelState =
   | { kind: 'sketch' }
   | null;
 
-/** Id del edificio en construcción; ningún documento lo usa. */
+/** Id del Ápice en borrador; ningún documento lo usa. */
 export const NEW_PREVIEW_ID = '__nuevo__';
 
-/** Nombre del edificio en construcción mientras no se escribe uno (§4 de plan.md, por confirmar). */
+/** Nombre del Ápice en borrador mientras no se escribe uno (§4 de plan.md, por confirmar). */
 const UNNAMED = 'Nuevo ápice';
 
 /** Clave del borrador del formulario de cada panel; `null` si el panel no tiene formulario. */
