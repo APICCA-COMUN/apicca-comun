@@ -18,12 +18,12 @@
     "seed-demo": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/seed-demo.js"
   },
   "dependencies": {
-    "firebase-admin": "14.5.0",
+    "firebase-admin": "14.5.1",
     "firebase-functions": "7.4.0",
     "h3-js": "4.5.0"
   },
   "devDependencies": {
-    "@types/node": "^26.4.1",
+    "@types/node": "^26.6.6",
     "typescript": "7.0.2"
   }
 }
