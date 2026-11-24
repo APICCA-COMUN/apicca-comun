@@ -90,6 +90,11 @@ export const ALLOWED: Allowed[] = [
     why: 'píxel de sondeo del SDK de Auth (iframe gapi); no se pide en el flujo del sitio',
   },
   // (c) Cadenas que no generan peticiones.
+  {
+    host: 'www.googletagmanager.com',
+    path: '/gtag/js',
+    why: '@firebase/app 0.16 (firebase 13.4) la nombra en su lista de scripts admitidos por Trusted Types (`ALLOWED_SCRIPT_URLS`), para Analytics; el sitio no usa Analytics ni la carga, y la CSP (`script-src \'self\'`) lo impediría',
+  },
   { host: 'manglerojo.org', why: 'enlace del apoyo en el pie (RF-2 (015)); es un enlace, no se pide nada' },
   {
     host: 'www.w3.org',
