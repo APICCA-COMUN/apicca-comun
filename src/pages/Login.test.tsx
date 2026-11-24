@@ -161,6 +161,13 @@ describe('/entrar · regreso tras entrar (004)', () => {
     expect(window.location.pathname + window.location.search).toBe('/?mio=1');
   });
 
+  it('RF-9 (024) · 9.2: con la ruta de Facilitación guardada, al entrar vuelve a Facilitación', () => {
+    window.sessionStorage.setItem('apicca:returnTo', '/facilitacion/invitaciones');
+    renderLogin(fakeAuth(), member);
+    expect(window.location.pathname).toBe('/facilitacion/invitaciones');
+    expect(window.sessionStorage.getItem('apicca:returnTo')).toBeNull();
+  });
+
   it('RF-2 (017): la página fija su propio título de documento, también al cargarla directamente', async () => {
     renderLogin();
     await screen.findByRole('heading', { level: 1, name: 'Entrar' });

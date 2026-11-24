@@ -1,6 +1,6 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SessionProvider, type SessionState } from '../app/session';
 import { ApiClientError } from '../data/api';
 import type { ApiceHead, HistorySource, VersionRow } from '../data/versions';
@@ -69,6 +69,11 @@ function fakeHistory(initial: { head: ApiceHead | null; versions: VersionRow[] }
   };
 }
 
+afterEach(() => {
+  window.history.replaceState(null, '', '/');
+  window.sessionStorage.clear();
+});
+
 const person: SessionState = { status: 'person', uid: 'u-beto', role: 'member', username: 'beto' };
 
 function setup(
@@ -115,6 +120,15 @@ describe('ApiceHistory · lista', () => {
     expect(screen.getByText(/solo para cuentas con sesión/i)).toBeTruthy();
     expect(screen.queryByRole('list', { name: 'Versiones' })).toBeNull();
     expect(history.onVersions).not.toHaveBeenCalled();
+  });
+
+  it('RF-9 (024) · 9.2: «Entrar» guarda la ruta del historial al hacer clic, y no antes', async () => {
+    window.history.replaceState(null, '', '/apices/a1/historial');
+    setup(fakeHistory({ head: head(), versions: three() }), {}, { status: 'visitor' });
+    expect(window.sessionStorage.getItem('apicca:returnTo')).toBeNull();
+    await userEvent.click(screen.getByRole('link', { name: 'Entrar' }));
+    expect(window.location.pathname).toBe('/entrar');
+    expect(window.sessionStorage.getItem('apicca:returnTo')).toBe('/apices/a1/historial');
   });
 
   it('RF-12 (001): una cuenta suspendida tampoco ve el historial', () => {
@@ -268,5 +282,14 @@ describe('ApiceHistory · bloques (002)', () => {
     for (const row of within(list).getAllByRole('listitem')) {
       expect(row.classList.contains('block')).toBe(true);
     }
+  });
+});
+
+describe('ApiceHistory · fechas (024)', () => {
+  it('RF-5 (024) · 5.2: cada versión dice la fecha larga con la hora del guardado', () => {
+    setup(fakeHistory({ head: head(), versions: three() }));
+    const rows = items();
+    expect(rows[2]!.textContent).toContain('1 de septiembre de 2026, 10:00 a. m.');
+    expect(rows[0]!.textContent).toContain('3 de septiembre de 2026, 10:00 a. m.');
   });
 });

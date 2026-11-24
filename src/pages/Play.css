@@ -94,6 +94,39 @@ main.main--play {
   margin-inline-start: auto;
 }
 
+/* RF-10 (024) · 10.1 a 10.4, D-T13 (024): en un teléfono (menos de 640 px de ancho y 800 px o más de alto), el aviso de propuestas
+   abiertas es una sola fila compacta (el texto a la izquierda, «Ver propuestas» a la derecha) y el contador no se parte en dos
+   líneas, para que el mapa conserve al menos el 60 % del alto de la ventana. El marcado del aviso no cambia: se le da forma
+   desde aquí. Los controles conservan 48 px y los de ícono, 44 px; por debajo de 800 px de alto no se exige nada. */
+@media (max-width: 639.98px) and (min-height: 800px) {
+  /* `p.block` (blocks.css) pesa más que `.play__count`: se sube la especificidad para que el relleno compacto cuente. */
+  .play__hud .play__count {
+    padding: 4px 12px;
+    white-space: nowrap;
+  }
+
+  .play__hud .amendment-notice {
+    display: flex;
+    flex: 1 0 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 4px 4px 12px;
+  }
+
+  .play__hud .amendment-notice p {
+    flex: 1 1 0;
+    min-inline-size: 0;
+    margin: 0;
+    line-height: 1.25;
+  }
+
+  .play__hud .amendment-notice a.block {
+    flex: none;
+    padding-inline: 12px;
+  }
+}
+
 /* Filtros: tras «Filtros» por debajo de 1024 px; desde ahí, siempre a la vista. Siempre en el DOM. */
 .play__filters {
   display: none;

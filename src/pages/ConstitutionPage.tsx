@@ -1,3 +1,4 @@
+// RF-5 (024) · 5.1, D-T8 (024): las fechas de la constitución van en forma larga.
 // RF-11 (008) · 11.1 a 11.6, D-13 (008): entrada del lienzo, camino continuo con un nodo por tarjeta y pie con la fecha real.
 // RF-15 (003) · 15.1–15.3, RF-9 (003) · 9.4, RF-2 (017) · Página `/constitucion`: las secciones como bloques unidos por un camino vertical con nodos.
 // RF-1 (004) · 1.2, 1.3; RF-2 (004) · 2.1, 2.2; RF-4 (004) · 4.1–4.3, 4.5, 4.6, 4.10; RF-5 (004) · 5.1, 5.3;
@@ -15,7 +16,7 @@ import {
   type Section,
   type SectionMeta,
 } from '../../shared/domain/constitution';
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs, todayInColombia } from '../../shared/domain/dates';
 import { Link } from '../app/router';
 import { usePageTitle } from '../app/usePageTitle';
 import { useSession } from '../app/session';
@@ -239,7 +240,7 @@ export function ConstitutionPage({
     }
   };
 
-  const updatedOn = state ? todayInColombia(new Date(state.updatedAt)) : null;
+  const updatedOn = state ? formatLongDateMs(state.updatedAt) : null;
 
   return (
     <div className="constitution">
@@ -383,7 +384,7 @@ export function ConstitutionPage({
               {documents.map((d) => (
                 <li key={d.id} className="block constitution__document">
                   <Link href={`/constitucion/documentos/${d.id}`}>{d.title}</Link>
-                  <time dateTime={todayInColombia(new Date(d.updatedAt))}>{todayInColombia(new Date(d.updatedAt))}</time>
+                  <time dateTime={todayInColombia(new Date(d.updatedAt))}>{formatLongDateMs(d.updatedAt)}</time>
                   <p>{d.excerpt}</p>
                 </li>
               ))}

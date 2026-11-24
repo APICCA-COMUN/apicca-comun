@@ -12,6 +12,8 @@
 // - RF-18 (021) · 18.1 a 18.8, D-T30 (021): cada camino (una Acción Común) es un trazo grueso bajo los edificios que pasa
 //   por sus ápices a la vista (`mapPaths.ts`), con un rótulo que lo nombra y abre su panel; el cerrado va punteado y su
 //   rótulo dice «Cerrado». El rótulo entra en el foco itinerante. El camino en borrador de «Trazar camino» no lleva rótulo.
+// - RF-3 (024), D-T4 (024), D-12 (024): el recorrido de bienvenida mueve el encuadre hasta lo que nombra cada paso, sin
+//   que lo tape su tarjeta. RF-4 (024), D-T6 (024): abrir un camino por su dirección encuadra sus ápices.
 import {
   Fragment,
   useEffect,
@@ -32,6 +34,7 @@ import {
   LEVEL_SCALE,
   SPOT_HEIGHT,
   SPOT_WIDTH,
+  frameFit,
   frameMap,
   frameOn,
   layoutMap,
@@ -40,6 +43,7 @@ import {
   type MapBlock,
   type MapFrame,
   type MapGroup,
+  type MapLayout,
   type MapLevel,
   type MapSpot,
   type MapViewport,
@@ -78,6 +82,11 @@ interface Props {
   fill?: boolean;
   /** El edificio del boceto del visitante: se distingue por su forma (RF-23 (021) · 23.2, D-T39 (021)). */
   sketchId?: string | null;
+  /**
+   * El recorrido pide mirar estos ápices: cada `token` nuevo mueve el mapa una vez (RF-3 (024)). `reserve` dice, al mover,
+   * cuántos píxeles del borde de abajo ocupa la tarjeta del recorrido, para que no tape lo que se mira (D-12 (024)).
+   */
+  focus?: { token: number; ids: readonly string[]; reserve?: () => number } | null;
 }
 
 /** Ventana de respaldo, para cuando el lienzo todavía no se puede medir. */
@@ -115,7 +124,7 @@ function focusFromKeyboard(element: Element): boolean {
 
 const NO_PATHS: readonly MapPath[] = [];
 
-export function GameMap({ items, paths = NO_PATHS, selectedPathId = null, onSelectPath, chosenIds, selectedId, onSelect, onList, fill = false, sketchId = null }: Props) {
+export function GameMap({ items, paths = NO_PATHS, selectedPathId = null, onSelectPath, chosenIds, selectedId, onSelect, onList, fill = false, sketchId = null, focus = null }: Props) {
   const ref = useRef<HTMLElement>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const titleId = useId();
@@ -259,6 +268,46 @@ export function GameMap({ items, paths = NO_PATHS, selectedPathId = null, onSele
     framed.current = selectedId;
     if (spots.some((spot) => spot.id === selectedId)) follow(selectedId);
     else setCustom({ key: idsKey, frame: frameOn(shown, [selectedId], viewport) });
+  });
+
+  /** La ventana medida ahora mismo: en el primer cuadro el estado todavía trae la de respaldo (RF-4 (024)). */
+  const measuredViewport = (): MapViewport => {
+    const element = ref.current;
+    return element !== null && element.clientWidth > 0 && element.clientHeight > 0
+      ? { width: element.clientWidth, height: element.clientHeight }
+      : viewport;
+  };
+
+  // RF-4 (024) · 4.1 a 4.4, D-T5 (024): al abrir un camino, el mapa se encuadra en sus ápices, en el nivel más cercano en que
+  // caben y el camino se dibuja (`frameFit`); una sola vez por camino elegido, y el ápice elegido manda sobre el camino.
+  const framedPath = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (selectedPathId === null) {
+      framedPath.current = null;
+      return;
+    }
+    if (framedPath.current === selectedPathId) return;
+    const path = paths.find((candidate) => candidate.id === selectedPathId);
+    if (path === undefined) return; // el camino puede llegar después del mapa: se espera
+    framedPath.current = selectedPathId;
+    if (selectedId !== null) return;
+    const ids = path.apiceIds.filter((id) => byId.has(id));
+    if (ids.length === 0) return; // sin ápices a la vista, el mapa queda en el encuadre inicial (RF-18 (021) · 18.7)
+    const roadDrawn = ids.length > 1 ? (candidate: MapLayout) => pathPoints(candidate, ids).length > 0 : undefined;
+    setCustom({ key: idsKey, frame: frameFit(shown, ids, measuredViewport(), undefined, roadDrawn) });
+  });
+
+  // RF-3 (024), D-T3 (024): el recorrido lleva el mapa a lo que cada paso señala. Con varios ápices (un camino) se
+  // prefiere el nivel en que caben y el camino se dibuja; cada token mueve el mapa una sola vez. D-12 (024): `reserve` se
+  // mide aquí, con la tarjeta ya pintada, y el encuadre deja libre su área; fuera del recorrido nada se reserva.
+  const focused = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (focus === null || focused.current === focus.token) return;
+    focused.current = focus.token;
+    const ids = focus.ids.filter((id) => byId.has(id));
+    if (ids.length === 0) return;
+    const roadDrawn = ids.length > 1 ? (candidate: MapLayout) => pathPoints(candidate, ids).length > 0 : undefined;
+    setCustom({ key: idsKey, frame: frameFit(shown, ids, measuredViewport(), undefined, roadDrawn, focus.reserve?.() ?? 0) });
   });
 
   const spotProps = (id: string) => ({

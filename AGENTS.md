@@ -48,6 +48,7 @@ APICCA COMÚN: **API para Crear y Conectar Acciones Comunes**. No es una API lit
 - `npm run test:emu:par`, `npm run test:browser:par` y `npm run verify:par`: lo mismo en el carril paralelo de emuladores (`firebase.paralelo.json`, `VITE_EMULATOR_LANE=par`), para no chocar con otra tanda que use los puertos de `firebase.json`.
 - `npm run verify`: todo lo anterior más `rf-coverage`. Debe quedar verde antes de cada commit.
 - Desde `functions/`, `npm run recalculate-zones -- --project <proyecto>`: calcula la zona H3 de los ápices que ya tenían ubicación (spec 021, D-T15). Sin `--apply` solo cuenta lo que cambiaría; en producción lo corre la persona.
+- `npm run demo`: emuladores de `demo-apicca` (con Functions) sembrados con datos de demostración, y el sitio en local (spec 022). Cinco cuentas ficticias, todas con la contraseña `demo-apicca`: `ana_agua@demo.apicca` (facilitación), `beto_huerta@`, `carla_techo@`, `dario_sol@` y `eli_radio@demo.apicca`. Nunca toca `apicca-com`; los datos se pierden al cerrar. El demo usa los mismos puertos y el mismo proyecto que `test:emu`, `test:browser` y `verify`, así que no se corren a la vez; con el demo abierto se usa `verify:par`. La siembra está en `functions/scripts/seed-demo.ts` y la sal local del emulador, en `functions/.secret.local` (fuera de git).
 - `npm run audit-deps`: auditoría de las dependencias de producción contra las excepciones registradas (spec 014). Necesita red, así que corre en la CI y no en `verify`.
 - Usa la CLI local, `npx firebase …`; la global de esta máquina no arranca.
 

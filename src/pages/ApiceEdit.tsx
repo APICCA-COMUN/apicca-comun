@@ -1,3 +1,4 @@
+// RF-9 (024) · 9.2, D-T12 (024): «Entrar» vuelve a esta página.
 // RF-10 (001), RF-11 (001), RF-9 (001), RF-1 (016), RNF-10 (001), RF-6 (002) · 6.1, RF-12 (003) · 12.1, 12.5, RF-3 (003) · 3.2 · Edición de un ápice: cualquier cuenta activa edita uno no archivado.
 // El formulario guarda con la versión que abrió; si alguien guardó antes, se muestra el conflicto y se elige
 // entre conservar lo propio (se reenvía sobre la versión vigente) o descartarlo.
@@ -9,9 +10,10 @@ import type { EditableFields } from '../../shared/domain/versions';
 import { ConflictDiff } from '../components/ConflictDiff';
 import { ContentForm, saveFailureText } from '../components/ContentForm';
 import { useDrafts } from '../app/drafts';
-import { Link, navigate } from '../app/router';
+import { navigate } from '../app/router';
 import { useSession, type PersonSession } from '../app/session';
 import { usePageTitle } from '../app/usePageTitle';
+import { SignInLink } from '../components/SignInLink';
 import { api, type ApiOps, type LocationEdit, type OpClient } from '../data/api';
 import { firestoreApiceSource, type ApiceDoc, type ApiceSource } from '../data/apices';
 
@@ -39,7 +41,7 @@ export function ApiceEdit({ id, source = firestoreApiceSource, client = api }: P
       <section>
         <h1>Editar ápice</h1>
         <p>Para editar un ápice necesitas entrar con una cuenta activa.</p>
-        <Link href="/entrar">Entrar</Link>
+        <SignInLink />
       </section>
     );
   }

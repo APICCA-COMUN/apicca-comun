@@ -53,3 +53,29 @@ export function formatLongDate(at: TimestampLike): string {
   const shifted = new Date(at.seconds * 1000 - COLOMBIA_OFFSET_MS);
   return `${shifted.getUTCDate()} de ${MONTHS[shifted.getUTCMonth()]} de ${shifted.getUTCFullYear()}`;
 }
+
+/** Un día `YYYY-MM-DD` en fecha larga («3 de noviembre de 2026»); vacío si el día no existe (RF-5 (024) · 5.1, D-T7 (024)). */
+export function formatLongDay(day: string): string {
+  const match = EVENT_DATE_FORM.exec(day);
+  if (!match) return '';
+  const [, y, m, d] = match;
+  if (!existsInCalendar(Number(y), Number(m), Number(d))) return '';
+  return `${Number(d)} de ${MONTHS[Number(m) - 1]} de ${Number(y)}`;
+}
+
+/** Fecha larga de unos milisegundos en hora de Bogotá; vacío si el instante no es válido (RF-5 (024) · 5.2, RF-6 (024)). */
+export function formatLongDateMs(ms: number): string {
+  if (Number.isNaN(new Date(ms).getTime())) return '';
+  return formatLongDate({ seconds: ms / 1000, nanoseconds: 0 });
+}
+
+/** Fecha larga y hora en 12 horas, en hora de Bogotá: «3 de noviembre de 2026, 2:56 a. m.» (RF-5 (024) · 5.2). */
+export function formatLongDateTime(at: TimestampLike): string {
+  const ms = at.seconds * 1000;
+  if (Number.isNaN(new Date(ms).getTime())) return '';
+  const shifted = new Date(ms - COLOMBIA_OFFSET_MS);
+  const hour24 = shifted.getUTCHours();
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  const period = hour24 < 12 ? 'a. m.' : 'p. m.';
+  return `${formatLongDateMs(ms)}, ${hour12}:${pad(shifted.getUTCMinutes())} ${period}`;
+}

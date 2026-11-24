@@ -2,7 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Section, SectionMeta } from '../../shared/domain/constitution/types';
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs } from '../../shared/domain/dates';
 import { expectBlocks } from '../testing/expectBlocks';
 import { expectOnePrimary } from '../testing/expectActions';
 import { SectionBlock } from './SectionBlock';
@@ -36,7 +36,9 @@ describe('SectionBlock', () => {
 
     // Título y fecha
     expect(screen.getByRole('heading', { level: 2, name: /cuidado mutuo/i })).toBeDefined();
-    expect(container.textContent).toContain(todayInColombia(new Date(at)));
+    expect(container.textContent).toContain(formatLongDateMs(at));
+    // RF-5 (024) · 5.1: la etiqueta <time> conserva su fecha ISO
+    expect(container.querySelector('time')?.getAttribute('dateTime')).toBe('2026-10-02');
 
     // Texto con formato y enlaces
     const link = screen.getByRole('link', { name: /apicca/i });
@@ -58,7 +60,7 @@ describe('SectionBlock', () => {
 
     // Título, texto y fecha siguen presentes
     expect(screen.getByRole('heading', { level: 2, name: /cuidado mutuo/i })).toBeDefined();
-    expect(container.textContent).toContain(todayInColombia(new Date(at)));
+    expect(container.textContent).toContain(formatLongDateMs(at));
 
     // Datos visibles para cuenta activa (RF-2 (004) · 2.2)
     expect(container.textContent).toMatch(/versión 2/i);
@@ -75,7 +77,7 @@ describe('SectionBlock', () => {
 
     // Marca de propuesta abierta con fecha de cierre
     expect(container.textContent).toMatch(/propuesta abierta/i);
-    expect(container.textContent).toContain(todayInColombia(new Date(closesAt)));
+    expect(container.textContent).toContain(formatLongDateMs(closesAt));
 
     // Sin botón azul y estructura de bloques
     expectOnePrimary(container, null);

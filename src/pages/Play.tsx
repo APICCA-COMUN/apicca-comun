@@ -1,6 +1,6 @@
 // RF-11 (021) · 11.1, 11.2, RF-12 (021) · 12.1–12.5, RF-14 (021) · 14.1–14.9, RF-15 (021) · 15.1, 15.2, RF-10 (021) ·
 // 10.1–10.4, RF-4 (021) · 4.5, RF-9 (021) · 9.1, 9.2, RF-21 (001), RF-15 (004) · 15.1, RF-19 (019) · 19.1–19.3,
-// RF-2 (017), D-T21 (021) a D-T25 (021) · La página del mapa: el sitio comienza aquí (`/`). El mapa ocupa la ventana, con la
+// RF-3 (024) (el recorrido de bienvenida mueve el mapa a cada paso), RF-2 (017), D-T21 (021) a D-T25 (021) · La página del mapa: el sitio comienza aquí (`/`). El mapa ocupa la ventana, con la
 // barra de juego encima (logo, contador, avisos, tema, cuenta y «Menú»; luego «Construir ápice» o «Unirme», «Lo mío»,
 // los filtros, el aviso de propuestas y el cambio de vista). La ficha, «Construir ápice» y «Editar ápice» se abren en un
 // panel sobre el mapa (`/apices/:id`, `/apices/nuevo`, `/apices/:id/editar`), y mientras se llena el formulario el mapa
@@ -16,7 +16,7 @@
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
 import { COMMON_ACTION_LIMITS, pathsLabel } from '../../shared/domain/commonActions';
 import { emptyState, matchesFilters, MAP_LIMIT, NO_FILTERS, type ListFilters } from '../../shared/domain/discovery';
-import { tourSteps } from '../../shared/domain/tour';
+import { tourFocus, tourReserve, tourSteps, type TourStep } from '../../shared/domain/tour';
 import { useDrafts } from '../app/drafts';
 import { NEW_PREVIEW_ID, draftKeyOf, previewItems, type PanelState } from '../app/draftPreview';
 import { filtersFromSearch, filtersToSearch } from '../app/listFilters';
@@ -165,6 +165,8 @@ function Board({
   const [traceNotice, setTraceNotice] = useState<string | null>(null);
   /** RF-21 (021) · 21.1, 21.3: la invitación, hasta que en este navegador se elija «Jugar» o «Cerrar». */
   const [welcome, setWelcome] = useState(() => !welcomeSeen());
+  /** Lo que el paso del recorrido a la vista pide mirar; cada paso nuevo trae un token nuevo (RF-3 (024)). */
+  const [tourView, setTourView] = useState<{ token: number; ids: readonly string[]; reserve: () => number } | null>(null);
   /** RF-23 (021), D-T39 (021): el boceto del visitante, que vive solo en este navegador. */
   const [sketch, setSketch] = useState<Sketch>(readSketch);
 
@@ -423,8 +425,35 @@ function Board({
   const onMap = view === 'mapa' && shown.status !== 'error' && shown.empty === null;
   const pathsCount = actions === null || actions.length === 0 ? '' : ` · ${pathsLabel(actions.length)}`;
   // RF-22 (021) · 22.3: el recorrido omite el camino si ninguno se dibuja (menos de dos de sus ápices a la vista).
-  const visibleIds = new Set(shown.items.map((apice) => apice.id));
-  const drawnPaths = (actions ?? []).filter((action) => action.apiceIds.filter((id) => visibleIds.has(id)).length >= 2).length;
+  // RF-3 (024), D-T3 (024): a qué ápices lleva el mapa cada paso; sin camino que se dibuje en el nivel cercano, el paso se omite.
+  const tourPaths = useMemo(() => (actions ?? []).map((action) => ({ id: action.id, apiceIds: action.apiceIds })), [actions]);
+  const focusOfTour = useMemo(() => tourFocus({ apices: shown.items, paths: tourPaths }), [shown.items, tourPaths]);
+  const drawnPaths = focusOfTour.camino.length > 0 ? 1 : 0;
+  /**
+   * D-12 (024), D-T4b (024): cuánto del borde de abajo del lienzo tapa la tarjeta del recorrido, medido cuando el mapa se
+   * mueve (con la tarjeta ya pintada). Sin tarjeta, o con la tarjeta a un lado del centro, es 0: fuera del recorrido, y a
+   * 1280 px, el encuadre no cambia.
+   */
+  const tourCardReserve = (): number => {
+    const map = stage.current?.querySelector('.game-map')?.getBoundingClientRect();
+    const card = stage.current?.querySelector('.welcome-card')?.getBoundingClientRect();
+    if (map === undefined || map.width === 0 || map.height === 0 || card === undefined) return 0;
+    return tourReserve(
+      { width: map.width, height: map.height },
+      { left: card.left - map.left, right: card.right - map.left, top: card.top - map.top },
+    );
+  };
+  /** Un paso del recorrido a la vista: el mapa va a su ápice o a su camino; el de construir no mueve nada. */
+  const onTourStep = (step: TourStep) => {
+    let ids: readonly string[] = [];
+    if (step.key === 'apice') ids = focusOfTour.apice;
+    if (step.key === 'camino') {
+      const box = stage.current?.querySelector('.game-map')?.getBoundingClientRect();
+      const viewport = box === undefined || box.width === 0 ? undefined : { width: box.width, height: box.height };
+      ids = tourFocus({ apices: shown.items, paths: tourPaths, ...(viewport === undefined ? {} : { viewport }) }).camino;
+    }
+    if (ids.length > 0) setTourView((current) => ({ token: (current?.token ?? 0) + 1, ids, reserve: tourCardReserve }));
+  };
   // RF-21 (021) · 21.2, D-T37 (021): solo sobre el mapa con ápices, sin panel abierto; el terreno de partida ya invita (D-T40 (021)).
   const showWelcome = welcome && panel === null && onMap && shown.status === 'ready';
 
@@ -521,6 +550,7 @@ function Board({
               paths={mapPaths}
               selectedPathId={panel?.kind === 'action' ? panel.id : null}
               onSelectPath={selectPath}
+              focus={tourView}
               onList={() => switchView('lista')}
               fill
             />
@@ -530,7 +560,7 @@ function Board({
           )}
         </div>
         {showWelcome && (
-          <WelcomeCard steps={tourSteps({ apices: shown.items.length, paths: drawnPaths, signedIn: person })} onSeen={markWelcomeSeen} onClose={() => setWelcome(false)} />
+          <WelcomeCard steps={tourSteps({ apices: shown.items.length, paths: drawnPaths, signedIn: person })} onSeen={markWelcomeSeen} onClose={() => setWelcome(false)} onStep={onTourStep} />
         )}
         {panel !== null && (
           <GamePanel

@@ -1,3 +1,4 @@
+// RF-5 (024) · 5.1, D-T8 (024): las fechas de la propuesta y de sus revisiones van en forma larga.
 // RF-7 (004) · 7.4, RF-8 (004) · 8.1–8.4, RF-9 (004) · 9.1–9.4, RF-10 (004) · 10.1–10.4, RF-11 (004) · 11.1–11.3,
 // RF-12 (004) · 12.5, RF-14 (004) · 14.4, 14.7, RF-17 (004) · 17.1–17.2 · Página `/constitucion/propuestas/:id`:
 // contenido, revisiones, acuerdos contados, objeciones, posturas y deliberación de una propuesta. Refleja el vencimiento
@@ -7,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import { Dialog } from '../components/Dialog';
 import { validateComment, type Amendment, type Objection, type Stance } from '../../shared/domain/constitution';
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs } from '../../shared/domain/dates';
 import { parseMarkdown } from '../../shared/domain/docs/markdown';
 import { Link } from '../app/router';
 import { useSession } from '../app/session';
@@ -183,20 +184,20 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
       <header>
         <h1>{amendment.title}</h1>
         <p className="amendment-meta">
-          {KIND_LABEL[amendment.kind]} · Por {amendment.authorUsername} · Abierta el {todayInColombia(new Date(amendment.openedAt))} · Revisión{' '}
+          {KIND_LABEL[amendment.kind]} · Por {amendment.authorUsername} · Abierta el {formatLongDateMs(amendment.openedAt)} · Revisión{' '}
           {amendment.revisionNo}
         </p>
       </header>
       {isOpen ? (
         <p className="block">
-          Cierra el {todayInColombia(new Date(amendment.closesAt))}
+          Cierra el {formatLongDateMs(amendment.closesAt)}
           {amendment.extended ? ' (plazo ampliado)' : ''}.
         </p>
       ) : (
         <div className="block">
           <p>
             Resultado: {amendment.result === null ? 'Cerrada' : RESULT_LABEL[amendment.result]}
-            {amendment.closedAt === null ? '' : ` · ${todayInColombia(new Date(amendment.closedAt))}`}
+            {amendment.closedAt === null ? '' : ` · ${formatLongDateMs(amendment.closedAt)}`}
           </p>
           {amendment.reasons.length > 0 && <p>Motivos: {amendment.reasons.map((r) => REASON_LABEL[r]).join(', ')}</p>}
         </div>
@@ -357,7 +358,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
               <li key={r.revisionNo} className="block">
                 <h3>{r.title}</h3>
                 <p>
-                  Revisión {r.revisionNo} · {todayInColombia(new Date(r.at))}
+                  Revisión {r.revisionNo} · {formatLongDateMs(r.at)}
                 </p>
                 <Formatted text={r.text} />
                 <p>Motivo: {r.motive}</p>

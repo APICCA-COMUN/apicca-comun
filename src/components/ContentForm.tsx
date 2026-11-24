@@ -3,6 +3,7 @@
 // RF-12 (019) · 12.1, 12.3, 12.4, D-T6 (019): etiqueta y leyenda encima, grupos como lotes y contador al final del campo.
 // RF-17 (019) · 17.1, 17.2, D-T11 (019): el estado se llama «Etapa» y muestra sus valores con mayúscula inicial.
 // RF-6 (002) · 6.1, 6.3: campos y aviso como bloques; el envío es la acción principal.
+// RF-12 (024) · 12.1, D-T16 (024): el selector de ubicación abre sobre las zonas de los ápices que la persona ve.
 import { useState, type ComponentType, type FormEvent } from 'react';
 import { APICE_STAGE_LABEL, APICE_STATUSES, INITIAL_APICE_STATUS, validateContent, type ApiceStatus, type Axis, type ContentField, type ContentIssue } from '../../shared/domain/apice';
 import { AXES } from '../../shared/domain/apice';
@@ -13,6 +14,8 @@ import { useDrafts } from '../app/drafts';
 import { ApiClientError, type LocationEdit } from '../data/api';
 import { AxisPicker } from './AxisPicker';
 import { KEEP_LOCATION, resolveLocationDraft, restoreLocationDraft, type LocationDraft } from './locationDraft';
+import { useVisibleZones } from '../app/useVisibleZones';
+import type { ListSource } from '../data/apices';
 import { LocationPicker, type PointMapProps } from './LocationPicker';
 import './ContentForm.css';
 
@@ -37,6 +40,8 @@ export interface LocationOptions {
   map?: ComponentType<PointMapProps> | null | undefined;
   /** Si puede fijar un punto o volver exacta la ubicación (RF-1 (016)); por omisión, sí. */
   mayRaise?: boolean | undefined;
+  /** Fuente de la lista de ápices de la que salen las zonas con las que abre el mapa (RF-12 (024) · 12.1); por omisión, la real. */
+  zonesSource?: ListSource | undefined;
 }
 
 interface ContentFormProps {
@@ -117,6 +122,11 @@ export function ContentForm({ initial, draftKey, submitLabel, onSubmit, showStat
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  // RF-12 (024) · 12.1, D-T16 (024): sin punto, el mapa abre sobre las zonas de los ápices que la persona ve. Solo se leen si el formulario ofrece mapa.
+  const zones = useVisibleZones({
+    enabled: location !== undefined && location.map !== null,
+    ...(location?.zonesSource === undefined ? {} : { source: location.zonesSource }),
+  });
 
   const update = (changes: Partial<FormValues>): void => {
     const next = { ...values, ...changes };
@@ -200,6 +210,7 @@ export function ContentForm({ initial, draftKey, submitLabel, onSubmit, showStat
           exact={location.exact}
           map={location.map}
           mayRaise={location.mayRaise}
+          zones={zones}
           value={locationDraft}
           onChange={updateLocation}
           error={locationError}

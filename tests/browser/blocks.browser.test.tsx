@@ -302,7 +302,10 @@ describe.each(THEMES)('bloques en el tema %s', (theme) => {
       // ficha; 2 en las tarjetas.
       const max = building.closest('.game-map__building, .game-map__dialog') !== null ? 1 : building.closest('.apice-view__head') !== null ? 4 : 2;
       const drawing = building.querySelector<SVGElement>('svg.building__drawing')!;
-      expect(drawing.getBoundingClientRect().width).toBe(64 * Math.min(Math.floor(inner / 64), max));
+      // RF-11 (024) · 11.1, D-T14 (024): en la ficha, por debajo de 900 px de ventana, el edificio mide 6rem (`ApiceView.css`).
+      const headNarrow = building.closest('.apice-view__head') !== null && window.innerWidth < 900;
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      expect(drawing.getBoundingClientRect().width).toBe(headNarrow ? 6 * rem : 64 * Math.min(Math.floor(inner / 64), max));
       expect(building.querySelector('img, canvas')).toBeNull();
     }
   });

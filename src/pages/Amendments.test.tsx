@@ -193,3 +193,11 @@ describe('Amendments', () => {
     expect(screen.queryByRole('button', { name: 'Abrir propuesta' })).toBeNull();
   });
 });
+
+describe('Amendments · fechas (024)', () => {
+  it('RF-5 (024) · 5.1: cada propuesta abierta dice cuándo cierra en forma larga', async () => {
+    const { container } = setup(member, { open: [amendment('pronto', { closesAt: T0 + 5 * DAY })] });
+    await screen.findByText('Propuesta pronto');
+    expect(container.textContent).toContain('Cierra el 6 de octubre de 2026');
+  });
+});

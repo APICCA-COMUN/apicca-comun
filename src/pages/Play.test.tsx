@@ -1,6 +1,7 @@
 // RF-11 (021), RF-12 (021), RF-14 (021), RF-15 (021), RF-10 (021), D-T21 (021) a D-T25 (021) · La página del mapa: el sitio
 // comienza en el mapa, con sus controles encima y los paneles del ápice sobre él. Muchas pruebas vienen de Prototipado y
 // de Mi tablero, que esta página reemplaza (RF-11 (021) sustituye RF-18 (003); RF-15 (021), RF-11 (003)).
+// T-13 (024) · RF-3 (024): el recorrido de bienvenida mueve el mapa a lo que señala cada paso.
 import fs from 'node:fs';
 import path from 'node:path';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -12,6 +13,7 @@ import { SessionProvider, type SessionState } from '../app/session';
 import type { ApiceDoc, ApiceSource, ListSource } from '../data/apices';
 import type { CommonActionDetail, CommonActionSource, CommonActionSummary } from '../data/commonActions';
 import { ApiClientError } from '../data/api';
+import type { Location } from '../../shared/domain/location';
 import type { NoticeSource } from '../data/constitution/notice';
 import type { NoticesSource } from '../data/notices';
 import { fakeClient } from '../testing/facilitationDoubles';
@@ -785,6 +787,121 @@ describe('Play · bienvenida', () => {
     await map();
     expect(await screen.findByRole('region', { name: 'Bienvenida' })).toBeTruthy();
     expect(window.location.pathname + window.location.search).toBe('/?estado=idea');
+  });
+});
+
+describe('Play · el recorrido mueve el mapa (RF-3 (024))', () => {
+  const zone = (cell: string, lat: number, lng: number): Location => ({ lat, lng, precision: 'approximate', zone: { cell, lat, lng } });
+  const CENTRO = zone('8766e092affffff', 4.597156, -74.08474);
+  const MEDELLIN = zone('876619d92ffffff', 6.243305, -75.585547);
+  const located = () => fakeListSource(3, () => [listed(1, { location: CENTRO }), listed(2, { location: CENTRO }), listed(3, { location: MEDELLIN })]).source;
+  const level = () => screen.getByRole('region', { name: 'Mapa de ápices' }).getAttribute('data-level');
+  const world = () => document.querySelector<HTMLElement>('.game-map__world')!.style.transform;
+  const next = (name: string) => fireEvent.click(within(screen.getByRole('region', { name: 'Bienvenida' })).getByRole('button', { name }));
+  beforeEach(() => {
+    window.localStorage.removeItem('apicca:bienvenida');
+  });
+  /** Espera a que lleguen los caminos: el recorrido cuenta con ellos al abrirse. */
+  const loaded = async (lists: unknown[]) => {
+    await waitFor(() => expect(lists.length).toBeGreaterThan(0));
+    await act(async () => {});
+  };
+
+  it('RF-3 (024) · 3.1: «Jugar» lleva el mapa a un ápice, con su edificio a la vista', async () => {
+    setup(PERSON, { source: located() });
+    await map();
+    expect(level()).toBe('2');
+    next('Jugar');
+    await waitFor(() => expect(level()).toBe('0'));
+    expect(document.querySelectorAll('.game-map button.game-map__building').length).toBeGreaterThan(0);
+  });
+
+  it('RF-3 (024) · 3.2: «Siguiente» lleva el mapa a un camino que se dibuja, con su rótulo a la vista', async () => {
+    const actions = fakeActions([summary('c1', ['a1', 'a2'])]);
+    setup(PERSON, { source: located(), actionSource: actions.source });
+    await map();
+    await loaded(actions.lists);
+    next('Jugar');
+    next('Siguiente');
+    expect(await screen.findByRole('button', { name: 'Camino: Camino c1' })).toBeTruthy();
+    expect(level()).toBe('0');
+  });
+
+  it('RF-3 (024) · 3.2: si el camino une ápices lejanos, el mapa se aleja hasta que caben', async () => {
+    const actions = fakeActions([summary('c1', ['a1', 'a3'])]);
+    setup(PERSON, { source: located(), actionSource: actions.source });
+    await map();
+    await loaded(actions.lists);
+    next('Jugar');
+    next('Siguiente');
+    expect(Number(level())).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Camino: Camino c1' })).toBeTruthy();
+  });
+
+  it('RF-3 (024): el paso de construir no mueve el mapa', async () => {
+    const actions = fakeActions([summary('c1', ['a1', 'a2'])]);
+    setup(PERSON, { source: located(), actionSource: actions.source });
+    await map();
+    await loaded(actions.lists);
+    next('Jugar');
+    next('Siguiente');
+    const before = world();
+    next('Siguiente');
+    expect(screen.getByRole('region', { name: 'Bienvenida' }).textContent).toContain('Paso 3 de 3');
+    expect(world()).toBe(before);
+  });
+
+  it('RF-3 (024) · 3.2, RF-22 (021) · 22.3: un camino con un solo ápice a la vista no se dibuja y el recorrido omite ese paso', async () => {
+    const actions = fakeActions([summary('c1', ['a1', 'a-oculto'])]);
+    setup(PERSON, { source: located(), actionSource: actions.source });
+    await map();
+    await loaded(actions.lists);
+    next('Jugar');
+    expect(screen.getByRole('region', { name: 'Bienvenida' }).textContent).toContain('Paso 1 de 2');
+  });
+
+  it('RF-3 (024) · D-12 (024): si la tarjeta cruza el centro del mapa, el encuadre del paso reserva su área; si no, no cambia', async () => {
+    const offsetY = () => Number(/translate\((-?\d+)px, (-?\d+)px\)/.exec(world())![2]);
+    const rects = (card: { left: number; right: number; top: number }) => {
+      const original = HTMLElement.prototype.getBoundingClientRect;
+      const box = (left: number, top: number, right: number, bottom: number): DOMRect =>
+        ({ left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) }) as DOMRect;
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        if (this.classList.contains('game-map')) return box(0, 0, 390, 559);
+        if (this.classList.contains('welcome-card')) return box(card.left, card.top, card.right, 559 - 12);
+        return original.call(this);
+      });
+    };
+    const run = async () => {
+      window.localStorage.removeItem('apicca:bienvenida');
+      setup(PERSON, { source: located() });
+      await map();
+      next('Jugar');
+      await waitFor(() => expect(level()).toBe('0'));
+      return offsetY();
+    };
+    const free = await run();
+    cleanupAndReset();
+    rects({ left: 12, right: 310, top: 274 });
+    const covered = await run();
+    // El mapa mide 960 × 560 en jsdom, pero la reserva sale de lo medido con `getBoundingClientRect`: 559 − 274 = 285 px.
+    expect(Math.abs(free - covered - 285 / 2)).toBeLessThanOrEqual(1);
+    cleanupAndReset();
+    vi.restoreAllMocks();
+    rects({ left: 12, right: 120, top: 274 });
+    // Una tarjeta que no llega al centro (195 ± 46 px) tapa lo mismo que nada: el encuadre no cambia.
+    expect(await run()).toBe(free);
+    vi.restoreAllMocks();
+  });
+
+  it('RF-3 (024): «Saltar el recorrido» quita la tarjeta y deja el mapa donde está', async () => {
+    setup(PERSON, { source: located() });
+    await map();
+    next('Jugar');
+    const before = world();
+    next('Saltar el recorrido');
+    expect(screen.queryByRole('region', { name: 'Bienvenida' })).toBeNull();
+    expect(world()).toBe(before);
   });
 });
 

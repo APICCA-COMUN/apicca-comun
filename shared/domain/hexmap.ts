@@ -406,6 +406,75 @@ export function frameOn(
   return { ...frame, x: nearest.x, y: nearest.y };
 }
 
+/** Lo que ocupan los ápices pedidos en un nivel: sus edificios, el «+n» que los guarda, o sus grupos. `null` si ninguno está. */
+function boundsOfIds(layout: MapLayout, wanted: ReadonlySet<string>): MapBounds | null {
+  let bounds = EMPTY_BOUNDS;
+  const spotBox = (spot: MapSpot) => grow(bounds, spot.x - SPOT_WIDTH / 2, spot.y - SPOT_HEIGHT / 2, spot.x + SPOT_WIDTH / 2, spot.y + SPOT_HEIGHT / 2);
+  for (const block of layout.blocks) {
+    let hidden = false;
+    for (const id of block.ids) {
+      if (!wanted.has(id)) continue;
+      const spot = block.spots.find((candidate) => candidate.id === id);
+      if (spot) bounds = spotBox(spot);
+      else hidden = true;
+    }
+    // Un ápice que va en el «+n» no tiene edificio propio: se toma toda la placa de su manzana.
+    if (hidden) bounds = around(bounds, block.x, block.y, block.radius);
+  }
+  for (const spot of layout.terrain?.spots ?? []) if (wanted.has(spot.id)) bounds = spotBox(spot);
+  for (const group of layout.groups) if (group.ids.some((id) => wanted.has(id))) bounds = around(bounds, group.x, group.y, GROUP_RADIUS);
+  return orNull(bounds);
+}
+
+/**
+ * Encuadre del nivel más cercano en que caben los ápices `ids` (RF-4 (024) · 4.1, D-T5 (024)): a diferencia de `frameOn`,
+ * que siempre acerca al nivel cercano, aquí se prefiere el primero en que todos caben, centrado en ellos. En el nivel
+ * cercano se mide lo que ocupan sus edificios (no la placa entera de la manzana, que es más ancha que un teléfono); en los
+ * alejados, sus grupos. Si no caben ni en el más lejano, ese nivel se aleja como en `frameMap`. Con `drawn`, entre los
+ * niveles en que caben se prefiere el primero en que el camino se dibuja; si en ninguno, el primero en que caben. Los ids
+ * que no están en `apices` se ignoran; si no queda ninguno, devuelve el encuadre inicial (RF-7 (021) · 7.4).
+ * Con `reservedBottom` (D-12 (024)), el borde de abajo de la ventana está ocupado por la tarjeta del recorrido: el ajuste se
+ * mide con el área libre y el centro baja la mitad de lo reservado, de modo que los ápices quedan en medio del área libre.
+ * Con 0, que es lo normal, no cambia nada.
+ */
+export function frameFit(
+  apices: readonly MapApice[],
+  ids: readonly string[],
+  viewport: MapViewport,
+  margin: number = FRAME_MARGIN,
+  drawn?: (layout: MapLayout) => boolean,
+  reservedBottom: number = 0,
+): MapFrame {
+  const known = new Set(apices.map((apice) => apice.id));
+  const wanted = new Set(ids.filter((id) => known.has(id)));
+  if (wanted.size === 0) return frameMap(apices, viewport, margin);
+  const reserved = Math.max(0, reservedBottom);
+  const free: MapViewport = { width: viewport.width, height: Math.max(1, viewport.height - reserved) };
+  const lowered = (frame: MapFrame): MapFrame => (reserved === 0 ? frame : { ...frame, y: frame.y + reserved / 2 });
+  const seen: { first: MapFrame | null } = { first: null };
+  const consider = (layout: MapLayout): MapFrame | null => {
+    const bounds = boundsOfIds(layout, wanted);
+    if (bounds === null || !fitsIn(bounds, free, margin)) return null;
+    const frame = lowered(centered(layout, bounds));
+    seen.first ??= frame;
+    return drawn === undefined || drawn(layout) ? frame : null;
+  };
+  for (const level of [0, 1, 2] as const) {
+    const frame = consider(layoutMap(apices, level));
+    if (frame !== null) return frame;
+  }
+  if (seen.first !== null) return seen.first;
+  let layout = layoutMap(apices, 2);
+  let scale: number = LEVEL_SCALE[2];
+  for (let step = 0; step < MAX_FAR_STEPS; step += 1) {
+    scale *= 0.8;
+    layout = layoutMap(apices, 2, scale);
+    const bounds = boundsOfIds(layout, wanted);
+    if (bounds !== null && fitsIn(bounds, free, margin)) break;
+  }
+  return lowered(centered(layout, boundsOfIds(layout, wanted) ?? { minX: 0, minY: 0, maxX: 0, maxY: 0 }));
+}
+
 const DIRECTIONS: Record<string, readonly [x: number, y: number]> = {
   ArrowRight: [1, 0],
   ArrowLeft: [-1, 0],

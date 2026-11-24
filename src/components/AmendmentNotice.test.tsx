@@ -1,7 +1,7 @@
 // RF-15 (004) · 15.1: pruebas del aviso de propuestas abiertas para personas con cuenta activa.
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs } from '../../shared/domain/dates';
 import { SessionProvider, type SessionState } from '../app/session';
 import { expectBlocks } from '../testing/expectBlocks';
 import { expectOnePrimary } from '../testing/expectActions';
@@ -9,7 +9,7 @@ import { AmendmentNotice } from './AmendmentNotice';
 
 describe('AmendmentNotice', () => {
   const nextCloseMs = Date.parse('2026-10-24T12:00:00Z');
-  const expectedDate = todayInColombia(new Date(nextCloseMs));
+  const expectedDate = formatLongDateMs(nextCloseMs);
 
   const activeSession: SessionState = {
     status: 'person',

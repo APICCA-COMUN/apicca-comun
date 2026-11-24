@@ -5,6 +5,7 @@
 // RF-1 (016), RNF-1 (016), D-T5 (016): sin `mayRaise` no se fija un punto ni se vuelve exacta; quitar y «Aproximada» siguen.
 // RF-12 (019) · 12.1, D-T6 (019): latitud y longitud usan el campo del formulario, con la etiqueta encima.
 // RF-5 (021) · 5.2, D-T14 (021): la zona la calcula el servidor; la vista previa de una aproximada no adelanta su centro.
+// RF-12 (024) · 12.1, D-T16 (024): `zones` llega al mapa para que abra sobre los ápices que la persona ve.
 import { Component, lazy, Suspense, useId, useState, type ComponentType, type ReactNode } from 'react';
 import { DEFAULT_PRECISION, validateCoordinates, type Location, type Point, type Precision } from '../../shared/domain/location';
 import { KEEP_LOCATION, resolveLocationDraft, typeCoordinates, type LocationDraft } from './locationDraft';
@@ -14,6 +15,11 @@ import { describeLocation, formatDegrees, ZONE_SIZE_TEXT } from './locationText'
 export interface PointMapProps {
   point: Point | null;
   onPick: (point: Point) => void;
+  /**
+   * Centros de zona de los ápices que la persona ve (RF-12 (024) · 12.1, D-T16 (024)): sin punto, el mapa abre sobre ellos.
+   * Nunca lleva el punto exacto de un ápice. Ausente o vacío: el mapa abre como siempre.
+   */
+  zones?: readonly Point[] | undefined;
 }
 
 const LazyPointMap = lazy(() => import('../map/PointPickerMap'));
@@ -31,6 +37,8 @@ interface LocationPickerProps {
   map?: ComponentType<PointMapProps> | null | undefined;
   /** Si puede fijar un punto o volver exacta la ubicación: solo la autora y la facilitación (RF-1 (016)). */
   mayRaise?: boolean | undefined;
+  /** Centros de zona de los ápices visibles, para que el mapa abra sobre ellos (RF-12 (024) · 12.1). */
+  zones?: readonly Point[] | undefined;
 }
 
 class MapBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -55,7 +63,7 @@ const PRECISION_OPTIONS: { value: Precision; label: string }[] = [
   { value: 'exact', label: 'Exacta (el punto marcado)' },
 ];
 
-export function LocationPicker({ stored, exact, value, onChange, error, map = LazyPointMap, mayRaise = true }: LocationPickerProps) {
+export function LocationPicker({ stored, exact, value, onChange, error, map = LazyPointMap, mayRaise = true, zones }: LocationPickerProps) {
   const id = useId();
   const [mapOpen, setMapOpen] = useState(false);
 
@@ -182,7 +190,7 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
           {mapOpen && (
             <MapBoundary>
               <Suspense fallback={<p role="status" className="block">Cargando el mapa…</p>}>
-                <PointMap point={typedPoint ?? exactKnown ?? stored} onPick={pick} />
+                <PointMap point={typedPoint ?? exactKnown ?? stored} onPick={pick} zones={zones} />
               </Suspense>
             </MapBoundary>
           )}

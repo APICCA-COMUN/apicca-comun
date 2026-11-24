@@ -1,7 +1,9 @@
+// RF-8 (024), RF-5 (024) · 5.1: cada propuesta cerrada enlaza su página y su fecha va en forma larga.
 // RF-7 (004) · 7.2: lista de propuestas cerradas con resultado y motivos (D-T13 (004)).
 import { useState } from 'react';
 import type { Amendment, AmendmentResult, CloseReason } from '../../shared/domain/constitution/types';
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs, todayInColombia } from '../../shared/domain/dates';
+import { Link } from '../app/router';
 
 export interface ClosedAmendmentsProps {
   amendments: readonly Amendment[];
@@ -44,10 +46,12 @@ export function ClosedAmendments({ amendments }: ClosedAmendmentsProps) {
 
           return (
             <li key={a.id} className="block amendment-item">
-              <h3>{a.title}</h3>
+              <h3>
+                <Link href={`/constitucion/propuestas/${a.id}`}>{a.title}</Link>
+              </h3>
               <p className="amendment-meta">
                 {a.closedAt !== null && (
-                  <time dateTime={todayInColombia(new Date(a.closedAt))}>{todayInColombia(new Date(a.closedAt))}</time>
+                  <time dateTime={todayInColombia(new Date(a.closedAt))}>{formatLongDateMs(a.closedAt)}</time>
                 )}
                 {a.authorUsername && ` · Por ${a.authorUsername}`}
               </p>

@@ -1,3 +1,4 @@
+// RF-1 (024) · 1.1: la etiqueta de cada campo va justo antes de su campo, para que el formulario en columna la ponga encima.
 // RF-6 (004) · 6.1–6.2, 6.5; RF-8 (004) · 8.1; RF-16 (004) · 16.2, 16.4; RF-17 (004) · 17.1: formulario de abrir y revisar propuestas.
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -27,6 +28,26 @@ describe("AmendmentForm", () => {
     expect(
       screen.getByRole("button", { name: "Cancelar" }).className,
     ).toContain("action-secondary");
+  });
+
+  it("RF-1 (024) · 1.1: el formulario lleva la clase del formulario en columna y cada etiqueta va justo antes de su campo", () => {
+    for (const mode of ["open", "revise"] as const) {
+      const { container, unmount } = render(
+        mode === "open" ? (
+          <AmendmentForm mode="open" sections={sections} onSubmit={vi.fn()} />
+        ) : (
+          <AmendmentForm mode="revise" sections={sections} kind="change" sectionId="s1" onSubmit={vi.fn()} />
+        ),
+      );
+      const form = container.querySelector("form")!;
+      expect(form.classList.contains("amendment-form")).toBe(true);
+      const labels = [...form.querySelectorAll("label")];
+      expect(labels.length).toBeGreaterThanOrEqual(3);
+      for (const label of labels) {
+        expect(label.nextElementSibling?.id).toBe(label.htmlFor);
+      }
+      unmount();
+    }
   });
 
   it("RF-6 (004) · 6.1: al abrir desde una sección llega con el tipo y el lugar ya elegidos", () => {

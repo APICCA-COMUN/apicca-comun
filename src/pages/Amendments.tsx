@@ -1,3 +1,4 @@
+// RF-5 (024) · 5.1, D-T8 (024): la fecha de cierre de cada propuesta va en forma larga.
 // RF-6 (004) · 6.1–6.2, RF-7 (004) · 7.1–7.3, RF-9 (004) · 9.4, RF-12 (004) · 12.5, D-T13 (004) · Página
 // `/constitucion/propuestas`: propuestas abiertas completas (cierre más próximo primero), cerradas de 20 en 20 y el
 // formulario de abrir una propuesta en un diálogo (`#cambiar-ID`, `#quitar-ID`, `#anadir-ID`). Sin cuenta activa, solo el aviso.
@@ -6,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import { Dialog } from '../components/Dialog';
 import type { Amendment, AmendmentKind, ConstitutionState, Section } from '../../shared/domain/constitution';
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs } from '../../shared/domain/dates';
 import { parseMarkdown } from '../../shared/domain/docs/markdown';
 import { Link, navigate, useRoute } from '../app/router';
 import { useSession } from '../app/session';
@@ -183,7 +184,7 @@ export function Amendments({
                 <Link href={`/constitucion/propuestas/${a.id}`}>{a.title}</Link>
               </h2>
               <p className="amendment-meta">
-                {KIND_LABEL[a.kind]} · Por {a.authorUsername} · Cierra el {todayInColombia(new Date(a.closesAt))}
+                {KIND_LABEL[a.kind]} · Por {a.authorUsername} · Cierra el {formatLongDateMs(a.closesAt)}
                 {a.extended ? ' (plazo ampliado)' : ''}
               </p>
               <Formatted text={a.text} />

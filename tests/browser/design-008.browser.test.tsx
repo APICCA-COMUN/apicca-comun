@@ -518,7 +518,8 @@ describe.each([360, 1280])('Constitución a %i px', (width) => {
     const style = getComputedStyle(foot);
     expect(style.fontSize).toBe('14px');
     expect(style.paddingLeft).toBe('50px');
-    expect(foot.textContent).toContain('Última modificación: 2026-09-03');
+    // RF-5 (024) · 5.1: la fecha del pie sale con día, nombre del mes y año, como la ficha.
+    expect(foot.textContent).toContain('Última modificación: 3 de septiembre de 2026');
     const list = box.querySelector('.constitution__list')!;
     expect(list.compareDocumentPosition(foot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });

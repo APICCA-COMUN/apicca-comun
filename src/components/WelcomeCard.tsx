@@ -1,6 +1,7 @@
 // RF-21 (021) · 21.1 a 21.3, RF-22 (021), RF-26 (021) · 26.1, D-T37 (021), D-T38 (021) · La invitación a jugar y el primer
 // recorrido: una tarjeta sobre el borde del mapa, no un diálogo modal, para que el mapa siga a la vista y se pueda usar detrás.
 // «Jugar» y «Cerrar» la marcan como vista (`onSeen`); el recorrido solo dice dónde mirar. Textos propuestos (plan §4).
+// RF-3 (024), D-T3 (024): cada paso que muestra se avisa con `onStep`, para que el mapa se mueva a lo que el texto señala.
 import { useState } from 'react';
 import type { TourStep } from '../../shared/domain/tour';
 import './WelcomeCard.css';
@@ -11,13 +12,20 @@ interface Props {
   onSeen: () => void;
   /** La tarjeta se quita: «Cerrar», «Saltar el recorrido» o «Listo». */
   onClose: () => void;
+  /** Se muestra un paso del recorrido (no la invitación ni al quitarse): el mapa se lleva a lo que señala (RF-3 (024)). */
+  onStep?: (step: TourStep) => void;
 }
 
-export function WelcomeCard({ steps, onSeen, onClose }: Props) {
+export function WelcomeCard({ steps, onSeen, onClose, onStep }: Props) {
   /** `null` mientras invita; si no, el paso del recorrido a la vista. */
   const [step, setStep] = useState<number | null>(null);
   const current = step === null ? undefined : steps[step];
   const last = step !== null && step >= steps.length - 1;
+  const goTo = (next: number) => {
+    setStep(next);
+    const target = steps[next];
+    if (target !== undefined) onStep?.(target);
+  };
 
   return (
     <section className="block welcome-card" aria-label="Bienvenida">
@@ -34,7 +42,7 @@ export function WelcomeCard({ steps, onSeen, onClose }: Props) {
               className="block action-primary"
               onClick={() => {
                 onSeen();
-                setStep(0);
+                goTo(0);
               }}
             >
               Jugar
@@ -64,7 +72,7 @@ export function WelcomeCard({ steps, onSeen, onClose }: Props) {
                 Listo
               </button>
             ) : (
-              <button type="button" className="block action-primary" onClick={() => setStep((step ?? 0) + 1)}>
+              <button type="button" className="block action-primary" onClick={() => goTo((step ?? 0) + 1)}>
                 Siguiente
               </button>
             )}

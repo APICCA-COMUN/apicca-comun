@@ -41,6 +41,10 @@ const compared = (path: string, who: string): boolean => GENERATE || !(path === 
 /** Sin sesión, `/entrar` enlaza a «Solicitar inscripción» (RF-13 (003) · 13.3) y suma «Mostrar contraseña» (RF-5 (005)). */
 const ADDED: Record<string, AccessibleName[]> = {
   '/entrar · visitante': [{ role: 'link', name: 'Pide tu inscripción' }, { role: 'button', name: 'Mostrar contraseña' }],
+  // Sin sesión, Facilitación ofrece «Entrar» dentro de `<main>` (RF-9 (024) · 9.1).
+  '/facilitacion/invitaciones · visitante': [{ role: 'link', name: 'Entrar' }], // RF-9 (024) · 9.1
+  '/facilitacion/solicitudes · visitante': [{ role: 'link', name: 'Entrar' }], // RF-9 (024) · 9.1
+  '/facilitacion/cuentas · visitante': [{ role: 'link', name: 'Entrar' }], // RF-9 (024) · 9.1
 };
 /** Nombres que la 008 sustituye por los del lienzo en `/entrar` (RF-7 (008) · 7.5, 7.6, D-10 (008)). */
 const RENAMED: Record<string, string> = { 'Correo electrónico': 'Correo', '¿Olvidaste tu contraseña?': 'Olvidé mi contraseña' };

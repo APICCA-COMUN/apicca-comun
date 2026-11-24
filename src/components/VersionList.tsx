@@ -1,6 +1,7 @@
+// RF-5 (024) · 5.1, D-T8 (024): la fecha de cada versión va en forma larga; el dateTime sigue en ISO.
 // RF-3 (004) · 3.2, 3.5; RF-5 (004) · 5.4: lista de versiones históricas de una sección o documento.
 import { INITIAL_AUTHOR, type SectionVersion } from '../../shared/domain/constitution/types';
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs, todayInColombia } from '../../shared/domain/dates';
 
 /** Forma mínima compatible para versiones de documentos (RF-5 (004) · 5.4). */
 export interface DocumentVersionItem {
@@ -55,7 +56,7 @@ export function VersionList({ versions }: VersionListProps) {
           <li key={v.version} className="block version-item">
             <h3>Versión {v.version}</h3>
             <p className="version-meta">
-              <time dateTime={todayInColombia(new Date(v.at))}>{todayInColombia(new Date(v.at))}</time> · {authorOf(v)}
+              <time dateTime={todayInColombia(new Date(v.at))}>{formatLongDateMs(v.at)}</time> · {authorOf(v)}
             </p>
             {hasAgreements && (
               <p className="version-agreements">

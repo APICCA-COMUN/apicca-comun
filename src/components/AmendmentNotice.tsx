@@ -1,5 +1,6 @@
+// RF-5 (024) · 5.1, D-T8 (024): la fecha del cierre más próximo va en forma larga.
 // RF-15 (004) · 15.1: aviso de propuestas abiertas para personas con cuenta activa.
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs } from '../../shared/domain/dates';
 import { Link } from '../app/router';
 import { useSession } from '../app/session';
 
@@ -24,14 +25,13 @@ export function AmendmentNotice({ openCount, nextClosesAt, hasActiveAccount }: A
   }
 
   const countText = openCount === 1 ? 'Hay 1 propuesta abierta' : `Hay ${openCount} propuestas abiertas`;
-  const dateFormatted =
-    nextClosesAt !== undefined && nextClosesAt !== null ? todayInColombia(new Date(nextClosesAt)) : null;
+  const dateFormatted = nextClosesAt !== undefined && nextClosesAt !== null ? formatLongDateMs(nextClosesAt) : '';
 
   return (
     <aside className="block amendment-notice" role="status" aria-label="Aviso de propuestas abiertas">
       <p>
         {countText}
-        {dateFormatted !== null && ` · Cierre más próximo: ${dateFormatted}`}.
+        {dateFormatted !== '' && ` · Cierre más próximo: ${dateFormatted}`}.
       </p>
       <Link href="/constitucion/propuestas" className="block action-secondary">
         Ver propuestas

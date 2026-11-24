@@ -1,5 +1,5 @@
 // Pruebas del dominio del mapa propio (RF-4 (021) · 4.3, RF-5 (021) · 5.3, RF-6 (021), RF-7 (021), RF-8 (021) · 8.4,
-// RF-9 (021), RNF-5 (021), D-T16 (021)): celda madre, proyección, manzanas, grupos, encuadre, vecino y escala.
+// RF-9 (021), RNF-5 (021), D-T16 (021), RF-4 (024), D-T5 (024)): celda madre, proyección, manzanas, grupos, encuadre, vecino y escala.
 import { describe, expect, it } from 'vitest';
 import {
   BLOCK_CAPACITY,
@@ -9,6 +9,7 @@ import {
   SPOT_HEIGHT,
   SPOT_WIDTH,
   blockSlots,
+  frameFit,
   frameMap,
   frameOn,
   layoutMap,
@@ -220,6 +221,118 @@ describe('hexmap · niveles', () => {
   it('RF-7 (021) · 7.4: sin ápices el encuadre es el nivel cercano, en el centro', () => {
     expect(frameMap([], WIDE)).toEqual({ level: 0, scale: LEVEL_SCALE[0], x: 0, y: 0 });
     expect(layoutMap([], 0).bounds).toBeNull();
+  });
+});
+
+describe('hexmap · frameFit', () => {
+  const ALL = [at('a', CENTRO), at('b', VECINA), at('c', SUBA), at('d', CENTRO), at('e', MEDELLIN)];
+
+  it('RF-4 (024) · 4.1: dos ápices de una misma zona caben en el nivel cercano, aunque la ventana sea angosta', () => {
+    for (const viewport of [WIDE, NARROW]) {
+      const frame = frameFit(ALL, ['a', 'd'], viewport);
+      expect(frame.level).toBe(0);
+      expect(frame.scale).toBe(LEVEL_SCALE[0]);
+      const block = layoutMap(ALL, 0).blocks.find((candidate) => candidate.key === CENTRO.cell)!;
+      expect(frame.x).toBeCloseTo(block.x);
+      expect(frame.y).toBeGreaterThanOrEqual(block.y - SPOT_HEIGHT);
+      expect(frame.y).toBeLessThanOrEqual(block.y + SPOT_HEIGHT);
+    }
+  });
+
+  it('RF-4 (024) · 4.1: dos ápices de zonas vecinas caben en el nivel cercano y se centran entre ellos', () => {
+    const frame = frameFit(ALL, ['a', 'b'], WIDE);
+    expect(frame.level).toBe(0);
+    const spots = layoutMap(ALL, 0).blocks.flatMap((block) => block.spots);
+    const wanted = spots.filter((spot) => spot.id === 'a' || spot.id === 'b');
+    expect(frame.x).toBeCloseTo((Math.min(...wanted.map((spot) => spot.x)) + Math.max(...wanted.map((spot) => spot.x))) / 2);
+    expect(frame.y).toBeCloseTo((Math.min(...wanted.map((spot) => spot.y)) + Math.max(...wanted.map((spot) => spot.y))) / 2);
+  });
+
+  it('RF-4 (024) · 4.1: dos ápices en zonas lejanas van al nivel más cercano en que caben', () => {
+    const city = frameFit(ALL, ['a', 'c'], WIDE);
+    expect(city.level).toBe(1);
+    expect(city.scale).toBe(LEVEL_SCALE[1]);
+    const region = frameFit([at('a', CENTRO), at('s', SUBA), at('v', VECINA), at('e', MEDELLIN)], ['s', 'v', 'a'], WIDE);
+    expect(region.level).toBe(1);
+  });
+
+  it('RF-4 (024) · 4.1: si no caben ni en el nivel más lejano, ese nivel se aleja hasta que quepan', () => {
+    const frame = frameFit(ALL, ['a', 'e'], NARROW);
+    expect(frame.level).toBe(2);
+    expect(frame.scale).toBeLessThan(LEVEL_SCALE[2]);
+    expect(fits(layoutMap(ALL, 2, frame.scale).bounds!, { width: 2 * NARROW.width, height: 2 * NARROW.height })).toBe(true);
+    // También en una ventana ancha: Medellín queda a unos 240 km de Bogotá.
+    expect(frameFit(ALL, ['a', 'e'], WIDE).level).toBe(2);
+  });
+
+  it('RF-4 (024) · 4.1: sin ápices a la vista devuelve el encuadre inicial (RF-7 (021) · 7.4)', () => {
+    expect(frameFit(ALL, ['no-existe'], WIDE)).toEqual(frameMap(ALL, WIDE));
+    expect(frameFit(ALL, [], WIDE)).toEqual(frameMap(ALL, WIDE));
+    expect(frameFit([], ['a'], WIDE)).toEqual(frameMap([], WIDE));
+  });
+
+  it('RF-4 (024) · 4.1: los ids desconocidos se ignoran', () => {
+    expect(frameFit(ALL, ['a', 'c', 'no-existe'], WIDE)).toEqual(frameFit(ALL, ['a', 'c'], WIDE));
+  });
+
+  it('RF-4 (024) · 4.1: un ápice sin ubicación lleva a su terreno', () => {
+    const all = [...ALL, nowhere('x')];
+    const terrain = layoutMap(all, 0).terrain!;
+    const frame = frameFit(all, ['x'], WIDE);
+    expect(frame.level).toBe(0);
+    const spot = terrain.spots[0]!;
+    expect(frame.x).toBeCloseTo(spot.x);
+    expect(frame.y).toBeCloseTo(spot.y);
+  });
+
+  it('RF-4 (024) · 4.1: con `drawn` prefiere el primer nivel, entre los que caben, en que el camino se dibuja', () => {
+    const only = (level: number) => (layout: { level: number }) => layout.level === level;
+    expect(frameFit(ALL, ['a', 'b'], WIDE, undefined, only(0)).level).toBe(0);
+    expect(frameFit(ALL, ['a', 'b'], WIDE, undefined, only(1)).level).toBe(1);
+    expect(frameFit(ALL, ['a', 'b'], WIDE, undefined, only(2)).level).toBe(2);
+  });
+
+  it('RF-4 (024) · 4.1: si el camino no se dibuja en ningún nivel, queda el primero en que caben', () => {
+    expect(frameFit(ALL, ['a', 'b'], WIDE, undefined, () => false)).toEqual(frameFit(ALL, ['a', 'b'], WIDE));
+  });
+
+  it('RF-3 (024), D-12 (024): sin área reservada (o con 0) el encuadre es el de siempre', () => {
+    expect(frameFit(ALL, ['a'], NARROW, undefined, undefined, 0)).toEqual(frameFit(ALL, ['a'], NARROW));
+    expect(frameFit(ALL, ['a', 'c'], WIDE, undefined, undefined, 0)).toEqual(frameFit(ALL, ['a', 'c'], WIDE));
+  });
+
+  it('RF-3 (024), D-12 (024): reservar el borde de abajo corre el centro para que el ápice quede en el área libre', () => {
+    const plain = frameFit(ALL, ['a'], NARROW);
+    const frame = frameFit(ALL, ['a'], NARROW, undefined, undefined, 260);
+    expect(frame.level).toBe(plain.level);
+    expect(frame.x).toBeCloseTo(plain.x);
+    // El mapa se dibuja con su centro en medio de la ventana: bajar el centro 130 px sube el edificio 130 px.
+    expect(frame.y).toBeCloseTo(plain.y + 130);
+    // El edificio, con ese encuadre, queda del todo por encima del área reservada.
+    const spot = layoutMap(ALL, 0).blocks.flatMap((block) => block.spots).find((candidate) => candidate.id === 'a')!;
+    const bottom = NARROW.height / 2 + (spot.y + SPOT_HEIGHT / 2 - frame.y);
+    expect(bottom).toBeLessThanOrEqual(NARROW.height - 260);
+  });
+
+  it('RF-3 (024), D-12 (024): mide el ajuste con el área libre, no con toda la ventana', () => {
+    // Dos ápices de zonas vecinas caben en 720 px de alto, pero no en lo que deja libre una reserva muy grande.
+    const free = frameFit(ALL, ['a', 'b'], WIDE);
+    const tight = frameFit(ALL, ['a', 'b'], WIDE, undefined, undefined, 500);
+    expect(free.level).toBe(0);
+    expect(tight.level).toBeGreaterThan(0);
+  });
+
+  it('RF-3 (024), D-12 (024): un camino con dos ápices conserva el nivel y el centro horizontal al reservar', () => {
+    const plain = frameFit(ALL, ['a', 'd'], NARROW);
+    const frame = frameFit(ALL, ['a', 'd'], NARROW, undefined, undefined, 200);
+    expect(frame.level).toBe(plain.level);
+    expect(frame.x).toBeCloseTo(plain.x);
+    expect(frame.y).toBeCloseTo(plain.y + 100);
+  });
+
+  it('RF-4 (024) · 4.1: el resultado no depende del orden de los ids ni de la llegada de los ápices', () => {
+    expect(frameFit(ALL, ['c', 'a'], WIDE)).toEqual(frameFit(ALL, ['a', 'c'], WIDE));
+    expect(frameFit([...ALL].reverse(), ['a', 'e'], WIDE)).toEqual(frameFit(ALL, ['a', 'e'], WIDE));
   });
 });
 

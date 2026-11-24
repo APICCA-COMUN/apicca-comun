@@ -54,8 +54,8 @@ describe('ConstitutionHistory · tabla del conjunto', () => {
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(3);
     const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((c) => c.textContent);
-    expect(cells(rows[0]!)).toEqual(['Cuidado', 'Retirada', 'beto', '2026-06-15']);
-    expect(cells(rows[1]!)).toEqual(['Agua', 'Cambiada', 'ana', '2026-06-15']);
+    expect(cells(rows[0]!)).toEqual(['Cuidado', 'Retirada', 'beto', '15 de junio de 2026']);
+    expect(cells(rows[1]!)).toEqual(['Agua', 'Cambiada', 'ana', '15 de junio de 2026']);
     expect(cells(rows[2]!)[1]).toBe('Apertura');
     expect(cells(rows[2]!)[2]).toBe('fabi');
   });
@@ -115,5 +115,14 @@ describe('ConstitutionHistory · accesos', () => {
   it('RF-3 (004) · 3.4: mientras la sesión carga no redirige', () => {
     setup({ status: 'loading' });
     expect(window.location.pathname).toBe('/constitucion/historial');
+  });
+});
+
+describe('ConstitutionHistory · fechas (024)', () => {
+  it('RF-5 (024) · 5.1: la fecha de cada entrada va en forma larga y su dateTime sigue en ISO', () => {
+    const { container } = setup(member);
+    const time = container.querySelector('time');
+    expect(time?.textContent).toBe('15 de junio de 2026');
+    expect(time?.getAttribute('dateTime')).toBe('2026-06-15');
   });
 });

@@ -1,4 +1,4 @@
-/* RF-12 (003) · 12.1, 12.5, RF-18 (019) · 18.1, D-T12 (019), RF-11 (019): la ficha vive en un lote (`lots.css`); el edificio va sobre el nombre h1. Sin colores. */
+/* RF-12 (003) · 12.1, 12.5, RF-18 (019) · 18.1, D-T12 (019), RF-11 (019), RF-11 (024) · 11.1 (el edificio de unos 6rem en el teléfono, al final): la ficha vive en un lote (`lots.css`); el edificio va sobre el nombre h1. Sin colores. */
 
 .apice-view__head {
   display: flex;
@@ -50,4 +50,17 @@
 
 .apice-view__workshop h2 {
   margin-top: 0;
+}
+
+/* RF-11 (024) · 11.1, 11.2, D-T14 (024): en la hoja inferior de un teléfono (menos de 900 px), el edificio mide unos 6rem y va antes del
+   nombre, para que el h1 quede entero a la vista sin desplazar la hoja. Desde 900 px la columna no cambia. */
+@media (max-width: 899.98px) {
+  .apice-view__head {
+    gap: 0.5rem;
+  }
+
+  .apice-view__head .building__drawing {
+    inline-size: 6rem;
+    block-size: 6rem;
+  }
 }

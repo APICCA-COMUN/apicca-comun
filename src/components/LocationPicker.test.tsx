@@ -198,3 +198,25 @@ describe('LocationPicker sin permiso para subir la ubicación (spec 016)', () =>
     expect(draftOf()).toEqual({ mode: 'remove' });
   });
 });
+
+// T-18 (024) · RF-12 (024) · 12.1 a 12.3, D-T16 (024): las zonas de los ápices visibles llegan al mapa del selector.
+describe('LocationPicker con zonas (RF-12 (024))', () => {
+  /** Mapa de mentira que dice cuántas zonas recibió. */
+  function ZonesMap({ zones }: PointMapProps) {
+    return <p>{zones === undefined ? 'sin zonas' : `zonas: ${JSON.stringify(zones)}`}</p>;
+  }
+
+  it('RF-12 (024) · 12.1: las zonas llegan al mapa al abrirlo', async () => {
+    const zones = [{ lat: 4.6, lng: -74.08 }, { lat: 6.24, lng: -75.58 }];
+    render(<Harness map={ZonesMap} zones={zones} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Marcar en el mapa' }));
+    expect(screen.getByText(`zonas: ${JSON.stringify(zones)}`)).toBeTruthy();
+  });
+
+  it('RF-12 (024): sin zonas, el mapa no recibe nada y todo sigue igual', async () => {
+    render(<Harness map={ZonesMap} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Marcar en el mapa' }));
+    expect(screen.getByText('sin zonas')).toBeTruthy();
+    expect(screen.getByLabelText('Latitud')).toBeTruthy();
+  });
+});

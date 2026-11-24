@@ -1,12 +1,14 @@
 // RF-1 (001), RF-4 (001), RF-5 (001), RF-6 (002) · 6.1, 6.3, RF-7 (003) · 7.9,
 // RF-13 (019) · 13.1, 13.2, D-T7 (019), RF-18 (019) · 18.1, D-T12 (019) · Armazón común de las páginas de facilitación:
 // solo para quien facilita, navegación entre ellas, listas sin viñeta con filas como bloques, enlace abreviado con
-// acción de copiar al portapapeles y un solo h1 por página.
+// acción de copiar al portapapeles y un solo h1 por página, también sin permiso (RF-2 (024) · 2.1, D-T2 (024)); sin sesión ofrece
+// entrar y volver a la página (RF-9 (024) · 9.1, 9.2, D-T12 (024)).
 import { useEffect, useState, type ReactNode } from 'react';
 import { FACILITATION_MENU, isCurrentSection } from '../../shared/domain/navigation';
 import { Link, useRoute } from '../app/router';
 import { useSession, type PersonSession } from '../app/session';
 import { usePageTitle } from '../app/usePageTitle';
+import { SignInLink } from '../components/SignInLink';
 import { ApiClientError } from '../data/api';
 import './Facilitation.css';
 
@@ -39,7 +41,14 @@ export function FacilitationShell({ title, children }: { title: string; children
   const { path } = useRoute();
   if (session.status === 'loading') return <p>Cargando…</p>;
   if (session.status !== 'person' || session.role !== 'facilitator') {
-    return <p>Esta página es solo para quienes facilitan.</p>;
+    const visitor = session.status === 'visitor';
+    return (
+      <section>
+        <h1>{title}</h1>
+        <p>{visitor ? 'Esta página es solo para quienes facilitan. Entra con tu cuenta para verla.' : 'Esta página es solo para quienes facilitan.'}</p>
+        {visitor ? <SignInLink /> : null}
+      </section>
+    );
   }
   return (
     <section className="facilitation">

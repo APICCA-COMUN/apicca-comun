@@ -1,6 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { SessionProvider } from '../app/session';
 import type { AccountRow } from '../data/facilitation';
 import { AsFacilitator, fakeClient, fakeSource } from '../testing/facilitationDoubles';
 import { FacilitationAccounts } from './FacilitationAccounts';
@@ -96,5 +97,34 @@ describe('FacilitationAccounts · bloques (002)', () => {
     const item = itemOf('ana');
     expect(lot?.contains(item)).toBe(true);
     expect(item.classList.contains('block')).toBe(true);
+  });
+});
+
+describe('FacilitationAccounts sin permiso · RF-2 (024)', () => {
+  it('RF-2 (024) · 2.1: sin sesión muestra un solo h1 «Cuentas» y ofrece «Entrar»; no pide nada al servidor', () => {
+    const doubles = fakeSource();
+    const { client, calls } = fakeClient({});
+    render(
+      <SessionProvider initial={{ status: 'visitor' }}>
+        <FacilitationAccounts source={doubles.source} client={client} />
+      </SessionProvider>,
+    );
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 1, name: 'Cuentas' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Entrar' })).toBeTruthy();
+    expect(calls).toEqual([]);
+  });
+
+  it('RF-2 (024) · 2.1: con una cuenta sin el rol muestra un solo h1 «Cuentas» y el aviso', () => {
+    const doubles = fakeSource();
+    const { client } = fakeClient({});
+    render(
+      <SessionProvider initial={{ status: 'person', uid: 'u1', role: 'member', username: 'ana' }}>
+        <FacilitationAccounts source={doubles.source} client={client} />
+      </SessionProvider>,
+    );
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 1, name: 'Cuentas' })).toBeTruthy();
+    expect(screen.getByText('Esta página es solo para quienes facilitan.')).toBeTruthy();
   });
 });

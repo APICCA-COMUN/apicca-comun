@@ -1,12 +1,17 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createDrafts, DraftsContext } from '../app/drafts';
 import { SessionProvider, type SessionState } from '../app/session';
 import { ApiClientError } from '../data/api';
 import type { ApiceDoc, ApiceSource } from '../data/apices';
 import { fakeClient } from '../testing/facilitationDoubles';
 import { ApiceEdit } from './ApiceEdit';
+
+afterEach(() => {
+  window.history.replaceState(null, '', '/');
+  window.sessionStorage.clear();
+});
 
 const person: SessionState = { status: 'person', uid: 'u-beto', role: 'member', username: 'beto' };
 
@@ -102,6 +107,15 @@ describe('ApiceEdit', () => {
     setup(apice(), {}, { status: 'visitor' });
     expect(screen.queryByLabelText('Nombre')).toBeNull();
     expect(screen.getByRole('link', { name: 'Entrar' })).toBeTruthy();
+  });
+
+  it('RF-9 (024) · 9.2: «Entrar» guarda la ruta de Editar ápice al hacer clic, y no antes', async () => {
+    window.history.replaceState(null, '', '/apices/a1/editar');
+    setup(apice(), {}, { status: 'visitor' });
+    expect(window.sessionStorage.getItem('apicca:returnTo')).toBeNull();
+    await userEvent.click(screen.getByRole('link', { name: 'Entrar' }));
+    expect(window.location.pathname).toBe('/entrar');
+    expect(window.sessionStorage.getItem('apicca:returnTo')).toBe('/apices/a1/editar');
   });
 
   it('RNF-10 (001): con la red caída el texto sigue en el formulario y se puede reintentar', async () => {

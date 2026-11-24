@@ -32,6 +32,8 @@ const SCREENS: { name: string; path: string; as?: Account; ready?: string | stri
   { name: 'apice-editar', path: `/apices/${APICE_IDS.withImage}/editar`, as: AUTHOR },
   { name: 'entrar', path: '/entrar' },
   { name: 'invitaciones', path: '/facilitacion/invitaciones', as: FACILITATOR },
+  // RF-2 (024) · 2.1, RF-9 (024) · 9.1: Facilitación sin sesión, con su h1 y «Entrar» (la referencia la genera el cierre, T-21).
+  { name: 'invitaciones-sin-permiso', path: '/facilitacion/invitaciones', ready: 'Entra con tu cuenta para verla.' },
   { name: 'no-existe', path: '/ruta-que-no-existe' },
   // Lo mío y la lista del mapa (RF-15 (021), RF-10 (021)); la documentación, de la 003 (RNF-2 (003), T-7.5 (003)).
   { name: 'lo-mio', path: '/?mio=1', as: AUTHOR },
@@ -176,7 +178,7 @@ afterAll(async () => {
 
 describe.each(THEMES)('páginas en el tema %s', (theme) => {
   describe.each(WIDTHS)('a %i px', (width) => {
-    it.each(SCREENS)('RNF-5 (002), RNF-2 (003), RF-1 (003) · 1.1, 1.2, RF-2 (003) · 2.2, 2.3, RF-3 (003) · 3.1, 3.2, RF-7 (003) · 7.8, RF-13 (003) · 13.1: la página $name coincide con su referencia', async ({ name, path, as, ready }) => {
+    it.each(SCREENS)('RNF-5 (002), RNF-2 (003), RF-1 (003) · 1.1, 1.2, RF-2 (003) · 2.2, 2.3, RF-3 (003) · 3.1, 3.2, RF-7 (003) · 7.8, RF-13 (003) · 13.1, RF-2 (024) · 2.1: la página $name coincide con su referencia', async ({ name, path, as, ready }) => {
       await chooseTheme(theme);
       await page.viewport(width, 800);
       await useAccount(as);

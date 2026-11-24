@@ -1,6 +1,7 @@
-// RF-4 (012), RF-5 (012), RF-3 (012), RF-7 (012), RNF-3 (012) · Campana de avisos de Mi tablero: botón de ícono con el contador, y un panel con los
+// RF-6 (024), RF-4 (012), RF-5 (012), RF-3 (012), RF-7 (012), RNF-3 (012) · Campana de avisos de Mi tablero: botón de ícono con el contador, y un panel con los
 // avisos y «Marcar como leídos». Solo la ven las personas con cuenta activa (RF-4 (012)); los datos entran por `source`.
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { formatLongDateMs } from '../../shared/domain/dates';
 import { bellLabel, countLabel, noticeText, unreadCount } from '../../shared/domain/notices';
 import { Link } from '../app/router';
 import { useSession } from '../app/session';
@@ -9,6 +10,16 @@ import { firestoreNoticesSource, type NoticesData, type NoticesSource } from '..
 import './NoticeBell.css';
 
 const EMPTY: NoticesData = { notices: [], seenAt: null };
+
+/** Fecha de un aviso en forma larga, con su ISO en `dateTime` (RF-6 (024)). Sin fecha válida, no muestra nada. */
+function NoticeDate({ at }: { at: number }) {
+  if (Number.isNaN(new Date(at).getTime())) return null;
+  return (
+    <time className="notice-panel__date" dateTime={new Date(at).toISOString()}>
+      {formatLongDateMs(at)}
+    </time>
+  );
+}
 
 function BellGlyph() {
   return (
@@ -93,6 +104,7 @@ export function NoticeBell({ source = firestoreNoticesSource, client = api }: { 
               {data.notices.map((n) => (
                 <li key={n.id} className={n.at > (data.seenAt ?? -1) ? 'notice-panel__item notice-panel__item--unread' : 'notice-panel__item'}>
                   <Link href={n.href}>{noticeText(n)}</Link>
+                  <NoticeDate at={n.at} />
                 </li>
               ))}
             </ul>

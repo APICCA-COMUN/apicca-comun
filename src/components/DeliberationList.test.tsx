@@ -177,3 +177,22 @@ describe('DeliberationList', () => {
     expect(textarea.value).toBe('Texto corregido con propuesta');
   });
 });
+
+describe('DeliberationList · fechas (024)', () => {
+  it('RF-5 (024) · 5.1: cada comentario dice su fecha en forma larga y su dateTime sigue en ISO', () => {
+    const comment: DeliberationComment = {
+      id: 'com-f',
+      text: 'Un comentario.',
+      authorUid: 'uid-ana',
+      authorUsername: 'ana',
+      createdAt: Date.parse('2026-10-05T10:00:00Z'),
+      editedAt: null,
+      version: 1,
+      archived: false,
+    };
+    const { container } = render(<DeliberationList comments={[comment]} isOpen={true} />);
+    const time = container.querySelector('time');
+    expect(time?.textContent).toBe('5 de octubre de 2026');
+    expect(time?.getAttribute('dateTime')).toBe('2026-10-05');
+  });
+});

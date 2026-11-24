@@ -203,3 +203,10 @@ describe('ConstitutionDocument', () => {
     expect((screen.getByLabelText('Texto') as HTMLTextAreaElement).value).toContain('extra');
   });
 });
+
+describe('ConstitutionDocument · fechas (024)', () => {
+  it('RF-5 (024): la fecha de actualización y la versión van en forma larga', () => {
+    setup(doc(), visitor);
+    expect(screen.getByText('Actualizado el 3 de septiembre de 2026 · versión 2')).toBeTruthy();
+  });
+});

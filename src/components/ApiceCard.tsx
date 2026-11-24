@@ -1,3 +1,5 @@
+// RF-7 (024) · 7.1, D-T10 (024): la tarjeta de un ápice privado lleva la etiqueta «privado».
+// RF-5 (024), D-T8 (024): la fecha de la última edición va en forma larga.
 // RF-17 (019) · 17.2, D-T11 (019), RF-4 (019) · 4.4: la etapa es la etiqueta de condición dentro del edificio.
 // RF-4 (019) · 4.1 a 4.4, D-T19 (019): el edificio crece por etapa. RF-9 (019) · 9.1, 9.2, D-T21 (019): pin y «Tiene necesidades».
 // RF-21 (001), RF-22 (001), RNF-2 (001), RF-6 (002), RF-4 (002) · 4.2, RF-7 (002) · 7.2, RF-13 (002) · 13.1, 13.3 · Tarjeta de un ápice en la lista: nombre, edificio, ejes, estado,
@@ -6,11 +8,13 @@
 // RF-19 (021) · 19.5, D-T31 (021): mientras se traza un camino, la casilla «Sumar al camino» lo suma o lo quita.
 import { useId } from 'react';
 import { apiceExcerpt } from '../../shared/domain/discovery';
+import { formatLongDate } from '../../shared/domain/dates';
 import type { TimestampLike } from '../../shared/domain/order';
-import { hasNeeds, type ApiceStatus, type Axis } from '../../shared/domain/apice';
+import { hasNeeds, type ApiceStatus, type Axis, type Visibility } from '../../shared/domain/apice';
 import { Link } from '../app/router';
 import { AxisBadge } from './AxisIcon';
 import { Building } from './Building';
+import { ConditionTag } from './ConditionTag';
 import './ApiceCard.css';
 
 export interface ApiceCardData {
@@ -21,11 +25,8 @@ export interface ApiceCardData {
   status: ApiceStatus;
   updatedAt: TimestampLike;
   needs?: string;
-}
-
-/** Fecha de una edición, en hora de Colombia. */
-export function formatDate(at: TimestampLike): string {
-  return new Date(at.seconds * 1000).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'medium' });
+  /** Con `private`, la tarjeta lleva la etiqueta «privado» (RF-7 (024) · 7.1). */
+  visibility?: Visibility;
 }
 
 interface CardProps {
@@ -56,8 +57,9 @@ export function ApiceCard({ apice, chosen = false, onToggle }: CardProps) {
           </li>
         ))}
       </ul>
+      {apice.visibility === 'private' && <ConditionTag condition="visibility">privado</ConditionTag>}
       {hasNeeds(apice.needs) && <p>Tiene necesidades</p>}
-      <p>Editado el {formatDate(apice.updatedAt)}</p>
+      <p>Editado el {formatLongDate(apice.updatedAt)}</p>
       <p>{apiceExcerpt(apice.description)}</p>
     </article>
   );

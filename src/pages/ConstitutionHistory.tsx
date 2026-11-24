@@ -1,7 +1,8 @@
+// RF-5 (024) · 5.1, D-T8 (024): la fecha de cada entrada va en forma larga; el dateTime sigue en ISO.
 // RF-3 (004) · 3.1, 3.4–3.6, D-T19 (004) · Página `/constitucion/historial`: el registro de cambios del conjunto
 // (sección, tipo de cambio, quién y fecha) para cuentas activas. Sin sesión lleva a `/entrar`; sin acción azul.
 import { useEffect, useState } from 'react';
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs, todayInColombia } from '../../shared/domain/dates';
 import { useSignInGuard } from '../app/returnTo';
 import { Link } from '../app/router';
 import { useSession } from '../app/session';
@@ -69,7 +70,7 @@ export function ConstitutionHistory({ source = firestoreSectionsSource }: { sour
                   <td>{KIND_LABEL[entry.kind]}</td>
                   <td>{entry.byUsername}</td>
                   <td>
-                    <time dateTime={todayInColombia(new Date(entry.at))}>{todayInColombia(new Date(entry.at))}</time>
+                    <time dateTime={todayInColombia(new Date(entry.at))}>{formatLongDateMs(entry.at)}</time>
                   </td>
                 </tr>
               ))}

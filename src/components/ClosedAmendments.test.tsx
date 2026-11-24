@@ -86,3 +86,17 @@ describe('ClosedAmendments', () => {
     expectBlocks(container);
   });
 });
+
+describe('ClosedAmendments · fechas y enlaces (024)', () => {
+  it('RF-5 (024) · 5.1: la fecha de cierre va en forma larga y su dateTime sigue en ISO', () => {
+    const { container } = render(<ClosedAmendments amendments={[createClosedAmendment(1)]} />);
+    const time = container.querySelector('time');
+    expect(time?.textContent).toBe('21 de septiembre de 2026');
+    expect(time?.getAttribute('dateTime')).toBe('2026-09-21');
+  });
+
+  it('RF-8 (024) · 8.1: cada propuesta cerrada enlaza su título a su página', () => {
+    render(<ClosedAmendments amendments={[createClosedAmendment(2)]} />);
+    expect(screen.getByRole('link', { name: 'Propuesta de cambio número 2' }).getAttribute('href')).toBe('/constitucion/propuestas/amendment-2');
+  });
+});

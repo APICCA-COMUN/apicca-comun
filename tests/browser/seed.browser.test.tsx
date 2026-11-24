@@ -72,7 +72,6 @@ it('RNF-5 (002): la siembra deja en la lista del mapa el ápice de nombre de 120
   const heading = await waitFor(() => [...host!.querySelectorAll('article h2, article h3')].find((el) => el.textContent === LONG_NAME));
   const card = heading.closest('article');
   expect(card).not.toBeNull();
-  // 2026-10-08T12:00:00Z en America/Bogota, con `dateStyle: 'medium'` en es-CO.
-  const date = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeZone: 'America/Bogota' }).format(new Date('2026-10-08T12:00:00Z'));
-  expect(card!.textContent).toContain(date);
+  // RF-5 (024) · 5.1: 2026-10-08T12:00:00Z en America/Bogota se muestra como fecha larga, con día, mes y año.
+  expect(card!.textContent).toContain('Editado el 8 de octubre de 2026');
 });

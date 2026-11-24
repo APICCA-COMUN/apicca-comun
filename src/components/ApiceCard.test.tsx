@@ -114,3 +114,26 @@ describe('ApiceCard · identidad (002)', () => {
     expect(screen.queryByText('Tiene necesidades')).toBeNull();
   });
 });
+
+describe('ApiceCard · fechas (024)', () => {
+  it('RF-5 (024): la última edición se lee en forma larga', () => {
+    render(<ApiceCard apice={base} />);
+    expect(screen.getByText('Editado el 3 de septiembre de 2026')).toBeTruthy();
+  });
+});
+
+describe('ApiceCard · privado (024)', () => {
+  it('RF-7 (024) · 7.1: un ápice privado muestra la etiqueta de condición «privado»', () => {
+    render(<ApiceCard apice={{ ...base, visibility: 'private' }} />);
+    const tag = screen.getByRole('article').querySelector('[data-condition="visibility"]');
+    expect(tag?.textContent).toBe('privado');
+  });
+
+  it('RF-7 (024): un ápice público, o sin el campo, no muestra la etiqueta', () => {
+    const { unmount } = render(<ApiceCard apice={{ ...base, visibility: 'public' }} />);
+    expect(screen.getByRole('article').querySelector('[data-condition="visibility"]')).toBeNull();
+    unmount();
+    render(<ApiceCard apice={base} />);
+    expect(screen.getByRole('article').querySelector('[data-condition="visibility"]')).toBeNull();
+  });
+});

@@ -1,6 +1,8 @@
 // T-18 (021): el lienzo del mapa propio (RF-4 (021), RF-6 (021) · 6.3, RF-7 (021), RF-8 (021), RF-9 (021), D-T17 (021)).
 // jsdom no mide: el lienzo usa su ventana de respaldo, de 960 × 560 px.
-import { fireEvent, render, screen, within } from '@testing-library/react';
+// T-13 (024) · RF-3 (024), D-T3 (024): el recorrido mueve el mapa (prop `focus`).
+// T-14 (024) · RF-4 (024), D-T5 (024): abrir un camino encuadra sus ápices.
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MAP_LIMIT } from '../../shared/domain/discovery';
 import type { Location } from '../../shared/domain/location';
@@ -295,5 +297,176 @@ describe('GameMap · caminos', () => {
     const before = world().style.transform;
     rerender(<GameMap items={items} selectedId="a2" onSelect={() => {}} />);
     expect(world().style.transform).toBe(before);
+  });
+});
+
+describe('GameMap · el recorrido lo mueve (RF-3 (024))', () => {
+  const items = [...inZone(2, CENTRO), listed(3, { location: MEDELLIN })];
+  const withFocus = (focus: { token: number; ids: readonly string[] } | null) => (
+    <GameMap items={items} selectedId={null} onSelect={() => {}} focus={focus} />
+  );
+  /** El edificio cae dentro de la ventana de respaldo (960 × 560): la traslación del mundo lo deja a la vista. */
+  const inView = (name: string): boolean => {
+    const [, tx, ty] = /translate\((-?\d+)px, (-?\d+)px\)/.exec(world().style.transform)!.map(Number) as [number, number, number];
+    const button = named(name);
+    const x = parseFloat(button.style.left) + tx;
+    const y = parseFloat(button.style.top) + ty;
+    return x >= 0 && y >= 0 && x + 92 <= 960 && y + 108 <= 560; // el edificio mide 92 × 108
+  };
+
+  it('RF-3 (024) · 3.1: un «focus» nuevo acerca al nivel cercano con el ápice a la vista', () => {
+    const { rerender } = render(withFocus(null));
+    expect(level()).toBe('2');
+    rerender(withFocus({ token: 1, ids: ['a1'] }));
+    expect(level()).toBe('0');
+    expect(inView('Ápice 1, Idea')).toBe(true);
+  });
+
+  it('RF-3 (024) · 3.2: con los ápices de un camino cercano, los deja a la vista a la vez', () => {
+    const { rerender } = render(withFocus(null));
+    rerender(withFocus({ token: 1, ids: ['a1', 'a2'] }));
+    expect(level()).toBe('0');
+    expect(inView('Ápice 1, Idea')).toBe(true);
+    expect(inView('Ápice 2, Idea')).toBe(true);
+  });
+
+  it('RF-3 (024): el mismo token no repite el movimiento: si la persona movió el mapa, se queda donde lo dejó', () => {
+    const { rerender } = render(withFocus({ token: 1, ids: ['a1'] }));
+    expect(level()).toBe('0');
+    fireEvent.click(named('Alejar'));
+    expect(level()).toBe('1');
+    rerender(withFocus({ token: 1, ids: ['a1'] }));
+    expect(level()).toBe('1');
+    rerender(withFocus({ token: 2, ids: ['a1'] }));
+    expect(level()).toBe('0');
+  });
+
+  it('RF-3 (024): «Ver todo» deshace el movimiento y vuelve al encuadre inicial', () => {
+    const { rerender } = render(withFocus(null));
+    rerender(withFocus({ token: 1, ids: ['a1'] }));
+    expect(level()).toBe('0');
+    fireEvent.click(named('Ver todo'));
+    expect(level()).toBe('2');
+  });
+
+  it('RF-3 (024): sin «focus» (o con ids que no están) el mapa no se mueve', () => {
+    const { rerender } = render(withFocus(null));
+    const before = world().style.transform;
+    rerender(withFocus({ token: 1, ids: [] }));
+    expect(world().style.transform).toBe(before);
+    expect(level()).toBe('2');
+  });
+});
+
+describe('GameMap · el recorrido reserva el área de la tarjeta (D-12 (024))', () => {
+  const items = [...inZone(2, CENTRO), listed(3, { location: MEDELLIN })];
+  const withFocus = (focus: { token: number; ids: readonly string[]; reserve?: () => number } | null) => (
+    <GameMap items={items} selectedId={null} onSelect={() => {}} focus={focus} />
+  );
+  const offsetY = (): number => Number(/translate\((-?\d+)px, (-?\d+)px\)/.exec(world().style.transform)![2]);
+
+  it('RF-3 (024) · D-12 (024): con `reserve` el ápice queda más arriba, por la mitad de lo reservado', () => {
+    const plain = render(withFocus({ token: 1, ids: ['a1'] }));
+    const free = offsetY();
+    plain.unmount();
+    render(withFocus({ token: 1, ids: ['a1'], reserve: () => 200 }));
+    expect(offsetY()).toBe(free - 100);
+  });
+
+  it('RF-3 (024) · D-12 (024): sin reservar (la tarjeta se quitó) el siguiente movimiento vuelve al encuadre de siempre', () => {
+    const plain = render(withFocus({ token: 1, ids: ['a1'] }));
+    const free = offsetY();
+    plain.unmount();
+    const { rerender } = render(withFocus({ token: 1, ids: ['a1'], reserve: () => 200 }));
+    expect(offsetY()).toBe(free - 100);
+    rerender(withFocus({ token: 2, ids: ['a1'], reserve: () => 0 }));
+    expect(offsetY()).toBe(free);
+    rerender(withFocus({ token: 3, ids: ['a1'] }));
+    expect(offsetY()).toBe(free);
+  });
+
+  it('RF-3 (024) · D-12 (024): la reserva se mide al mover, no antes, y un mismo token no la repite', () => {
+    let reserved = 0;
+    const reserve = vi.fn(() => reserved);
+    const { rerender } = render(withFocus(null));
+    expect(reserve).not.toHaveBeenCalled();
+    reserved = 120;
+    rerender(withFocus({ token: 1, ids: ['a1'], reserve }));
+    expect(reserve).toHaveBeenCalledTimes(1);
+    rerender(withFocus({ token: 1, ids: ['a1'], reserve }));
+    expect(reserve).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('GameMap · abrir un camino lo encuadra (RF-4 (024))', () => {
+  const items = [...inZone(2, CENTRO), listed(3, { location: CHAPINERO }), listed(4, { location: MEDELLIN })];
+  const road = (id: string, apiceIds: string[]): MapPath => ({ id, title: `Camino ${id}`, closed: false, apiceIds });
+  const paths = [road('cerca', ['a1', 'a2']), road('lejos', ['a1', 'a3']), road('solo', ['a1', 'desconocido']), road('nada', ['x', 'y'])];
+  const open = (selectedPathId: string | null, selectedId: string | null = null) => (
+    <GameMap items={items} paths={paths} selectedPathId={selectedPathId} selectedId={selectedId} onSelect={() => {}} />
+  );
+  const line = (id: string) => screen.queryByRole('button', { name: `Camino: Camino ${id}` });
+
+  it('RF-4 (024) · 4.1: al elegir un camino cercano, el mapa pasa al nivel cercano con sus ápices a la vez a la vista', () => {
+    const { rerender } = render(open(null));
+    expect(level()).toBe('2');
+    rerender(open('cerca'));
+    expect(level()).toBe('0');
+    expect(named('Ápice 1, Idea')).toBeTruthy();
+    expect(named('Ápice 2, Idea')).toBeTruthy();
+    expect(line('cerca')).toBeTruthy();
+  });
+
+  it('RF-4 (024): con ápices en zonas lejanas, el nivel es el más cercano en que caben y el camino se dibuja', () => {
+    const { rerender } = render(open(null));
+    rerender(open('lejos'));
+    expect(Number(level())).toBeGreaterThan(0);
+    expect(line('lejos')).toBeTruthy();
+  });
+
+  it('RF-4 (024): con un solo ápice a la vista, encuadra ese', () => {
+    const { rerender } = render(open(null));
+    rerender(open('solo'));
+    expect(level()).toBe('0');
+    expect(named('Ápice 1, Idea')).toBeTruthy();
+  });
+
+  it('RF-4 (024), RF-18 (021) · 18.7: con ninguno a la vista, el mapa queda en el encuadre inicial', () => {
+    const { rerender } = render(open(null));
+    const before = world().style.transform;
+    rerender(open('nada'));
+    expect(level()).toBe('2');
+    expect(world().style.transform).toBe(before);
+  });
+
+  it('RF-4 (024): no se repite mientras el camino siga elegido, y un camino nuevo sí encuadra', () => {
+    const { rerender } = render(open('cerca'));
+    expect(level()).toBe('0');
+    fireEvent.click(named('Alejar'));
+    expect(level()).toBe('1');
+    rerender(open('cerca'));
+    expect(level()).toBe('1');
+    rerender(open(null));
+    rerender(open('cerca'));
+    expect(level()).toBe('0');
+  });
+
+  it('RF-4 (024), RF-20 (021) · 20.4: el ápice elegido desde el panel manda sobre el camino', () => {
+    const { rerender } = render(open(null));
+    rerender(open('lejos', 'a4'));
+    expect(named('Ápice 4, Idea').getAttribute('aria-pressed')).toBe('true');
+    expect(level()).toBe('0');
+    const withRoad = world().style.transform;
+    cleanup();
+    const { rerender: again } = render(open(null));
+    again(open(null, 'a4'));
+    expect(world().style.transform).toBe(withRoad); // el mismo encuadre que sin camino
+  });
+
+  it('RF-4 (024) · 4.1: «Ver todo» deshace el encuadre del camino', () => {
+    const { rerender } = render(open(null));
+    rerender(open('cerca'));
+    fireEvent.click(named('Ver todo'));
+    expect(level()).toBe('2');
   });
 });

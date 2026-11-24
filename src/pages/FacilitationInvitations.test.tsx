@@ -198,3 +198,32 @@ describe('FacilitationInvitations · bloques (002)', () => {
     expect(Array.from(lots).some((lot) => lot.contains(item))).toBe(true);
   });
 });
+
+describe('FacilitationInvitations sin permiso · RF-2 (024)', () => {
+  it('RF-2 (024) · 2.1: sin sesión muestra un solo h1 «Invitaciones» y ofrece «Entrar»; no pide nada al servidor', () => {
+    const doubles = fakeSource();
+    const { client, calls } = fakeClient({});
+    render(
+      <SessionProvider initial={{ status: 'visitor' }}>
+        <FacilitationInvitations source={doubles.source} client={client} now={NOW} />
+      </SessionProvider>,
+    );
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 1, name: 'Invitaciones' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Entrar' })).toBeTruthy();
+    expect(calls).toEqual([]);
+  });
+
+  it('RF-2 (024) · 2.1: con una cuenta sin el rol muestra un solo h1 «Invitaciones» y el aviso', () => {
+    const doubles = fakeSource();
+    const { client } = fakeClient({});
+    render(
+      <SessionProvider initial={{ status: 'person', uid: 'u1', role: 'member', username: 'ana' }}>
+        <FacilitationInvitations source={doubles.source} client={client} now={NOW} />
+      </SessionProvider>,
+    );
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 1, name: 'Invitaciones' })).toBeTruthy();
+    expect(screen.getByText('Esta página es solo para quienes facilitan.')).toBeTruthy();
+  });
+});

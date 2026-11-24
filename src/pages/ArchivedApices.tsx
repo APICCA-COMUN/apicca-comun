@@ -1,3 +1,4 @@
+// RF-9 (024) · 9.2, D-T12 (024): «Entrar» vuelve a esta página.
 // RF-21 (001), RF-6 (002) · 6.5, RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1,
 // RF-18 (019) · 18.1, D-T12 (019) · Vista «Archivados»: la autora ve los suyos y la facilitadora todos. Visitantes y cuentas
 // suspendidas no la ven; las reglas de Firestore lo vuelven a exigir (RNF-4 (001)). El título de la página es h1.
@@ -7,6 +8,7 @@ import { Link } from '../app/router';
 import { useSession, type SessionState } from '../app/session';
 import { useApiceListing } from '../app/useApiceListing';
 import { usePageTitle } from '../app/usePageTitle';
+import { SignInLink } from '../components/SignInLink';
 import { ApiceList } from '../components/ApiceList';
 import { firestoreListSource, type ListSource } from '../data/apices';
 
@@ -19,7 +21,7 @@ export function ArchivedApices({ source = firestoreListSource }: { source?: List
       <section>
         <h1>Archivados</h1>
         <p>Los ápices archivados son solo para cuentas con sesión activa.</p>
-        <Link href="/entrar">Entrar</Link>
+        <SignInLink />
       </section>
     );
   }

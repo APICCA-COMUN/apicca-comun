@@ -1,4 +1,6 @@
+// RF-9 (024) · 9.2: la ruta de cada una de las cuatro páginas que vuelven al origen es interna y se guarda.
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { matchRoute } from './router';
 import { isInternalPath, saveReturnTo, takeReturnTo } from './returnTo';
 
 afterEach(() => {
@@ -35,5 +37,19 @@ describe('returnTo · ruta de origen (D-T19 (004))', () => {
     });
     expect(() => saveReturnTo('/constitucion/historial')).not.toThrow();
     expect(takeReturnTo()).toBeNull();
+  });
+
+  it.each([
+    ['/apices/a1/editar', 'apiceEdit'],
+    ['/archivados', 'archived'],
+    ['/apices/a1/historial', 'apiceHistory'],
+    ['/facilitacion/cuentas', 'facilitationAccounts'],
+    ['/facilitacion/invitaciones', 'facilitationInvitations'],
+    ['/facilitacion/solicitudes', 'facilitationEnrollments'],
+  ] as const)('RF-9 (024) · 9.2: la ruta %s es de la página %s, interna, y se guarda y se entrega tal cual', (path, page) => {
+    expect(matchRoute(path).page).toBe(page);
+    expect(isInternalPath(path)).toBe(true);
+    saveReturnTo(path);
+    expect(takeReturnTo()).toBe(path);
   });
 });

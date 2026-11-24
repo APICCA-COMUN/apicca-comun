@@ -78,7 +78,7 @@ describe('ConstitutionPage, lectura de Firestore (004)', () => {
     render(withSession(visitor, <ConstitutionPage sectionsSource={source} documentsSource={noDocs} />));
     const headings = await screen.findAllByRole('heading', { level: 2, name: /Primera|Segunda/ });
     expect(headings.map((h) => h.textContent)).toEqual(['Segunda', 'Primera']);
-    expect(screen.getByText(/Última modificación: 2026-10-05/)).toBeTruthy();
+    expect(screen.getByText(/Última modificación: 5 de octubre de 2026/)).toBeTruthy();
   });
 
   it('RF-1 (004) · 1.3: sin ninguna sección vigente la página lo indica', async () => {
@@ -115,7 +115,8 @@ describe('ConstitutionPage, lectura de Firestore (004)', () => {
     const { container } = render(withSession(visitor, <ConstitutionPage sectionsSource={source} documentsSource={noDocs} />));
     await screen.findByRole('heading', { level: 2, name: 'Cuidado mutuo' });
     expect(screen.getByText('Nos cuidamos.')).toBeTruthy();
-    expect(container.textContent).toContain('2026-09-03');
+    expect(container.textContent).toContain('3 de septiembre de 2026');
+    expect(container.querySelector('time')?.getAttribute('dateTime')).toBe('2026-09-03');
     expect(container.textContent).not.toContain('Versión');
     expect(screen.queryByRole('link', { name: 'Historial general' })).toBeNull();
     expect(audiences).toEqual(['visitor']);

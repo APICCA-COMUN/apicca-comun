@@ -1,8 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createDrafts, DraftsContext } from '../app/drafts';
+import type { ListSource } from '../data/apices';
+import { listed } from '../testing/listDoubles';
 import { ContentForm, EMPTY_VALUES } from './ContentForm';
+import type { PointMapProps } from './LocationPicker';
 
 const filled = { ...EMPTY_VALUES, name: 'Huerta', description: 'Cultivamos.', axes: ['alimento' as const] };
 
@@ -68,5 +71,47 @@ describe('ContentForm con ubicación', () => {
     const { drafts } = renderForm();
     fireEvent.change(screen.getByLabelText('Latitud'), { target: { value: '5' } });
     expect(drafts.get('t')).toContain('"lat":"5"');
+  });
+});
+
+// T-18 (024) · RF-12 (024) · 12.1 a 12.3, D-T16 (024): el formulario lee las zonas de los ápices que la persona ve y las pasa al mapa.
+describe('ContentForm con las zonas de los ápices visibles (RF-12 (024))', () => {
+  function ZonesMap({ zones }: PointMapProps) {
+    return <p data-testid="zonas">{zones === undefined ? 'sin zonas' : JSON.stringify(zones)}</p>;
+  }
+  const zoneOf = (lat: number, lng: number) => ({ cell: `c${lat}`, lat, lng });
+  const near = (n: number, lat: number, lng: number, precision: 'approximate' | 'exact' = 'approximate') =>
+    listed(n, { location: { lat: lat + 0.01, lng: lng + 0.01, precision, zone: zoneOf(lat, lng) } });
+
+  it('RF-12 (024) · 12.1: las zonas de la primera tanda llegan al mapa al abrirlo', async () => {
+    const zonesSource: ListSource = { fetchPage: async () => ({ items: [near(1, 4.6, -74.08), near(2, 6.24, -75.58)], cursor: null }) };
+    renderForm({ location: { stored: null, map: ZonesMap, zonesSource } });
+    await userEvent.click(screen.getByRole('button', { name: 'Marcar en el mapa' }));
+    await waitFor(() => expect(screen.getByTestId('zonas').textContent).toBe(JSON.stringify([{ lat: 4.6, lng: -74.08 }, { lat: 6.24, lng: -75.58 }])));
+  });
+
+  it('RF-12 (024) · 12.1, D-10 (024): el punto exacto de un ápice nunca llega al mapa, solo su zona', async () => {
+    const zonesSource: ListSource = { fetchPage: async () => ({ items: [near(1, 4.6, -74.08, 'exact')], cursor: null }) };
+    renderForm({ location: { stored: null, map: ZonesMap, zonesSource } });
+    await userEvent.click(screen.getByRole('button', { name: 'Marcar en el mapa' }));
+    await waitFor(() => expect(screen.getByTestId('zonas').textContent).toBe(JSON.stringify([{ lat: 4.6, lng: -74.08 }])));
+    expect(screen.getByTestId('zonas').textContent).not.toContain('4.61');
+  });
+
+  it('RF-12 (024): sin ápices con zona, el mapa recibe una lista vacía y el formulario se guarda como siempre', async () => {
+    const zonesSource: ListSource = { fetchPage: async () => ({ items: [listed(1)], cursor: null }) };
+    const { onSubmit } = renderForm({ location: { stored: null, map: ZonesMap, zonesSource } });
+    await userEvent.click(screen.getByRole('button', { name: 'Marcar en el mapa' }));
+    await waitFor(() => expect(screen.getByTestId('zonas').textContent).toBe('[]'));
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.anything(), { mode: 'keep' });
+  });
+
+  it('RF-12 (024): si no hay mapa (`map: null`), el formulario no lee ninguna lista', async () => {
+    const fetchPage = vi.fn(async () => ({ items: [], cursor: null }));
+    const zonesSource: ListSource = { fetchPage };
+    renderForm({ location: { stored: null, map: null, zonesSource } });
+    await new Promise((done) => setTimeout(done, 20));
+    expect(fetchPage).not.toHaveBeenCalled();
   });
 });

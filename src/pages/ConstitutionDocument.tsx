@@ -1,3 +1,4 @@
+// RF-5 (024), D-T8 (024): la fecha de actualización va en forma larga.
 // RF-5 (004) · 2, 4, 5, 6, 7; RF-17 (004) · 1, 2; RNF-4 (004) · Documento de la constitución en
 // `/constitucion/documentos/:id`: lectura para cualquiera, versiones solo para cuentas activas y, para quien facilita,
 // edición con `baseVersion`, archivo con confirmación y restauración.
@@ -10,7 +11,7 @@ import { api, ApiClientError, type ApiOps, type DocumentCurrent, type OpClient }
 import { firestoreDocumentsSource, type DocumentDoc, type DocumentsSource, type DocumentVersion } from '../data/constitution/documents';
 import { DocBlocks } from '../components/DocBlocks';
 import { VersionList } from '../components/VersionList';
-import { formatDate } from '../components/ApiceCard';
+import { formatLongDateMs } from '../../shared/domain/dates';
 import './ConstitutionDocument.css';
 
 interface Props {
@@ -116,7 +117,7 @@ export function ConstitutionDocument({ id, source = firestoreDocumentsSource, cl
     <article className="lot constitution-document">
       <header>
         <h1>{document.title}</h1>
-        <p>Actualizado el {formatDate({ seconds: Math.floor(document.updatedAt / 1000), nanoseconds: 0 })} · versión {document.version}</p>
+        <p>Actualizado el {formatLongDateMs(document.updatedAt)} · versión {document.version}</p>
       </header>
       {document.isArchived && (
         <p role="status" className="block">

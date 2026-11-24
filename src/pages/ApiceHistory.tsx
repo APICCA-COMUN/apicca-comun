@@ -1,12 +1,15 @@
+// RF-9 (024) · 9.2, D-T12 (024): «Entrar» vuelve a esta página.
+// RF-5 (024) · 5.2, D-T8 (024): la fecha de cada versión va en forma larga, con su hora.
 // RF-12 (001), RF-6 (002) · 6.1, 6.3; RF-4 (003) · 4.6; RF-12 (003) · 12.1, 12.5; RF-3 (003) · 3.3,
 // RF-18 (019) · 18.1, D-T12 (019) · Historial de un ápice: versiones de la más reciente a la más antigua con quién y cuándo, y
 // restaurar una versión anterior como versión nueva (con manejo de conflicto y de ápice archivado; «Restaurar» es secundaria).
 // El título de la página es h1 en todos los estados.
 import { useEffect, useMemo, useState } from 'react';
 import { canEdit, canSeeHistory, type ApiceViewer } from '../../shared/domain/access';
-import { Link } from '../app/router';
+import { formatLongDateTime } from '../../shared/domain/dates';
 import { useSession, type PersonSession } from '../app/session';
 import { usePageTitle } from '../app/usePageTitle';
+import { SignInLink } from '../components/SignInLink';
 import { api, ApiClientError, type ApiOps, type OpClient } from '../data/api';
 import { firestoreHistorySource, type ApiceHead, type HistorySource, type VersionRow } from '../data/versions';
 
@@ -18,9 +21,9 @@ interface Props {
 
 const KIND_LABELS = { create: 'Creación', edit: 'Edición' } as const;
 
-/** Fecha y hora de un guardado, en hora de Colombia. */
+/** Fecha larga y hora de un guardado, en hora de Colombia (RF-5 (024) · 5.2). */
 function formatWhen(at: VersionRow['savedAt']): string {
-  return new Date(at.seconds * 1000).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'medium', timeStyle: 'short' });
+  return formatLongDateTime(at);
 }
 
 export function ApiceHistory({ id, source = firestoreHistorySource, client = api }: Props) {
@@ -32,7 +35,7 @@ export function ApiceHistory({ id, source = firestoreHistorySource, client = api
       <section>
         <h1>Historial</h1>
         <p>El historial es solo para cuentas con sesión activa.</p>
-        <Link href="/entrar">Entrar</Link>
+        <SignInLink />
       </section>
     );
   }

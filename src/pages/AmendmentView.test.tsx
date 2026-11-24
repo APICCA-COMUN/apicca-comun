@@ -373,3 +373,13 @@ describe('AmendmentView', () => {
     );
   });
 });
+
+describe('AmendmentView · fechas (024)', () => {
+  it('RF-5 (024) · 5.1: la propuesta dice cuándo se abrió, cuándo cierra y cada revisión en forma larga', async () => {
+    const { container } = setup(ana, { amendment: base() });
+    await screen.findByRole('heading', { level: 1 });
+    expect(container.textContent).toContain('Abierta el 1 de octubre de 2026');
+    expect(container.textContent).toContain('Cierra el 16 de octubre de 2026');
+    expect(container.textContent).toContain('Revisión 1 · 1 de octubre de 2026');
+  });
+});

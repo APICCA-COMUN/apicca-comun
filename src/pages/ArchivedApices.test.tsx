@@ -1,9 +1,15 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it } from 'vitest';
 import { SessionProvider, type SessionState } from '../app/session';
 import type { ListSource } from '../data/apices';
 import { emptyListSource, fakeListSource } from '../testing/listDoubles';
 import { ArchivedApices } from './ArchivedApices';
+
+afterEach(() => {
+  window.history.replaceState(null, '', '/');
+  window.sessionStorage.clear();
+});
 
 function setup(session: SessionState, source: ListSource) {
   render(
@@ -39,6 +45,15 @@ describe('ArchivedApices', () => {
     expect(screen.queryByRole('article')).toBeNull();
     expect(screen.getByRole('link', { name: 'Entrar' })).toBeTruthy();
     expect(fetchPage).not.toHaveBeenCalled();
+  });
+
+  it('RF-9 (024) · 9.2: «Entrar» guarda la ruta de Archivados al hacer clic, y no antes', async () => {
+    window.history.replaceState(null, '', '/archivados');
+    setup({ status: 'visitor' }, fakeListSource(0).source);
+    expect(window.sessionStorage.getItem('apicca:returnTo')).toBeNull();
+    await userEvent.click(screen.getByRole('link', { name: 'Entrar' }));
+    expect(window.location.pathname).toBe('/entrar');
+    expect(window.sessionStorage.getItem('apicca:returnTo')).toBe('/archivados');
   });
 
   it('RF-21 (001): una cuenta suspendida tampoco la ve', () => {

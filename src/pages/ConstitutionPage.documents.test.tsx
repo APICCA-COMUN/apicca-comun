@@ -65,7 +65,8 @@ describe('ConstitutionPage, documentos (004)', () => {
     const link = await screen.findByRole('link', { name: 'Documento 1' });
     expect(link.getAttribute('href')).toBe('/constitucion/documentos/d1');
     const row = link.closest('li') as HTMLElement;
-    expect(row.textContent).toContain('2026-09-03');
+    expect(row.textContent).toContain('3 de septiembre de 2026');
+    expect(row.querySelector('time')?.getAttribute('dateTime')).toBe('2026-09-03');
     expect(row.textContent).toContain('Extracto de Documento 1');
   });
 

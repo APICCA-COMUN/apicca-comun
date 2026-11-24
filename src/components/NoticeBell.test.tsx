@@ -61,6 +61,23 @@ describe('NoticeBell', () => {
     setup({ notices: [notice('a', 300)], seenAt: null }, { status: 'visitor' } as SessionState);
     expect(screen.queryByRole('button', { name: /^Avisos:/ })).toBeNull();
   });
+  it('RF-6 (024) · 6.1: cada aviso muestra su fecha larga junto a su texto, con la ISO en dateTime', async () => {
+    const at = Date.parse('2026-11-03T15:00:00Z');
+    setup({ notices: [notice('a', at)], seenAt: null });
+    await userEvent.click(await screen.findByRole('button', { name: /^Avisos:/ }));
+    const time = document.querySelector('.notice-panel time');
+    expect(time?.textContent).toBe('3 de noviembre de 2026');
+    expect(time?.getAttribute('dateTime')).toBe(new Date(at).toISOString());
+    expect(screen.getByRole('link', { name: '@beto editó «Huerta»' }).getAttribute('href')).toBe('/apices/a1');
+  });
+
+  it('RF-6 (024): con una fecha que no es válida, el aviso sigue con su texto y sin fecha', async () => {
+    setup({ notices: [notice('a', Number.NaN)], seenAt: null });
+    await userEvent.click(await screen.findByRole('button', { name: /^Avisos:/ }));
+    expect(document.querySelector('.notice-panel time')).toBeNull();
+    expect(screen.getByRole('link', { name: '@beto editó «Huerta»' })).toBeTruthy();
+  });
+
   it('RF-7 (012): Escape cierra el panel y devuelve el foco a la campana', async () => {
     setup({ notices: [notice('a', 300)], seenAt: null });
     const bell = await screen.findByRole('button', { name: /^Avisos:/ });

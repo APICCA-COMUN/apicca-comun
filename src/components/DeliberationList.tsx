@@ -1,6 +1,7 @@
+// RF-5 (024) · 5.1, D-T8 (024): la fecha de cada comentario va en forma larga; el dateTime sigue en ISO.
 // RF-9 (004) · 9.1–9.3; RF-16 (004) · 16.3; RF-17 (004) · 17.1: lista de comentarios de una deliberación (D-T13 (004)).
 import { useState } from 'react';
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs, todayInColombia } from '../../shared/domain/dates';
 import { parseMarkdown } from '../../shared/domain/docs/markdown';
 import { ApiClientError } from '../data/api';
 import { DocBlocks } from './DocBlocks';
@@ -119,7 +120,7 @@ export function DeliberationList({
                   <strong>{comment.authorUsername}</strong>
                   {' · '}
                   <time dateTime={todayInColombia(new Date(comment.createdAt))}>
-                    {todayInColombia(new Date(comment.createdAt))}
+                    {formatLongDateMs(comment.createdAt)}
                   </time>
                   {comment.version > 1 && <span> (editado)</span>}
                 </p>

@@ -2,7 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { INITIAL_AUTHOR, type SectionVersion } from '../../shared/domain/constitution/types';
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs } from '../../shared/domain/dates';
 import { expectBlocks } from '../testing/expectBlocks';
 import { VersionList } from './VersionList';
 
@@ -43,9 +43,11 @@ describe('VersionList', () => {
   it('RF-3 (004) · 3.2: muestra la fecha, quién propuso, acuerdos señalando autoría y objeciones resueltas y retiradas', () => {
     const { container } = render(<VersionList versions={[v2, v1]} />);
 
-    // Fechas formateadas con todayInColombia
-    expect(screen.getByText(new RegExp(todayInColombia(new Date(at2))))).toBeDefined();
-    expect(screen.getByText(new RegExp(todayInColombia(new Date(at1))))).toBeDefined();
+    // Fechas en forma larga (RF-5 (024) · 5.1)
+    expect(screen.getByText(new RegExp(formatLongDateMs(at2)))).toBeDefined();
+    expect(screen.getByText(new RegExp(formatLongDateMs(at1)))).toBeDefined();
+    // RF-5 (024) · 5.1: cada <time> conserva su fecha ISO
+    expect([...container.querySelectorAll('time')].map((t) => t.getAttribute('dateTime'))).toEqual(['2026-10-05', '2026-10-01']);
 
     // Quién propuso
     expect(screen.getByText(/ana_propone/)).toBeDefined();
@@ -86,7 +88,7 @@ describe('VersionList', () => {
     ];
 
     const { container } = render(<VersionList versions={docVersions} />);
-    expect(screen.getByText(new RegExp(todayInColombia(new Date(at1))))).toBeDefined();
+    expect(screen.getByText(new RegExp(formatLongDateMs(at1)))).toBeDefined();
     expect(screen.getByText(/fabi_facilitador/)).toBeDefined();
     expect(screen.getByText(/versión 1/i)).toBeDefined();
     expectBlocks(container);

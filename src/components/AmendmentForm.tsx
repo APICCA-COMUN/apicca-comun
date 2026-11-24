@@ -1,3 +1,4 @@
+// RF-1 (024) · 1.1, D-T1 (024): el formulario va en una columna, con cada etiqueta encima de su campo.
 // RF-6 (004) · 6.1–6.2, 6.5; RF-8 (004) · 8.1; RF-16 (004) · 16.2, 16.4; RF-17 (004) · 17.1–17.2:
 // formulario de abrir y de revisar una propuesta de cambio. Presentacional: recibe la función de envío.
 // RF-14 (019), D-T8 (019): solo vive dentro de un `Dialog`, que ya es el bloque; el formulario no lleva `.block` (RF-3 (003) · 3.3).
@@ -12,6 +13,7 @@ import {
 import { messageFor } from "../../shared/domain/messages";
 import { Link } from "../app/router";
 import { ApiClientError, type AmendmentCurrent } from "../data/api";
+import "./AmendmentForm.css";
 
 /** Lo que envía el formulario; coincide con la entrada de `openAmendment` o `reviseAmendment`. */
 export type AmendmentFormValues =

@@ -1,4 +1,4 @@
-/* RF-4 (012), RNF-3 (012): campana de 44 px (`icon-button`) con el contador a su lado, como el lienzo de Mi tablero. */
+/* RF-6 (024), RF-4 (012), RNF-3 (012): campana de 44 px (`icon-button`) con el contador a su lado, como el lienzo de Mi tablero. */
 .notice-bell {
   display: inline-flex;
   align-items: center;
@@ -39,6 +39,13 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* RF-6 (024): la fecha va en su propia línea, con el tamaño de metadatos de la escala. */
+.notice-panel__date {
+  display: block;
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line);
 }
 
 .notice-panel__item--unread {

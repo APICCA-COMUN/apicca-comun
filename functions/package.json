@@ -14,7 +14,8 @@
     "bootstrap": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/bootstrap-facilitator.js",
     "migrate-database": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/migrate-database.js",
     "apply-auth-templates": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/apply-auth-templates.js",
-    "recalculate-zones": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/recalculate-zones.js"
+    "recalculate-zones": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/recalculate-zones.js",
+    "seed-demo": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/seed-demo.js"
   },
   "dependencies": {
     "firebase-admin": "14.5.0",

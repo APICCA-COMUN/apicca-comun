@@ -3,6 +3,8 @@
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+# Sal local del emulador de Functions (spec 022)
+.secret.local
 
 # Dependencies
 node_modules/

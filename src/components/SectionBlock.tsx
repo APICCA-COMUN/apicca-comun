@@ -1,8 +1,9 @@
+// RF-5 (024) · 5.1, D-T8 (024): las fechas de la sección y de la propuesta abierta van en forma larga.
 // RF-2 (004) · 2.1, 2.2; RF-16 (004) · 16.3: bloque de una sección de la constitución con formato y enlaces.
 // RF-11 (005) · 11.2, 11.3, D-T10 (005): con `number`, la tarjeta muestra en grande el número de la sección, en texto.
 // RF-15 (019) · 15.2, D-15 (019), D-T9 (019): el número va en `text`; los colores de eje quedan para los ejes y los ápices.
 import type { Section, SectionMeta } from '../../shared/domain/constitution/types';
-import { todayInColombia } from '../../shared/domain/dates';
+import { formatLongDateMs, todayInColombia } from '../../shared/domain/dates';
 import { parseMarkdown } from '../../shared/domain/docs/markdown';
 import { Link } from '../app/router';
 import { useSession } from '../app/session';
@@ -47,7 +48,7 @@ export function SectionBlock({ section, number, meta, hasActiveAccount }: Sectio
         </div>
         <p className="section-meta">
           <time dateTime={todayInColombia(new Date(section.updatedAt))}>
-            {todayInColombia(new Date(section.updatedAt))}
+            {formatLongDateMs(section.updatedAt)}
           </time>
           {isActive && meta && (
             <>
@@ -70,7 +71,7 @@ export function SectionBlock({ section, number, meta, hasActiveAccount }: Sectio
             <p className="section-open-amendment">
               Propuesta abierta (cierre:{' '}
               <time dateTime={todayInColombia(new Date(meta.openAmendment.closesAt))}>
-                {todayInColombia(new Date(meta.openAmendment.closesAt))}
+                {formatLongDateMs(meta.openAmendment.closesAt)}
               </time>
               )
             </p>

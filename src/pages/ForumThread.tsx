@@ -1,9 +1,11 @@
+// RF-5 (024) · 5.1, D-T8 (024): la fecha de cada mensaje va en forma larga.
 // RF-4 (009), RF-5 (009), RF-6 (009), RF-7 (009), RNF-4 (009) · Hilo abierto (`/foro/:id`): título y eje, mensajes en orden
 // cronológico con inicial, autoría, fecha y texto, y «Tu respuesta» con «Responder» para quien puede. La autora edita y archiva lo
 // suyo; un facilitador archiva cualquier hilo o mensaje y ve lo archivado. Un hilo que no existe o está archivado es «no encontrado»; un fallo de lectura se avisa como error (RF-1 (017)).
 // RF-1 (018), D-T5 (018) · Muestra la apertura y los mensajes más recientes; «Ver mensajes anteriores» suma páginas; al responder se relee la
 // página reciente y se fusiona por `id`; al editar se reemplaza el texto en el estado, sin releer.
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { formatLongDateMs } from '../../shared/domain/dates';
 import { parseMarkdown } from '../../shared/domain/docs/markdown';
 import { validateMessage } from '../../shared/domain/forum';
 import { axisIdentity } from '../../shared/domain/identity';
@@ -21,9 +23,6 @@ interface Props {
   source?: ForumSource;
   client?: OpClient<ApiOps>;
 }
-
-const formatDate = (ms: number): string =>
-  new Date(ms).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'America/Bogota' });
 
 function Formatted({ text }: { text: string }) {
   try {
@@ -171,7 +170,7 @@ export function ForumThread({ source = firestoreForumSource, client = api }: Pro
       <div className="forum-message__body">
         <div className="forum-message__meta">
           <strong>@{message.authorUsername}</strong>
-          <span>{formatDate(message.createdAt)}</span>
+          <span>{formatLongDateMs(message.createdAt)}</span>
           {message.editedAt !== null && <span>editado</span>}
           {message.isArchived && <span>Archivado</span>}
         </div>

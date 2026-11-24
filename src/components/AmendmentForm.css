@@ -1,0 +1,13 @@
+/* RF-1 (024) · 1.1, D-T1 (024): el formulario de abrir y el de revisar una propuesta van en una columna. Cada etiqueta, cada
+   campo y cada nota ocupan su propia fila, con la etiqueta encima de su campo (RF-5.2 (003)). `blocks.css` solo apila la
+   etiqueta que envuelve a su campo; aquí la etiqueta es hermana del campo, así que la columna hace lo mismo sin tocarlo. */
+.amendment-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.amendment-form > label:not(:first-child) {
+  margin-block-start: 0.5rem;
+}

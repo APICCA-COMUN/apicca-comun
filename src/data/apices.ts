@@ -105,6 +105,8 @@ export interface ListedApice {
   needs: string;
   /** Ubicación de pantalla para el mapa del inicio; `null` o ausente: no aparece en el mapa. */
   location?: Location | null;
+  /** Visibilidad, para la etiqueta «privado» de la tarjeta (RF-7 (024) · 7.1); ausente si el dato no es válido. */
+  visibility?: Visibility;
 }
 
 /** Marca opaca de dónde seguir; `null` en una tanda dice que no hay más. */
@@ -142,6 +144,7 @@ export function createListSource(db: Firestore): ListSource {
       return {
         items: docs.map((d) => {
           const data = d.data();
+          const visibility = data['visibility'];
           return {
             id: d.id,
             name: data['name'] as string,
@@ -151,6 +154,7 @@ export function createListSource(db: Firestore): ListSource {
             updatedAt: data['updatedAt'] as TimestampLike,
             needs: typeof data['needs'] === 'string' ? data['needs'] : '',
             location: readLocation(data['location']),
+            ...(visibility === 'private' || visibility === 'public' ? { visibility } : {}),
           };
         }),
         cursor: hasMore ? (docs[docs.length - 1] ?? null) : null,

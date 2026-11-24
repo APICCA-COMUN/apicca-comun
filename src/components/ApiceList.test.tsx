@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { ReactNode } from 'react';
 import { NO_FILTERS, type EmptyState } from '../../shared/domain/discovery';
 import { useApiceListing, type ApiceListingRequest } from '../app/useApiceListing';
-import { emptyListSource, fakeListSource } from '../testing/listDoubles';
+import { emptyListSource, fakeListSource, listed } from '../testing/listDoubles';
 import { ApiceList } from './ApiceList';
 import { expectBlocks } from '../testing/expectBlocks';
 
@@ -101,5 +101,21 @@ describe('ApiceList · D-T17 (019)', () => {
     const source = { fetchPage: () => new Promise<never>(() => undefined) };
     const { container } = render(<Listed audience="visitor" filters={NO_FILTERS} source={source} empty={() => <p>vacío</p>} />);
     expect(container.textContent).toBe('');
+  });
+});
+
+describe('ApiceList · privado (024)', () => {
+  it('RF-7 (024) · 7.1, 7.2: la lista pone la etiqueta «privado» solo en las tarjetas de ápices privados', async () => {
+    const { source } = fakeListSource(3, () => [
+      listed(1, { visibility: 'private' }),
+      listed(2, { visibility: 'public' }),
+      listed(3),
+    ]);
+    render(<Listed audience="visitor" filters={NO_FILTERS} source={source} empty={() => null} />);
+    const cards = await screen.findAllByRole('article');
+    expect(cards.length).toBe(3);
+    expect(cards[0]?.querySelector('[data-condition="visibility"]')?.textContent).toBe('privado');
+    expect(cards[1]?.querySelector('[data-condition="visibility"]')).toBeNull();
+    expect(cards[2]?.querySelector('[data-condition="visibility"]')).toBeNull();
   });
 });

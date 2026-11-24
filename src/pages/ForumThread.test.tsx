@@ -247,3 +247,12 @@ describe('ForumThread', () => {
     expect(within(articles[0]!).getByText('@beto')).toBeTruthy();
   });
 });
+
+describe('ForumThread · fechas (024)', () => {
+  it('RF-5 (024) · 5.1: cada mensaje dice su fecha en forma larga', async () => {
+    setup(VISITOR, sourceOf().source);
+    await screen.findByRole('heading', { level: 1 });
+    const articles = screen.getAllByRole('article');
+    expect(within(articles[0]!).getByText('10 de octubre de 2026')).toBeTruthy();
+  });
+});
