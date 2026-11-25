@@ -178,7 +178,8 @@ describe('editApice con ubicación', () => {
     expect(await exactOf(3)).toEqual(EXACT);
     expect(await edit(ana, 3, { mode: 'precision', precision: 'approximate' })).toEqual({ ok: true, version: 4 });
     expect((await apice())['location']).toEqual({ ...ZONE, precision: 'approximate' });
-    expect((await version(3))['location']).toEqual({ ...EXACT, precision: 'exact', zone: CELL });
+    // Al bajar a aproximada, la versión que la mostraba exacta se redacta a su zona (RF-2 (016) · 2.2).
+    expect((await version(3))['location']).toEqual({ ...ZONE, precision: 'approximate' });
   });
 
   it('RF-9 (001): pedir la precisión que ya tiene no crea versión', async () => {
@@ -220,11 +221,70 @@ describe('editApice con ubicación', () => {
     expect(await exactOf(2)).toEqual(EXACT);
     expect(await edit(beto, 3, { mode: 'remove' })).toEqual({ ok: true, version: 4 });
     for (const n of [1, 2, 3, 4]) expect(await exactOf(n)).toBeUndefined();
-    expect((await version(2))['location']).toBeNull();
-    expect((await version(2))['locationPurged']).toBe(true);
+    // La versión 2 ya se había redactado a su zona al bajar a aproximada; la 1 no tenía ubicación.
+    expect((await version(1))['location']).toBeNull();
+    expect((await version(2))['location']).toEqual({ ...ZONE, precision: 'approximate' });
     expect((await version(3))['location']).toEqual({ ...ZONE, precision: 'approximate' });
     expect((await version(2))['content']).toBeDefined();
     for (const n of [1, 2, 3, 4]) expect(JSON.stringify(await version(n))).not.toContain('4.3567891');
+  });
+
+  it('RF-2 (016) · 2.2: quitar la ubicación con una versión exacta vigente borra su punto y la deja sin ubicación (purga)', async () => {
+    await edit(ana, 1, { mode: 'set', ...EXACT, precision: 'exact' });
+    expect(await edit(ana, 2, { mode: 'remove' })).toEqual({ ok: true, version: 3 });
+    expect((await version(2))['location']).toBeNull();
+    expect((await version(2))['locationPurged']).toBe(true);
+    for (const n of [1, 2, 3]) expect(await exactOf(n)).toBeUndefined();
+  });
+
+  it('RF-2 (016) · 2.2: bajar de exacta a aproximada redacta las versiones exactas anteriores y la nueva no lleva el punto', async () => {
+    await edit(ana, 1, { mode: 'set', ...EXACT, precision: 'exact' }); // v2 exacta
+    await edit(ana, 2, undefined, { name: 'Tercera' }); // v3 exacta
+    await edit(ana, 3, { mode: 'set', lat: 1, lng: 1, precision: 'exact' }); // v4 exacta, otro punto
+    expect(await edit(ana, 4, { mode: 'precision', precision: 'approximate' })).toEqual({ ok: true, version: 5 });
+    const zone2 = { cell: '877541ad5ffffff', lat: 1.004383, lng: 0.993594 };
+    expect((await version(2))['location']).toEqual({ ...ZONE, precision: 'approximate' });
+    expect((await version(3))['location']).toEqual({ ...ZONE, precision: 'approximate' });
+    expect((await version(4))['location']).toEqual({ lat: zone2.lat, lng: zone2.lng, precision: 'approximate', zone: zone2 });
+    expect((await version(5))['location']).toEqual({ lat: zone2.lat, lng: zone2.lng, precision: 'approximate', zone: zone2 });
+    expect((await apice())['location']).toEqual({ lat: zone2.lat, lng: zone2.lng, precision: 'approximate', zone: zone2 });
+    // Nada del historial publica el punto exacto, ni lo marca como purgado.
+    for (const n of [1, 2, 3, 4, 5]) {
+      expect(JSON.stringify(await version(n))).not.toContain('4.3567891');
+      expect((await version(n))['locationPurged']).toBeUndefined();
+    }
+    expect((await ctx.db.collection(`apices/${id}/versions`).where('location.precision', '==', 'exact').get()).size).toBe(0);
+    // La autora conserva el punto exacto vigente (y el de las versiones) para poder volver a subir la precisión.
+    expect(await exactOf(5)).toEqual({ lat: 1, lng: 1 });
+    expect(await exactOf(2)).toEqual(EXACT);
+    expect(await edit(ana, 5, { mode: 'precision', precision: 'exact' })).toEqual({ ok: true, version: 6 });
+    expect((await apice())['location']).toMatchObject({ lat: 1, lng: 1, precision: 'exact' });
+  });
+
+  it('RF-2 (016) · 2.2: fijar una ubicación aproximada nueva sobre una exacta también redacta el historial', async () => {
+    await edit(ana, 1, { mode: 'set', ...EXACT, precision: 'exact' });
+    expect(await edit(ana, 2, { mode: 'set', lat: 1, lng: 1, precision: 'approximate' })).toEqual({ ok: true, version: 3 });
+    expect((await version(2))['location']).toEqual({ ...ZONE, precision: 'approximate' });
+    expect(JSON.stringify(await version(2))).not.toContain('4.3567891');
+    expect(await exactOf(3)).toEqual({ lat: 1, lng: 1 });
+  });
+
+  it('RF-2 (016) · 2.2: una versión exacta sin zona (anterior a la zona H3) no tiene forma aproximada y se purga', async () => {
+    await edit(ana, 1, { mode: 'set', ...EXACT, precision: 'exact' });
+    await ctx.db.doc(`apices/${id}/versions/2`).update({ location: { ...EXACT, precision: 'exact' } });
+    expect(await edit(ana, 2, { mode: 'precision', precision: 'approximate' })).toEqual({ ok: true, version: 3 });
+    expect((await version(2))['location']).toBeNull();
+    expect((await version(2))['locationPurged']).toBe(true);
+  });
+
+  it('RF-2 (016) · 2.2: conservar una ubicación aproximada no toca el historial', async () => {
+    await edit(ana, 1, { mode: 'set', ...EXACT, precision: 'exact' });
+    await edit(ana, 2, { mode: 'precision', precision: 'approximate' });
+    const before = await version(2);
+    expect(await edit(ana, 3, { mode: 'keep' }, { name: 'Solo el nombre' })).toEqual({ ok: true, version: 4 });
+    expect(await version(2)).toEqual(before);
+    expect(await version(3)).toMatchObject({ location: { ...ZONE, precision: 'approximate' } });
+    expect(await exactOf(4)).toEqual(EXACT);
   });
 
   it('RF-9 (001): cambiar la precisión de un ápice sin ubicación o con una forma inválida se rechaza', async () => {
@@ -238,6 +298,16 @@ describe('editApice con ubicación', () => {
 });
 
 describe('restoreVersion con ubicación', () => {
+  it('RF-2 (016) · 2.2: restaurar una versión que era exacta no vuelve a publicar el punto: ya está redactada, o conserva la vigente', async () => {
+    id = ((await create({ mode: 'set', ...EXACT, precision: 'exact' })) as { id: string }).id;
+    await edit(ana, 1, { mode: 'precision', precision: 'approximate' }, { name: 'Segundo' }); // v1 se redacta
+    expect(await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 2 }, ana)).toEqual({ ok: true, version: 3 });
+    expect((await apice())['location']).toEqual({ ...ZONE, precision: 'approximate' });
+    for (const n of [1, 2, 3]) expect(JSON.stringify(await version(n))).not.toContain('4.3567891');
+    expect(await handleRestoreVersion(ctx, { id, n: 1, baseVersion: 3 }, beto)).toEqual({ ok: true, version: 4 });
+    expect((await apice())['location']).toEqual({ ...ZONE, precision: 'approximate' });
+  });
+
   it('RF-9 (001): restaurar una versión devuelve su ubicación y copia su punto exacto', async () => {
     id = ((await create({ mode: 'set', ...EXACT })) as { id: string }).id;
     await edit(ana, 1, { mode: 'set', lat: 1, lng: 1 });

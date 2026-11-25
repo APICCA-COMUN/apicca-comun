@@ -82,6 +82,23 @@ describe('RegisterPage', () => {
     expect(o.signIn).not.toHaveBeenCalled();
   });
 
+  it('RF-2 (001): si el registro tiene éxito y el inicio de sesión falla, avisa que la cuenta quedó creada y ofrece entrar', async () => {
+    const o = ops({ signIn: vi.fn().mockRejectedValue(new Error('red')) });
+    const user = userEvent.setup();
+    render(<RegisterPage token="tok" ops={o} />);
+    await screen.findByLabelText('Correo');
+    await fill(user);
+    await user.click(screen.getByRole('button', { name: 'Crear mi acceso' }));
+    const notice = await screen.findByRole('status');
+    expect(notice.textContent).toMatch(/cuenta quedó creada/i);
+    expect(notice.textContent).not.toMatch(/invitación nueva|facilitador/i);
+    expect(screen.getByRole('link', { name: 'Entrar' }).getAttribute('href')).toBe('/entrar');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Crear mi acceso' })).toBeNull();
+    expect(screen.queryByLabelText('Contraseña')).toBeNull();
+    expect(o.register).toHaveBeenCalledTimes(1);
+  });
+
   it('RF-2 (001): un enlace vencido durante el registro se explica, pide invitación nueva y conserva lo escrito', async () => {
     const o = ops({ register: vi.fn().mockRejectedValue(new ApiClientError('invitation-expired')) });
     const user = userEvent.setup();

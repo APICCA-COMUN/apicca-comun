@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Amendment, Objection, Stance } from '../../shared/domain/constitution';
@@ -350,6 +350,74 @@ describe('AmendmentView', () => {
     await user.click(screen.getByRole('button', { name: 'Publicar comentario' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/No se pudo/);
     expect((screen.getByLabelText('Tu comentario') as HTMLTextAreaElement).value).toBe('Texto largo');
+  });
+
+  it('RF-9 (004) · 9.1: dos clics seguidos en «Publicar comentario» llaman a la API una sola vez y el botón vuelve al terminar', async () => {
+    const user = userEvent.setup();
+    let release: (value: { id: string }) => void = () => {};
+    const pending = new Promise<{ id: string }>((resolve) => (release = resolve));
+    const { calls } = setup(ana, {}, { calls: { commentAmendment: () => pending } });
+    await user.click(await screen.findByRole('button', { name: 'Comentar' }));
+    await user.type(screen.getByLabelText('Tu comentario'), 'Un solo comentario');
+    const publish = screen.getByRole('button', { name: 'Publicar comentario' });
+    fireEvent.click(publish);
+    fireEvent.click(publish);
+    await user.dblClick(publish);
+    expect(calls.filter((c) => c.op === 'commentAmendment')).toHaveLength(1);
+    expect((publish as HTMLButtonElement).disabled).toBe(true);
+    release({ id: 'c9' });
+    await waitFor(() => expect(screen.queryByLabelText('Tu comentario')).toBeNull());
+    await user.click(screen.getByRole('button', { name: 'Comentar' }));
+    await user.type(screen.getByLabelText('Tu comentario'), 'Otro');
+    expect((screen.getByRole('button', { name: 'Publicar comentario' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('RF-17 (004) · 17.1: si el comentario falla, el botón vuelve a estar disponible para reintentar', async () => {
+    const user = userEvent.setup();
+    const { calls } = setup(ana, {}, { calls: { commentAmendment: () => Promise.reject(new Error('falla')) } });
+    await user.click(await screen.findByRole('button', { name: 'Comentar' }));
+    await user.type(screen.getByLabelText('Tu comentario'), 'Texto largo');
+    await user.click(screen.getByRole('button', { name: 'Publicar comentario' }));
+    await screen.findByRole('alert');
+    const publish = screen.getByRole('button', { name: 'Publicar comentario' }) as HTMLButtonElement;
+    expect(publish.disabled).toBe(false);
+    await user.click(publish);
+    await waitFor(() => expect(calls.filter((c) => c.op === 'commentAmendment')).toHaveLength(2));
+  });
+
+  it('RF-10 (004) · 10.4: dos clics seguidos en una acción de objeción llaman a la API una sola vez y deshabilitan las otras mientras tanto', async () => {
+    let release: (value: object) => void = () => {};
+    const pending = new Promise<object>((resolve) => (release = resolve));
+    const { calls } = setup(ana, { stances: [stance('u-ana', { openObjectionId: 'o1' })], objections: [objection('o1', 'u-ana')] }, { calls: { withdrawObjection: () => pending } });
+    const withdraw = await screen.findByRole('button', { name: 'Retirar objeción' });
+    fireEvent.click(withdraw);
+    fireEvent.click(withdraw);
+    expect(calls.filter((c) => c.op === 'withdrawObjection')).toHaveLength(1);
+    expect((screen.getByRole('button', { name: 'Dar por resuelta' }) as HTMLButtonElement).disabled).toBe(true);
+    release({});
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Retirar objeción' }) as HTMLButtonElement).disabled).toBe(false));
+    expect((screen.getByRole('button', { name: 'Dar por resuelta' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('RF-10 (004) · 10.4: si la acción de objeción falla, los botones vuelven a estar disponibles', async () => {
+    const user = userEvent.setup();
+    setup(ana, { stances: [stance('u-ana', { openObjectionId: 'o1' })], objections: [objection('o1', 'u-ana')] }, { calls: { withdrawObjection: () => Promise.reject(new Error('falla')) } });
+    await user.click(await screen.findByRole('button', { name: 'Retirar objeción' }));
+    await screen.findByRole('alert');
+    expect((screen.getByRole('button', { name: 'Retirar objeción' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('RF-9 (004) · 9.2: dos confirmaciones seguidas al archivar llaman a archiveComment una sola vez', async () => {
+    const user = userEvent.setup();
+    let release: (value: object) => void = () => {};
+    const pending = new Promise<object>((resolve) => (release = resolve));
+    const { calls } = setup(ana, { comments: [comment('c1', 'u-ana')] }, { calls: { archiveComment: () => pending } });
+    await user.click(await screen.findByRole('button', { name: 'Archivar' }));
+    const confirm = screen.getByRole('button', { name: 'Confirmar archivo' });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    expect(calls.filter((c) => c.op === 'archiveComment')).toHaveLength(1);
+    release({});
   });
 
   it('RF-9 (004) · 9.2: archivar un comentario propio llama a archiveComment tras confirmar', async () => {

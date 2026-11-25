@@ -1,9 +1,9 @@
 import { act, render, renderHook, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SessionProvider } from './session';
 import { GameMenu } from '../components/GameMenu';
-import { Link, isMapPage, matchPattern, matchRoute, navigate, normalizePath, useRoute } from './router';
+import { Link, isMapPage, matchPattern, matchRoute, navigate, normalizePath, readLocation, setNavigationGuard, useRoute } from './router';
 
 afterEach(() => {
   window.history.replaceState(null, '', '/');
@@ -147,5 +147,72 @@ describe('router: rutas de la constitución común (004)', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: 'Menú' }));
     expect(screen.getByRole('link', { name: 'Constitución' }).getAttribute('aria-current')).toBe('page');
+  });
+});
+
+describe('router: direcciones mal codificadas', () => {
+  it.each(['/apices/%', '/foro/%E0%A4%A', '/documentacion/%zz', '/constitucion/secciones/%'])('RF-14 (021) · 14.9: matchRoute(%s) no lanza y da notFound', (path) => {
+    expect(() => matchRoute(path)).not.toThrow();
+    expect(matchRoute(path).page).toBe('notFound');
+  });
+
+  it('RF-14 (021) · 14.9: matchPattern devuelve null (no lanza) con un segmento mal codificado', () => {
+    expect(matchPattern('/apices/:id', '/apices/%')).toBeNull();
+  });
+
+  it('RF-14 (021) · 14.9: un hash mal codificado se usa tal como viene y no tumba la lectura de la dirección', () => {
+    window.history.replaceState(null, '', '/#%');
+    expect(readLocation()).toMatchObject({ page: 'home', hash: '%' });
+    window.history.replaceState(null, '', '/foro#%E0%A4%A');
+    expect(readLocation()).toMatchObject({ page: 'forum', hash: '%E0%A4%A' });
+  });
+
+  it('RF-14 (021) · 14.9: un hash bien codificado se sigue decodificando', () => {
+    window.history.replaceState(null, '', '/foro#a%20b');
+    expect(readLocation().hash).toBe('a b');
+  });
+
+  it('RF-14 (021) · 14.9: useRoute no lanza con #% ni al navegar a /apices/%', () => {
+    window.history.replaceState(null, '', '/#%');
+    const { result } = renderHook(() => useRoute());
+    expect(result.current).toMatchObject({ page: 'home', hash: '%' });
+    act(() => navigate('/apices/%'));
+    expect(result.current.page).toBe('notFound');
+    act(() => navigate('/foro/%E0%A4%A'));
+    expect(result.current.page).toBe('notFound');
+  });
+});
+
+describe('router: guardián de navegación', () => {
+  it('RF-14 (021) · 14.9: si el guardián dice que no, navigate no cambia la dirección y le pasa el destino y las opciones', () => {
+    const guard = vi.fn(() => false);
+    const release = setNavigationGuard(guard);
+    navigate('/foro', { keepFocus: true });
+    expect(window.location.pathname).toBe('/');
+    expect(guard).toHaveBeenCalledWith('/foro', { keepFocus: true });
+    release();
+  });
+
+  it('RF-14 (021) · 14.9: si el guardián dice que sí, navega; con unguarded ni se le consulta', () => {
+    const guard = vi.fn(() => true);
+    const release = setNavigationGuard(guard);
+    navigate('/foro');
+    expect(window.location.pathname).toBe('/foro');
+    guard.mockReturnValue(false);
+    navigate('/documentacion', { unguarded: true });
+    expect(window.location.pathname).toBe('/documentacion');
+    expect(guard).toHaveBeenCalledTimes(1);
+    release();
+  });
+
+  it('RF-14 (021) · 14.9: soltar el guardián deja navegar; soltar uno ya reemplazado no toca al nuevo', () => {
+    const releaseOld = setNavigationGuard(() => false);
+    const releaseNew = setNavigationGuard(() => false);
+    releaseOld();
+    navigate('/foro');
+    expect(window.location.pathname).toBe('/');
+    releaseNew();
+    navigate('/foro');
+    expect(window.location.pathname).toBe('/foro');
   });
 });

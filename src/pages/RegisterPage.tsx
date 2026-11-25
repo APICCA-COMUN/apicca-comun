@@ -48,6 +48,8 @@ export function RegisterPage({ token, ops = realRegisterOps }: { token: string; 
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** La cuenta ya existe, pero el inicio de sesión falló: no se vuelve a registrar, solo se entra. */
+  const [created, setCreated] = useState(false);
 
   useEffect(() => {
     let current = true;
@@ -70,15 +72,24 @@ export function RegisterPage({ token, ops = realRegisterOps }: { token: string; 
 
   async function submit(event: FormEvent): Promise<void> {
     event.preventDefault();
-    if (inspection.kind !== 'ready') return;
+    if (inspection.kind !== 'ready' || created) return;
     setBusy(true);
     setError(null);
     try {
-      await ops.register({ token, password, name, username });
-      await auth.signIn(inspection.email, password);
+      try {
+        await ops.register({ token, password, name, username });
+      } catch (e: unknown) {
+        setError(describe(e));
+        return;
+      }
+      try {
+        await auth.signIn(inspection.email, password);
+      } catch {
+        // El registro ya tuvo éxito: reintentar chocaría con «invitation-used», así que se pasa a entrar.
+        setCreated(true);
+        return;
+      }
       navigate('/');
-    } catch (e: unknown) {
-      setError(describe(e));
     } finally {
       setBusy(false);
     }
@@ -102,7 +113,14 @@ export function RegisterPage({ token, ops = realRegisterOps }: { token: string; 
           Este correo ya tiene una cuenta. <Link href="/entrar" className="enlace-texto">Entrar</Link>
         </p>
       )}
-      {inspection.kind === 'ready' && (
+      {inspection.kind === 'ready' && created && (
+        <p role="status" className="block">
+          {/* Propuesta del asistente: texto del aviso cuando la cuenta quedó creada pero el inicio de sesión falló. */}
+          Tu cuenta quedó creada, pero no pudimos iniciar tu sesión. Entra con tu correo y tu contraseña.{' '}
+          <Link href="/entrar" className="enlace-texto">Entrar</Link>
+        </p>
+      )}
+      {inspection.kind === 'ready' && !created && (
         <form onSubmit={(e) => void submit(e)}>
           <label>
             Correo

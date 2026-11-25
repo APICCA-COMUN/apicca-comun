@@ -3,6 +3,8 @@
 // acceso: toda ruta es pública hasta que una spec defina quién puede abrir qué.
 // RF-11 (021), RF-14 (021) · 14.5, 14.8, D-T21 (021): `isMapPage` dice qué rutas pinta el mapa, y `keepFocus` deja el foco
 // a los paneles.
+// RF-14 (021) · 14.9: un segmento o un hash mal codificado (`%` suelto) ya no lanza
+// `URIError`; y un «guardián de navegación» permite a una página con cambios sin guardar frenar `navigate` hacia fuera.
 import { useEffect, useRef, useSyncExternalStore, type AnchorHTMLAttributes, type MouseEvent } from 'react';
 
 /** Identificador de cada página, más la página no encontrada. */
@@ -84,6 +86,15 @@ function segments(path: string): string[] {
   return path.split('/').filter((segment) => segment.length > 0);
 }
 
+/** `decodeURIComponent` que no lanza: devuelve `null` si el texto tiene un `%` mal codificado. */
+function safeDecode(text: string): string | null {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return null;
+  }
+}
+
 export function matchPattern(pattern: string, path: string): Record<string, string> | null {
   const expected = segments(pattern);
   const actual = segments(path);
@@ -93,7 +104,10 @@ export function matchPattern(pattern: string, path: string): Record<string, stri
     const want = expected[i] ?? '';
     const got = actual[i] ?? '';
     if (want.startsWith(':')) {
-      params[want.slice(1)] = decodeURIComponent(got);
+      // Un segmento mal codificado no es de ninguna ruta: la dirección cae en «no encontrada».
+      const decoded = safeDecode(got);
+      if (decoded === null) return null;
+      params[want.slice(1)] = decoded;
     } else if (want !== got) {
       return null;
     }
@@ -114,7 +128,8 @@ export function matchRoute(path: string): MatchedRoute {
 /** Lee `window.location` y la convierte en la ruta actual. */
 export function readLocation(location: Location = window.location): CurrentRoute {
   const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
-  return { ...matchRoute(location.pathname), hash: hash === '' ? undefined : decodeURIComponent(hash) };
+  // Un hash mal codificado se usa tal como viene: solo sirve para buscar un `id`, y no vale la pena perder la página por él.
+  return { ...matchRoute(location.pathname), hash: hash === '' ? undefined : (safeDecode(hash) ?? hash) };
 }
 
 // Suscripción a los cambios de ruta: `navigate` y `popstate` avisan a los oyentes.
@@ -159,10 +174,40 @@ export interface NavigateOptions {
   replace?: boolean;
   /** El cambio de ruta no lleva el foco al contenido: quien navega lo mueve (los paneles del mapa, D-T21 (021)). */
   keepFocus?: boolean;
+  /** Salta el guardián de navegación: quien ya preguntó a la persona (y ella confirmó) navega sin volver a preguntar. */
+  unguarded?: boolean;
+}
+
+/**
+ * Guardián de navegación: se consulta antes de cada `navigate`. Devuelve `true` si se puede navegar; si devuelve `false`,
+ * `navigate` no hace nada y el guardián se encarga de preguntar y, si la persona confirma, de navegar con `unguarded`.
+ * Lo lee en vivo (no una copia del render), así que no hay carreras con el render que lo suelta.
+ */
+export type NavigationGuard = (to: string, options: NavigateOptions) => boolean;
+
+let guard: NavigationGuard | null = null;
+
+/** Registra el guardián (solo hay uno) y devuelve cómo soltarlo; soltar uno ya reemplazado no toca al nuevo. */
+export function setNavigationGuard(next: NavigationGuard): () => void {
+  guard = next;
+  return () => {
+    if (guard === next) guard = null;
+  };
+}
+
+/** El camino (sin barra final) al que llevaría `to`, resuelto contra la dirección actual. */
+export function pathOf(to: string): string {
+  try {
+    return normalizePath(new URL(to, window.location.href).pathname);
+  } catch {
+    return normalizePath(to.split(/[?#]/)[0] ?? '');
+  }
 }
 
 /** Cambia de ruta con `pushState` (o `replaceState`) y avisa a `useRoute`; `to` puede llevar `?query` y `#hash`. */
-export function navigate(to: string, { replace = false, keepFocus = false }: NavigateOptions = {}): void {
+export function navigate(to: string, options: NavigateOptions = {}): void {
+  const { replace = false, keepFocus = false, unguarded = false } = options;
+  if (!unguarded && guard !== null && !guard(to, options)) return;
   if (replace) window.history.replaceState(null, '', to);
   else window.history.pushState(null, '', to);
   notify(keepFocus);

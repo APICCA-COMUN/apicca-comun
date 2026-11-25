@@ -5,7 +5,7 @@
 // antes de pintar. Las acciones siguen la tabla de la spec 004 §4.3; sin cuenta activa, solo el aviso.
 // RF-14 (019), D-T8 (019): «Revisar la propuesta» es un `Dialog` siempre montado para quien puede revisar; Esc lo cierra y
 // conserva lo escrito, «Cancelar» y una revisión guardada lo descartan (clave nueva).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dialog } from '../components/Dialog';
 import { validateComment, type Amendment, type Objection, type Stance } from '../../shared/domain/constitution';
 import { formatLongDateMs } from '../../shared/domain/dates';
@@ -64,6 +64,9 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
   const [commentText, setCommentText] = useState('');
   const [commentNote, setCommentNote] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  /** Una petición en curso (objeciones, archivar, comentar): deshabilita los botones. La `ref` frena un segundo clic que llega antes del siguiente render. */
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   usePageTitle({ area: 'Constitución', contentTitle: amendment?.title ?? 'Propuesta' });
 
   useEffect(() => {
@@ -121,11 +124,17 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
   const authorSuspended = amendment.authorSuspended;
   const counted = isOpen ? others.length + (authorSuspended ? 0 : 1) : amendment.agreementsCounted;
   const call = async (action: () => Promise<unknown>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
     setActionError(null);
     try {
       await action();
     } catch (caught) {
       setActionError(messageOf(caught));
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
   };
   const amendmentId = amendment.id;
@@ -150,12 +159,15 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
     setCommentNote(null);
   };
   const submitComment = async () => {
+    if (busyRef.current) return;
     const check = validateComment(commentText);
     if (!check.ok) {
       setCommentNote(check.reason ?? 'El comentario no es válido.');
       return;
     }
     setCommentNote(null);
+    busyRef.current = true;
+    setBusy(true);
     try {
       if (composer?.mode === 'edit') {
         const result = await client.call('editComment', {
@@ -174,6 +186,9 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
       closeComposer();
     } catch (caught) {
       setCommentNote(messageOf(caught));
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
   };
 
@@ -240,6 +255,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
                     <button
                       type="button"
                       className="block action-secondary"
+                      disabled={busy}
                       onClick={() => void call(() => client.call('resolveObjection', { amendmentId, objectionId: o.id }))}
                     >
                       Dar por resuelta
@@ -248,6 +264,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
                       <button
                         type="button"
                         className="block action-secondary"
+                        disabled={busy}
                         onClick={() =>
                           void call(() =>
                             client.call('resolveObjection', { amendmentId, objectionId: o.id, resolvedByRevision: amendment.revisionNo }),
@@ -260,6 +277,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
                     <button
                       type="button"
                       className="block action-secondary"
+                      disabled={busy}
                       onClick={() => void call(() => client.call('withdrawObjection', { amendmentId, objectionId: o.id }))}
                     >
                       Retirar objeción
@@ -341,7 +359,7 @@ export function AmendmentView({ id, source = firestoreAmendmentsSource, client =
             />
             {commentNote !== null && <p role="alert">{commentNote}</p>}
             <div className="button-group">
-              <button type="button" className="block action-secondary" onClick={() => void submitComment()}>
+              <button type="button" className="block action-secondary" disabled={busy} onClick={() => void submitComment()}>
                 {composer.mode === 'edit' ? 'Guardar comentario' : 'Publicar comentario'}
               </button>
               <button type="button" className="block action-secondary" onClick={closeComposer}>

@@ -2,7 +2,7 @@
 // contenido completo y sube `version` del ápice en la misma transacción. Las ops reutilizan estas dos funciones.
 // RF-5 (021) · 5.1, D-T13 (021): la ubicación publicada lleva la zona H3 del punto guardado.
 // RF-2 (018), D-T7 (018): `saveVersion` cobra el cupo de ediciones como última lectura y lo escribe con el resto.
-import type { Transaction } from 'firebase-admin/firestore';
+import type { QueryDocumentSnapshot, Transaction } from 'firebase-admin/firestore';
 import { writeApiceNotice } from './noticeStore';
 import type { ApiceContent, ApiceStatus, Visibility } from '../../shared/domain/apice';
 import type { Location, Point, Precision } from '../../shared/domain/location';
@@ -161,9 +161,15 @@ export async function saveVersion(ctx: Ctx, id: string, input: SaveVersionInput)
       if (!stored.exists) throw new ApiError('invalid-request');
       exact = pointOf(stored.data() as Point);
     }
-    // Quitar la ubicación purga el historial: los puntos exactos y la ubicación de las versiones que la mostraban
-    // exacta (RF-2 (016) · 2.2, D-T4 (016)). Lectura antes de cualquier escritura.
-    const located = change.mode === 'remove' ? (await tx.get(ref.collection('versions').where('location', '!=', null))).docs : [];
+    // Historial (RF-2 (016) · 2.2, D-T4 (016)). Quitar la ubicación purga los puntos exactos y la ubicación de las versiones que la
+    // mostraban exacta; bajarla a aproximada (o fijar una aproximada) las redacta a la forma aproximada de su zona: ninguna conserva lat/lng exactos. Lectura antes
+    // de cualquier escritura. Con `keep` no se consulta: sin cambio de ubicación el historial ya cumple la invariante.
+    const finalPrecision = change.mode === 'remove' ? null : change.mode === 'set' || change.mode === 'precision' ? change.precision : (current.location?.precision ?? null);
+    let history: QueryDocumentSnapshot[] = [];
+    if (change.mode === 'remove') history = (await tx.get(ref.collection('versions').where('location', '!=', null))).docs;
+    else if (change.mode !== 'keep' && finalPrecision !== 'exact') {
+      history = (await tx.get(ref.collection('versions').where('location.precision', '==', 'exact'))).docs;
+    }
     let location: Location | null;
     if (change.mode === 'remove') location = null;
     else if (change.mode === 'set') {
@@ -177,9 +183,13 @@ export async function saveVersion(ctx: Ctx, id: string, input: SaveVersionInput)
     applyCharge?.();
     tx.update(ref, { ...input.content, location, hasLocation: location !== null, version: n, updatedAt: now, lastEditedByUsername: input.saver.username });
     if (exact !== null && location !== null) tx.create(ctx.db.doc(EXACT_PATH(id, n)), exact);
-    for (const doc of located) {
-      tx.delete(ctx.db.doc(EXACT_PATH(id, doc.get('n') as number)));
-      if ((doc.get('location') as Location).precision === 'exact') tx.update(doc.ref, { location: null, locationPurged: true });
+    for (const doc of history) {
+      const old = doc.get('location') as Location;
+      if (change.mode === 'remove') tx.delete(ctx.db.doc(EXACT_PATH(id, doc.get('n') as number))); // el punto exacto solo se conserva si sigue vigente
+      if (old.precision !== 'exact') continue;
+      // Redactar en lugar de borrar: la versión sigue mostrando su zona. Sin zona (versiones anteriores a la spec 021) no hay forma aproximada.
+      if (change.mode !== 'remove' && old.zone !== undefined) tx.update(doc.ref, { location: { lat: old.zone.lat, lng: old.zone.lng, precision: 'approximate', zone: old.zone } });
+      else tx.update(doc.ref, { location: null, locationPurged: true });
     }
     tx.create(ctx.db.doc(`apices/${id}/versions/${n}`), {
       n,

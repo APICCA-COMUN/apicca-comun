@@ -11,6 +11,7 @@
 // - `settleAmendment` cierra una propuesta vencida (RF-12 (004), D-T5 (004), D-T8 (004)) y, si se aprueba, la aplica
 //   (RF-13 (004)) en la misma transacción. Las fechas del cierre son el instante del vencimiento, no el del proceso.
 // - Los instantes se guardan como `Timestamp`; los tipos del dominio los manejan como milisegundos.
+import { logger } from 'firebase-functions/logger';
 import { Timestamp, type DocumentReference, type Transaction } from 'firebase-admin/firestore';
 import {
   evaluateClose,
@@ -333,13 +334,24 @@ export async function dueAmendmentIds(ctx: Ctx, limit: number | null): Promise<s
   return (await query.get()).docs.map((doc) => doc.id);
 }
 
-/** Procesa las vencidas (o la indicada) con `settleAmendment`; devuelve cuántas cambiaron. Lo usan `settleAmendments` y `amendmentCloser`. */
+/**
+ * Procesa las vencidas (o la indicada) con `settleAmendment`; devuelve cuántas cambiaron. Lo usan `settleAmendments` y `amendmentCloser`.
+ * Si una propuesta falla, el error se registra con severidad ERROR y se sigue con las demás: una mal formada no frena el cierre
+ * del resto ni de los ciclos siguientes. Con `options.id` (una sola propuesta, la op manual de Facilitación) el error se propaga.
+ */
 export async function settleDue(ctx: Ctx, options: { id?: string; limit?: number | null } = {}): Promise<number> {
-  const ids = options.id !== undefined ? [options.id] : await dueAmendmentIds(ctx, options.limit ?? null);
+  if (options.id !== undefined) return (await settleAmendment(ctx, options.id)) !== 'none' ? 1 : 0;
+  const ids = await dueAmendmentIds(ctx, options.limit ?? null);
   let changed = 0;
+  let failed = 0;
   for (const id of ids) {
-    if ((await settleAmendment(ctx, id)) !== 'none') changed += 1;
+    try {
+      if ((await settleAmendment(ctx, id)) !== 'none') changed += 1;
+    } catch (error) {
+      failed += 1;
+      logger.error(`No se pudo cerrar la propuesta ${id}`, { amendmentId: id, error: error instanceof Error ? (error.stack ?? error.message) : String(error) });
+    }
   }
+  if (failed > 0) logger.error(`Cierre de propuestas con fallos: ${failed} de ${ids.length} no se pudieron procesar`, { failed, total: ids.length, changed });
   return changed;
 }
-

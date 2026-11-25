@@ -4,6 +4,8 @@
 // RF-17 (019) · 17.1, 17.2, D-T11 (019): el estado se llama «Etapa» y muestra sus valores con mayúscula inicial.
 // RF-6 (002) · 6.1, 6.3: campos y aviso como bloques; el envío es la acción principal.
 // RF-12 (024) · 12.1, D-T16 (024): el selector de ubicación abre sobre las zonas de los ápices que la persona ve.
+// RF-11 (001), RNF-10 (001): con `baseVersion`, el borrador recuerda sobre qué versión se empezó, para que la edición
+// no lo restaure en silencio sobre una versión más nueva.
 import { useState, type ComponentType, type FormEvent } from 'react';
 import { APICE_STAGE_LABEL, APICE_STATUSES, INITIAL_APICE_STATUS, validateContent, type ApiceStatus, type Axis, type ContentField, type ContentIssue } from '../../shared/domain/apice';
 import { AXES } from '../../shared/domain/apice';
@@ -53,6 +55,8 @@ interface ContentFormProps {
   onSubmit: (values: FormValues, location?: LocationEdit) => Promise<void>;
   showStatus?: boolean;
   location?: LocationOptions;
+  /** Versión del ápice sobre la que se escribe; se guarda en el borrador (solo la edición la pasa). */
+  baseVersion?: number | undefined;
 }
 
 const TEXT_FIELDS = [
@@ -68,7 +72,7 @@ const REQUIRED: Partial<Record<ContentField, string>> = {
   axes: 'Elige al menos un eje.',
 };
 
-function restore(raw: string | undefined, fallback: FormValues): FormValues {
+export function restoreDraftValues(raw: string | undefined, fallback: FormValues): FormValues {
   if (raw === undefined) return fallback;
   try {
     const parsed = JSON.parse(raw) as Partial<FormValues>;
@@ -88,8 +92,19 @@ function restore(raw: string | undefined, fallback: FormValues): FormValues {
   }
 }
 
+/** La versión base que el borrador recordó (`baseVersion`); `undefined` si no la trae o está dañado. */
+export function draftBaseVersion(raw: string | undefined): number | undefined {
+  if (raw === undefined) return undefined;
+  try {
+    const value = (JSON.parse(raw) as { baseVersion?: unknown }).baseVersion;
+    return typeof value === 'number' && Number.isInteger(value) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** La ubicación del borrador guardado en el navegador. */
-function restoreLocation(raw: string | undefined): LocationDraft {
+export function restoreLocation(raw: string | undefined): LocationDraft {
   if (raw === undefined) return KEEP_LOCATION;
   try {
     return restoreLocationDraft((JSON.parse(raw) as { location?: unknown }).location);
@@ -114,9 +129,9 @@ export function saveFailureText(error: unknown): string {
     : 'No pudimos guardar los cambios. Lo que escribiste se conserva: inténtalo de nuevo.';
 }
 
-export function ContentForm({ initial, draftKey, submitLabel, onSubmit, showStatus = false, location }: ContentFormProps) {
+export function ContentForm({ initial, draftKey, submitLabel, onSubmit, showStatus = false, location, baseVersion }: ContentFormProps) {
   const drafts = useDrafts();
-  const [values, setValues] = useState<FormValues>(() => restore(drafts.get(draftKey), initial));
+  const [values, setValues] = useState<FormValues>(() => restoreDraftValues(drafts.get(draftKey), initial));
   const [locationDraft, setLocationDraft] = useState<LocationDraft>(() => (location ? restoreLocation(drafts.get(draftKey)) : KEEP_LOCATION));
   const [locationError, setLocationError] = useState<string | undefined>(undefined);
   const [submitted, setSubmitted] = useState(false);
@@ -128,16 +143,18 @@ export function ContentForm({ initial, draftKey, submitLabel, onSubmit, showStat
     ...(location?.zonesSource === undefined ? {} : { source: location.zonesSource }),
   });
 
+  const save = (draft: object): void => drafts.set(draftKey, JSON.stringify(baseVersion === undefined ? draft : { ...draft, baseVersion }));
+
   const update = (changes: Partial<FormValues>): void => {
     const next = { ...values, ...changes };
     setValues(next);
-    drafts.set(draftKey, JSON.stringify(location ? { ...next, location: locationDraft } : next));
+    save(location ? { ...next, location: locationDraft } : next);
   };
 
   const updateLocation = (next: LocationDraft): void => {
     setLocationDraft(next);
     setLocationError(undefined);
-    drafts.set(draftKey, JSON.stringify({ ...values, location: next }));
+    save({ ...values, location: next });
   };
 
   const validation = validateContent(values);

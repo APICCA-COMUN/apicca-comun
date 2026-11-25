@@ -7,6 +7,7 @@ import './styles/piezas.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { RootBoundary } from './components/RootBoundary';
 import { SessionProvider } from './app/session';
 import { firebaseSessionSource } from './data/sessionSource';
 
@@ -17,8 +18,10 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <SessionProvider source={firebaseSessionSource}>
-      <App />
-    </SessionProvider>
+    <RootBoundary>
+      <SessionProvider source={firebaseSessionSource}>
+        <App />
+      </SessionProvider>
+    </RootBoundary>
   </StrictMode>,
 );

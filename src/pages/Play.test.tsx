@@ -610,6 +610,97 @@ describe('Play · paneles sobre el mapa', () => {
     expect(window.location.pathname).toBe('/');
   });
 
+  it('RF-14 (021) · 14.9: con cambios sin guardar, un navigate hacia fuera del mapa pregunta y no navega; «Seguir editando» se queda', async () => {
+    window.history.replaceState(null, '', '/apices/a1/editar');
+    const { drafts } = setup(PERSON);
+    await map();
+    const aside = await screen.findByRole('complementary', { name: 'Editar ápice' });
+    fireEvent.change(within(aside).getByLabelText('Nombre'), { target: { value: 'Otro nombre' } });
+    act(() => navigate('/foro'));
+    expect(window.location.pathname).toBe('/apices/a1/editar');
+    expect(within(aside).getByRole('alert').textContent).toMatch('Tienes cambios sin guardar. ¿Quieres descartarlos?');
+    fireEvent.click(within(aside).getByRole('button', { name: 'Seguir editando' }));
+    expect(within(aside).queryByRole('alert')).toBeNull();
+    expect(window.location.pathname).toBe('/apices/a1/editar');
+    expect(drafts.get('apice:a1')).toBeDefined();
+  });
+
+  it('RF-14 (021) · 14.9: con cambios sin guardar, un navigate hacia fuera y «Descartar cambios» navega con sus opciones y borra el borrador', async () => {
+    window.history.replaceState(null, '', '/apices/nuevo');
+    const { drafts } = setup(PERSON);
+    await map();
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    fireEvent.change(within(aside).getByLabelText('Nombre'), { target: { value: 'Biblioteca' } });
+    act(() => navigate('/foro?x=1'));
+    expect(window.location.pathname).toBe('/apices/nuevo');
+    fireEvent.click(within(aside).getByRole('button', { name: 'Descartar cambios' }));
+    expect(window.location.pathname).toBe('/foro');
+    expect(window.location.search).toBe('?x=1');
+    expect(drafts.get('apice:new')).toBeUndefined();
+  });
+
+  it('RF-14 (021) · 14.9: con cambios sin guardar, un enlace de la cabecera también pregunta antes de salir', async () => {
+    window.history.replaceState(null, '', '/apices/nuevo');
+    setup(PERSON);
+    await map();
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    fireEvent.change(within(aside).getByLabelText('Nombre'), { target: { value: 'Biblioteca' } });
+    fireEvent.click(screen.getByRole('link', { name: 'Foro' }));
+    expect(window.location.pathname).toBe('/apices/nuevo');
+    expect(within(aside).getByRole('alert')).toBeTruthy();
+    fireEvent.click(within(aside).getByRole('button', { name: 'Descartar cambios' }));
+    expect(window.location.pathname).toBe('/foro');
+  });
+
+  it('RF-14 (021) · 14.9: sin cambios, un navigate hacia fuera no pregunta', async () => {
+    window.history.replaceState(null, '', '/apices/nuevo');
+    setup(PERSON);
+    await map();
+    await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    act(() => navigate('/foro'));
+    expect(window.location.pathname).toBe('/foro');
+    expect(screen.queryByText('Tienes cambios sin guardar. ¿Quieres descartarlos?')).toBeNull();
+  });
+
+  it('RF-14 (021) · 14.9: con cambios sin guardar, cambiar solo la consulta (filtros, vista) no pregunta', async () => {
+    window.history.replaceState(null, '', '/apices/nuevo');
+    setup(PERSON);
+    await map();
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    fireEvent.change(within(aside).getByLabelText('Nombre'), { target: { value: 'Biblioteca' } });
+    act(() => navigate('/apices/nuevo?mio=1', { replace: true, keepFocus: true }));
+    expect(window.location.search).toBe('?mio=1');
+    expect(within(aside).queryByRole('alert')).toBeNull();
+  });
+
+  it('RF-14 (021) · 14.9: al salir del panel el guardián se suelta y navigate vuelve a ser libre', async () => {
+    window.history.replaceState(null, '', '/apices/nuevo');
+    const { unmount } = setup(PERSON);
+    await map();
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    fireEvent.change(within(aside).getByLabelText('Nombre'), { target: { value: 'Biblioteca' } });
+    unmount();
+    act(() => navigate('/foro'));
+    expect(window.location.pathname).toBe('/foro');
+  });
+
+  it('RF-14 (021) · 14.9: beforeunload avisa solo mientras hay cambios sin guardar', async () => {
+    window.history.replaceState(null, '', '/apices/nuevo');
+    const { drafts } = setup(PERSON);
+    await map();
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    const unload = () => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    expect(unload()).toBe(false);
+    fireEvent.change(within(aside).getByLabelText('Nombre'), { target: { value: 'Biblioteca' } });
+    expect(unload()).toBe(true);
+    act(() => drafts.clear('apice:new'));
+    expect(unload()).toBe(false);
+  });
+
   it('RF-14 (021) · 14.1: el panel sigue a la dirección: navegar a otra ficha cambia su contenido', async () => {
     window.history.replaceState(null, '', '/apices/a1');
     setup(VISITOR);

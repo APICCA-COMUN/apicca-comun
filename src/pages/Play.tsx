@@ -12,7 +12,9 @@
 // bienvenida se abren en esa misma columna, en lugar de su contenido, con «Cerrar» (`/apices/:id`, `/apices/nuevo`,
 // `/apices/:id/editar`), y mientras se llena el formulario el mapa muestra el Ápice tal como quedará. Con un Ápice o una Acción
 // Común elegidos, una línea de llamada (`Llamada`) une la celda grande o el Arco de la columna con su lugar en el mapa (solo
-// con 900 px o más). Cerrar un formulario con cambios sin guardar pide confirmación. La lista (`?vista=lista`) es la
+// con 900 px o más). Cerrar un formulario con cambios sin guardar pide confirmación, y lo mismo cualquier `navigate` hacia
+// fuera de la página (cabecera, logo, menú, enlaces) mediante el guardián de navegación del enrutador; cerrar la pestaña o
+// recargar activa el aviso nativo del navegador. Atrás no se intercepta: el borrador sigue en memoria y se restaura. La lista (`?vista=lista`) es la
 // alternativa completa, y si el mapa falla quedan el aviso y la lista (RNF-10 (001)). Los enlaces a una ficha, a su edición o
 // a «Prototipar un Ápice» que hay en la página abren su panel con la consulta vigente (RF-10 (021) · 10.3, RNF-1 (021)); en un
 // teléfono van el mapa arriba, luego la leyenda-control y debajo la columna.
@@ -29,7 +31,7 @@ import { tourSteps, type TourStep } from '../../shared/domain/tour';
 import { useDrafts } from '../app/drafts';
 import { NEW_PREVIEW_ID, draftKeyOf, previewItems, type PanelState } from '../app/draftPreview';
 import { filtersFromSearch, filtersToSearch, splitFilters } from '../app/listFilters';
-import { Link, navigate, useRoute, useSearch, type CurrentRoute } from '../app/router';
+import { Link, navigate, pathOf, setNavigationGuard, useRoute, useSearch, type CurrentRoute, type NavigateOptions } from '../app/router';
 import { useSession } from '../app/session';
 import { useApiceListing, type ApiceListing } from '../app/useApiceListing';
 import { usePageTitle } from '../app/usePageTitle';
@@ -171,6 +173,12 @@ export function rowsThatFit(height: number, total: number): number {
 /** Separación entre el borde de la celda grande (o del Arco) y donde arranca la línea de llamada, en píxeles. */
 const LLAMADA_GAP = { apice: 8, accion: 6 } as const;
 
+/** A dónde iba la persona cuando se le preguntó por sus cambios sin guardar; `outside` guarda las opciones de un `navigate` de fuera. */
+interface PendingLeave {
+  to: string;
+  outside?: NavigateOptions;
+}
+
 interface LlamadaEnds {
   desde: { x: number; y: number };
   hasta: { x: number; y: number };
@@ -211,7 +219,7 @@ function Board({
   const search = useSearch();
   const query = useMemo(() => queryFromSearch(search), [search]);
   const [notice, setNotice] = useState<AmendmentNoticeData>(NO_NOTICE);
-  const [pending, setPending] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingLeave | null>(null);
   const [refresh, setRefresh] = useState(0);
   /** El panel se abrió desde la página: su título recibe el foco (RF-14 (021) · 14.8). */
   const [focusPanel, setFocusPanel] = useState(false);
@@ -279,6 +287,30 @@ function Board({
   }, [panel?.kind]);
 
   useEffect(() => setPending(null), [route.path]);
+
+  // Guardián de navegación: mientras el panel tiene un borrador, un `navigate` hacia otra ruta (cabecera, logo, menú, enlaces)
+  // pregunta antes. Lee el borrador en vivo, no `dirty`: quien guarda lo limpia y navega en el mismo instante, antes de que
+  // este componente se vuelva a pintar. Lo que no cambia de ruta (consulta del mapa) y lo que ya confirmó pasan.
+  useEffect(() => {
+    if (draftKey === null) return;
+    return setNavigationGuard((to, options) => {
+      if (drafts.get(draftKey) === undefined) return true;
+      if (pathOf(to) === pathOf(window.location.href)) return true;
+      setPending({ to, outside: options });
+      return false;
+    });
+  }, [drafts, draftKey]);
+
+  // Cerrar la pestaña o recargar pierde el borrador (vive en memoria): con cambios, el navegador pide confirmar.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
 
   // RF-18 (021) · 18.1, RF-6 (010): las Acciones Comunes que quien mira puede leer; con «Lo mío», solo en las que participa. Si no
   // se pueden leer, el mapa sigue sin ellos.
@@ -384,12 +416,12 @@ function Board({
     const opening = panel === null && to !== '/';
     if (opening) opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setFocusPanel(true);
-    navigate(to, { keepFocus: true });
+    navigate(to, { keepFocus: true, unguarded: true });
   };
 
   /** Cambia de panel o lo cierra; con cambios sin guardar, primero pregunta (RF-14 (021) · 14.9). */
   const guarded = (to: string) => {
-    if (dirty) setPending(to);
+    if (dirty) setPending({ to });
     else leaveTo(to);
   };
 
@@ -399,17 +431,20 @@ function Board({
       const back = opener.current;
       restore.current = back !== null && back.isConnected && !back.closest('.game-panel') ? back : (pressed ?? stage.current?.querySelector<HTMLElement>('.game-map') ?? null);
       opener.current = null;
-      navigate(to, { keepFocus: true });
+      navigate(to, { keepFocus: true, unguarded: true });
       return;
     }
     go(to);
   };
 
   const discard = () => {
-    const to = pending;
+    const leaving = pending;
     if (draftKey !== null) drafts.clear(draftKey);
     setPending(null);
-    if (to !== null) leaveTo(to);
+    if (leaving === null) return;
+    // Lo que llegó de fuera (cabecera, logo, menú, enlaces) sigue con sus propias opciones; lo del panel, con las del mapa.
+    if (leaving.outside !== undefined) navigate(leaving.to, { ...leaving.outside, unguarded: true });
+    else leaveTo(leaving.to);
   };
 
   const select = (id: string) => {

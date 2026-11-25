@@ -1,7 +1,7 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createDrafts, DraftsContext } from '../app/drafts';
+import { createDrafts, DraftsContext, type Drafts } from '../app/drafts';
 import { SessionProvider, type SessionState } from '../app/session';
 import { ApiClientError } from '../data/api';
 import type { ApiceDoc, ApiceSource } from '../data/apices';
@@ -49,9 +49,9 @@ function fakeSource(initial: ApiceDoc | null) {
   };
 }
 
-function setup(doc: ApiceDoc | null, handlers: Parameters<typeof fakeClient>[0] = {}, session: SessionState = person) {
+function setup(doc: ApiceDoc | null, handlers: Parameters<typeof fakeClient>[0] = {}, session: SessionState = person, shared?: Drafts) {
   const { client, calls } = fakeClient(handlers);
-  const drafts = createDrafts();
+  const drafts = shared ?? createDrafts();
   const src = fakeSource(doc);
   render(
     <SessionProvider initial={session}>
@@ -205,6 +205,85 @@ describe('ApiceEdit', () => {
     await save();
     await waitFor(() => expect(calls).toHaveLength(1));
     expect((calls[0]?.payload as { baseVersion: number }).baseVersion).toBe(2);
+  });
+});
+
+describe('ApiceEdit · borrador y versión base', () => {
+  /** Escribe un borrador sobre la versión 2 y cierra la página, como al salir sin guardar. */
+  function leaveWithDraft(extra: Partial<ApiceDoc> = {}) {
+    const drafts = createDrafts();
+    setup(apice(extra), {}, person, drafts);
+    edit('Mía');
+    cleanup();
+    return drafts;
+  }
+
+  it('RF-11 (001), RNF-10 (001): el borrador guarda la versión sobre la que se empezó', () => {
+    const drafts = leaveWithDraft();
+    expect(JSON.parse(drafts.get('apice:a1') ?? '{}')).toMatchObject({ description: 'Mía', baseVersion: 2 });
+  });
+
+  it('RF-11 (001), RNF-10 (001): un borrador de la misma versión se restaura en el formulario, como siempre', () => {
+    const drafts = leaveWithDraft();
+    setup(apice(), {}, person, drafts);
+    expect((screen.getByLabelText('Descripción') as HTMLTextAreaElement).value).toBe('Mía');
+    expect(screen.queryByRole('button', { name: 'Conservar los míos' })).toBeNull();
+  });
+
+  it('RF-11 (001), RNF-10 (001): un borrador de una versión vieja no se restaura en silencio: entra al conflicto con lo mío y lo vigente', () => {
+    const drafts = leaveWithDraft();
+    setup(apice({ version: 3, description: 'De otra persona' }), {}, person, drafts);
+    expect(screen.getByRole('alert').textContent).toMatch(/alguien más guardó cambios/i);
+    const group = screen.getByRole('group', { name: 'Descripción' });
+    expect(group.textContent).toContain('De otra persona');
+    expect(group.textContent).toContain('Mía');
+    expect(screen.queryByLabelText('Nombre')).toBeNull();
+    expect(drafts.get('apice:a1')).toBeDefined();
+  });
+
+  it('RF-11 (001), RNF-10 (001): en ese conflicto, «Conservar los míos» guarda el borrador sobre la versión vigente', async () => {
+    const drafts = leaveWithDraft();
+    const { calls } = setup(apice({ version: 3, description: 'De otra persona' }), { editApice: () => ({ ok: true, version: 4 }) }, person, drafts);
+    await userEvent.click(screen.getByRole('button', { name: 'Conservar los míos' }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.payload).toEqual({
+      id: 'a1',
+      baseVersion: 3,
+      content: { name: 'Huerta', description: 'Mía', axes: ['alimento'], needs: '', offers: '', status: 'idea' },
+    });
+    expect(drafts.get('apice:a1')).toBeUndefined();
+  });
+
+  it('RF-11 (001), RNF-10 (001): en ese conflicto, «Descartar» borra el borrador y deja el formulario con lo vigente, sobre su versión', async () => {
+    const drafts = leaveWithDraft();
+    const { calls } = setup(apice({ version: 3, description: 'De otra persona' }), { editApice: () => ({ ok: true, version: 4 }) }, person, drafts);
+    await userEvent.click(screen.getByRole('button', { name: 'Descartar' }));
+    expect(drafts.get('apice:a1')).toBeUndefined();
+    expect((screen.getByLabelText('Descripción') as HTMLTextAreaElement).value).toBe('De otra persona');
+    edit('Sobre lo vigente');
+    await save();
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect((calls[0]?.payload as { baseVersion: number }).baseVersion).toBe(3);
+    expect(JSON.parse(drafts.get('apice:a1') ?? '{"baseVersion":3}')).toMatchObject({ baseVersion: 3 });
+  });
+
+  it('RF-11 (001), RF-1 (016): la ubicación del borrador viejo viaja con lo propio al conservarlo', async () => {
+    const drafts = createDrafts();
+    drafts.set(
+      'apice:a1',
+      JSON.stringify({ name: 'Huerta', description: 'Mía', axes: ['alimento'], needs: '', offers: '', status: 'idea', baseVersion: 2, location: { mode: 'set', lat: '4.6', lng: '-74.1', precision: 'approximate' } }),
+    );
+    const { calls } = setup(apice({ version: 3 }), { editApice: () => ({ ok: true, version: 4 }) }, person, drafts);
+    await userEvent.click(screen.getByRole('button', { name: 'Conservar los míos' }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.payload).toMatchObject({ baseVersion: 3, location: { mode: 'set', lat: 4.6, lng: -74.1, precision: 'approximate' } });
+  });
+
+  it('RF-11 (001), RNF-10 (001): un borrador sin versión base (de otra parte) se restaura como siempre', () => {
+    const drafts = createDrafts();
+    drafts.set('apice:a1', JSON.stringify({ name: 'Huerta', description: 'Sin base', axes: ['alimento'], needs: '', offers: '', status: 'idea' }));
+    setup(apice({ version: 3 }), {}, person, drafts);
+    expect((screen.getByLabelText('Descripción') as HTMLTextAreaElement).value).toBe('Sin base');
   });
 });
 

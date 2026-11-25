@@ -2,13 +2,16 @@
 // RF-10 (001), RF-11 (001), RF-9 (001), RF-1 (016), RNF-10 (001), RF-6 (002) · 6.1, RF-12 (003) · 12.1, 12.5, RF-3 (003) · 3.2 · Edición de un ápice: cualquier cuenta activa edita uno no archivado.
 // El formulario guarda con la versión que abrió; si alguien guardó antes, se muestra el conflicto y se elige
 // entre conservar lo propio (se reenvía sobre la versión vigente) o descartarlo.
+// El borrador recuerda la versión sobre la que se empezó (`baseVersion`): si al volver la versión vigente es otra, no se
+// restaura en silencio sino que entra al mismo flujo de conflicto, con el borrador como «lo mío» (RF-11 (001), RNF-10 (001)).
 import { useEffect, useState } from 'react';
 import type { Point } from '../../shared/domain/location';
 import { canEdit, canSetLocation, type ApiceViewer } from '../../shared/domain/access';
 import { messageFor } from '../../shared/domain/messages';
 import type { EditableFields } from '../../shared/domain/versions';
 import { ConflictDiff } from '../components/ConflictDiff';
-import { ContentForm, saveFailureText } from '../components/ContentForm';
+import { ContentForm, draftBaseVersion, restoreDraftValues, restoreLocation, saveFailureText } from '../components/ContentForm';
+import { resolveLocationDraft } from '../components/locationDraft';
 import { useDrafts } from '../app/drafts';
 import { navigate } from '../app/router';
 import { useSession, type PersonSession } from '../app/session';
@@ -99,11 +102,27 @@ interface EditorProps {
 
 const KEEP: LocationEdit = { mode: 'keep' };
 
+/**
+ * Si hay un borrador de esta edición empezado sobre otra versión que la que se abre, el conflicto que hay que resolver
+ * (lo propio = el borrador; lo vigente = lo que se abrió). Un borrador sin versión base se restaura como siempre.
+ */
+function conflictFromDraft(raw: string | undefined, opened: ApiceDoc): Conflict | null {
+  const draftVersion = draftBaseVersion(raw);
+  if (draftVersion === undefined || draftVersion === opened.version) return null;
+  const place = resolveLocationDraft(restoreLocation(raw));
+  return {
+    mine: restoreDraftValues(raw, fieldsOf(opened)),
+    // Unas coordenadas dañadas en el borrador no se envían: la ubicación se conserva.
+    location: place.ok ? place.value : KEEP,
+    current: { version: opened.version, content: fieldsOf(opened) },
+  };
+}
+
 function Editor({ id, client, opened, latest, source, mayReadExact }: EditorProps) {
   const drafts = useDrafts();
   const draftKey = `apice:${id}`;
   const [base, setBase] = useState({ version: opened.version, values: fieldsOf(opened), location: opened.location ?? null, n: 0 });
-  const [conflict, setConflict] = useState<Conflict | null>(null);
+  const [conflict, setConflict] = useState<Conflict | null>(() => conflictFromDraft(drafts.get(draftKey), opened));
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [exact, setExact] = useState<Point | undefined>(undefined);
@@ -171,6 +190,7 @@ function Editor({ id, client, opened, latest, source, mayReadExact }: EditorProp
         key={base.n}
         initial={base.values}
         draftKey={draftKey}
+        baseVersion={base.version}
         submitLabel="Guardar cambios"
         showStatus
         location={{ stored: base.location, exact, mayRaise: mayReadExact }}
