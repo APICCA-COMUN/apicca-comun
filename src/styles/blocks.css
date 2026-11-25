@@ -1,13 +1,17 @@
 /* Bloques del sitio (RF-3 (003) · 3.1, 3.4, RF-4 (003) · 4.1 a 4.5, 4.7, RF-5 (003) · 5.1, 5.3, D-T4 (003),
    D-T6 (003), D-T20 (003); vigentes de la 002: RF-6 (002) · 6.3, 6.5, 6.7, RF-9 (002), D-T18 (002)).
-   Sistema «APICCA · Mapa» (23-11-2026): todo bloque lleva un borde de `stroke-border` (3 px) en tinta, radio 0 y
-   ninguna sombra; los botones van en mayúsculas a 800. Los lotes están en lots.css. Solo colores de tokens. */
+   «E3 · Celda» (24-11-2026): ya no hay cajas. Un bloque que contiene (tarjeta, fila, aviso, formulario) es una fila con
+   un filete horizontal suave (`trama`, 1,5 px) y aire; el aviso (`role="alert"`, `role="status"`) conserva un filete de
+   tinta; los campos (`input`, `select`, `textarea`) siguen siendo controles con su borde. La acción principal es el
+   rótulo en tinta llena (como `.c-barra`), la secundaria un texto subrayado (como `.c-enlace`) y la destructiva el mismo
+   texto con la raya discontinua. Radio 0, sin sombras ni degradados; los botones van en mayúsculas a 800. Los lotes están
+   en lots.css. Solo colores de tokens. */
 
 .block {
   box-sizing: border-box;
   max-width: 100%;
   min-width: 0;
-  border: var(--stroke-border) solid var(--field-border);
+  border: 0;
   border-radius: var(--radius-block);
   box-shadow: none;
   background-color: var(--surface);
@@ -16,9 +20,26 @@
   transition: background-color var(--duration-raise), color var(--duration-raise);
 }
 
-/* Tarjetas, avisos y diálogos llevan aire por dentro; los campos y botones, el suyo. */
-:is(article, section, div, li, p, aside, [role='dialog']).block {
-  padding: 1rem;
+/* Filas, avisos y formularios: sin caja, con un filete suave arriba y aire encima y debajo. El aviso lleva filete de tinta
+   (el texto lo nombra: el filete no es la señal) y el de error, de 2 px. */
+:is(article, section, div, li, p, aside, form).block {
+  padding: 12px 0;
+  border-block-start: var(--stroke-divider) solid var(--trama);
+}
+
+:is(article, section, div, li, p, aside, form).block[role='status'] {
+  border-block-start-color: var(--text);
+}
+
+:is(article, section, div, li, p, aside, form).block[role='alert'] {
+  border-block-start: var(--stroke-outline) solid var(--text);
+  font-weight: 700;
+}
+
+/* Un aviso o una fila dentro de otra fila no repite el filete. */
+.block :is(article, section, div, li, p, aside).block:not([role='alert']) {
+  border-block-start: 0;
+  padding-block: 0;
 }
 
 /* Campos (RF-5 (003) · 5.1; sistema «APICCA · Mapa», `.ap-campo-entrada`): borde completo de 3 px en tinta, papel y
@@ -81,24 +102,28 @@ label:has(> :is(input:not([type='checkbox'], [type='radio']), select, textarea).
   text-transform: none;
 }
 
-/* Acciones (RF-4 (003) · 4.1, RF-2 (008) · 2.1, RF-6 (002) · 6.3, D-T18 (002); `.ap-boton`): rectángulo de al menos
-   48 px con borde de 3 px en tinta, en mayúsculas a 800 y con 0,05em de espaciado. El relleno y la palabra distinguen
-   cada clase, no el color. */
+/* Acciones (RF-4 (003) · 4.1, RF-2 (008) · 2.1, RF-6 (002) · 6.3, D-T18 (002)): en mayúsculas a 800. Sin clase de acción,
+   un botón o enlace de bloque es un texto subrayado (la pieza `.c-enlace`); la principal y la destructiva lo cambian
+   abajo. La palabra y la forma de la raya distinguen cada clase, no el color. */
 button.block,
 a.block {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  min-height: var(--size-control);
-  padding: 0.5rem 1.25rem;
+  min-height: var(--size-icon-control);
+  padding: 0;
+  border: 0;
   border-radius: 0;
-  font-size: var(--type-label-size);
+  background-color: transparent;
+  font-size: var(--type-meta-size);
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   line-height: 1.1;
   text-transform: uppercase;
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
   cursor: pointer;
   /* QA #5 (`.ap-boton`): un solo renglón; la palabra no se parte (ni `anywhere` de `.block` ni el del cuerpo). Si no
      caben, el contenedor los pasa a otra línea (`flex-wrap`, abajo). */
@@ -121,40 +146,86 @@ a.block {
   gap: 12px;
 }
 
+/* QA celda 2 · 3: las opciones de un grupo de radios (la precisión de la ubicación) van en fila con 24 px entre ellas y 8 px si
+   pasan a otra línea; cada una mide al menos 44 px de alto. */
+.choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-block-end: 0.75rem;
+}
+
+.choice-group > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-block-size: var(--size-icon-control);
+}
+
 .stance-bar > :is(p, div, [role='alert']),
 .stance-objection > :is(label, textarea, p) {
   flex: 1 1 100%;
 }
 
-/* Principal (RF-4 (003) · 4.2; `.ap-boton-primario`): tinta llena con texto en papel. */
-.action-primary {
-  background-color: var(--action-blue);
-  color: var(--on-accent);
-  font-weight: 800;
-}
-
-/* El primario va a 17 px (`.ap-boton-primario`); con `:is(button, a).block` para ganarle a la regla general del botón. */
+/* Principal (RF-4 (003) · 4.2): el rótulo grande en tinta llena con texto en papel, como `.c-barra` (`piezas.css`): al
+   menos 52 px de alto, 14 px a 800 y 0,08em. Es la única mancha de tinta fuera del mapa. */
 :is(button, a).block.action-primary {
-  font-size: var(--type-label-primary-size);
+  min-block-size: 52px;
+  padding: 0 16px;
+  border: var(--stroke-outline) solid var(--text);
+  background-color: var(--text);
+  color: var(--background);
+  font-size: var(--type-meta-size);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-decoration: none;
 }
 
-/* Secundario (RF-4 (003) · 4.3; `.ap-boton-secundario`): papel con borde de tinta; se invierte al pasar el cursor
-   y al pulsarlo (abajo). */
-.action-secondary {
-  background-color: var(--surface);
+/* Secundario (RF-4 (003) · 4.3): texto subrayado 2 px, como `.c-enlace`; sin caja. Al pasar el cursor, la raya engorda. */
+:is(button, a).block.action-secondary {
+  background-color: transparent;
   color: var(--text);
 }
 
-/* Destructivo (RF-4 (003) · 4.4): papel con borde de tinta, como el secundario, pero el borde es discontinuo para
-   que la forma lo distinga además de la palabra. Propuesta del asistente: el sistema no define este caso. */
-.action-destructive {
-  border: var(--stroke-border) dashed var(--brand-red);
-  background-color: var(--surface);
-  color: var(--brand-red);
+/* Un enlace `action-secondary` suelto (sin `.block`: «Historial general», «Constitución y propuestas…») mide el alto de su
+   línea, unos 23 px: un pseudo-elemento transparente, centrado, da el área tocable de 44 px sin mover el texto. Lo mismo
+   para `.enlace-texto`, el enlace dentro de una frase («solicita tu inscripción», «Unirme»; QA celda 2 · 5): conserva su
+   aspecto de texto y solo agranda el área tocable hacia arriba y abajo, sobre texto que no es un control. */
+a.action-secondary:not(.block) {
+  position: relative;
 }
 
-/* Botón de ícono (RF-4 (003) · 4.5, RF-2 (008) · 2.2, RF-3 (019), D-T4 (019); `.ap-boton-icono-contorno`): cuadrado de
-   44 por 44 px con borde de 3 px en tinta, con o sin `.block`. */
+a.action-secondary:not(.block)::before {
+  content: '';
+  position: absolute;
+  inset-block-start: calc(50% - 22px);
+  inset-inline: 0;
+  block-size: var(--size-icon-control);
+}
+
+a.enlace-texto {
+  position: relative;
+}
+
+a.enlace-texto::before {
+  content: '';
+  position: absolute;
+  inset-block-start: calc(50% - 22px);
+  inset-inline: 0;
+  block-size: var(--size-icon-control);
+}
+
+/* Destructivo (RF-4 (003) · 4.4): el mismo texto, con la raya discontinua en lugar de continua para que la forma lo
+   distinga además de la palabra. Propuesta del asistente: el sistema no define este caso. */
+:is(button, a).block.action-destructive {
+  background-color: transparent;
+  color: var(--text);
+  text-decoration-style: dashed;
+}
+
+/* Botón de ícono (RF-4 (003) · 4.5, RF-2 (008) · 2.2, RF-3 (019), D-T4 (019)): área de 44 por 44 px sin borde ni caja,
+   con o sin `.block`; el ícono es el dibujo. Al pasar el cursor se vela con `trama`; pulsado (`aria-pressed`) lleva una
+   raya de tinta debajo. */
 .icon-button,
 button.icon-button,
 a.icon-button {
@@ -166,9 +237,9 @@ a.icon-button {
   block-size: var(--size-icon-control);
   min-height: var(--size-icon-control);
   padding: 0;
-  border: var(--stroke-border) solid var(--field-border);
+  border: 0;
   border-radius: 0;
-  background-color: var(--surface);
+  background-color: transparent;
   box-shadow: none;
   color: var(--text);
   font-weight: 800;
@@ -177,12 +248,8 @@ a.icon-button {
   cursor: pointer;
 }
 
-/* QA #18.1 (`.ap-boton-icono` de la cabecera): dentro de `.site-header` el botón de ícono (tema, avisos) va sin borde, con
-   sus 44 por 44 px y su foco; fuera de la cabecera `.icon-button` conserva el contorno de 3 px. */
-.site-header .icon-button,
-.site-header button.icon-button,
-.site-header a.icon-button {
-  border: 0;
+.icon-button[aria-pressed='true'] {
+  border-block-end: var(--stroke-zone) solid var(--text);
 }
 
 /* Diálogo abierto (RF-4 (003) · 4.7, D-T6 (003)): mientras el `body` contiene un diálogo, todo principal de fuera
@@ -192,28 +259,72 @@ body:has([role='dialog']) .action-primary:not([role='dialog'] .action-primary) {
   color: var(--text);
 }
 
-/* Controles del mapa (RF-3 (003) · 3.1): Leaflet les pone su propio borde; como bloques, el de 3 px en tinta. */
+/* Controles del mapa (RF-3 (003) · 3.1): Leaflet les pone su propio borde (el selector de ubicación, un control con
+   su contorno); como bloques, el de 1,5 px en tinta. */
 .leaflet-touch .leaflet-bar.block,
 .leaflet-bar.block {
-  border: var(--stroke-border) solid var(--field-border);
+  border: var(--stroke-divider) solid var(--field-border);
 }
 
 /* Avisos (RF-2 (002) · 2.3): bloques como los demás; el texto los nombra y el color no va solo. */
 
-/* Radios y casillas: no son bloques; su marca usa el color del texto. El `color` también, para no
-   heredar el blanco del navegador en oscuro, que coincide con `logo-gray` (RF-2 (002) · 2.3, T-2.27 (003)). */
-.choice {
+/* Radios y casillas: no son bloques. Radio 0 (README del sistema, «Forma»): sin el dibujo nativo (`appearance: none`) son un
+   cuadrado de 20 px con contorno de tinta de 2 px; marcados, llevan una marca maciza de tinta dentro (el contorno solo no
+   basta: la forma cambia, no solo el color). Foco: el contorno global de 3 px (`:focus-visible`, base.css). El `color` también,
+   para no heredar el blanco del navegador en oscuro, que coincide con `logo-gray` (RF-2 (002) · 2.3, T-2.27 (003)). */
+.choice,
+input:is([type='radio'], [type='checkbox']) {
+  appearance: none;
+  box-sizing: border-box;
+  flex: none;
   color: var(--text);
   inline-size: 1.25rem;
   block-size: 1.25rem;
   margin: 0 0.5rem 0 0;
+  padding: 4px;
+  border: var(--stroke-outline) solid var(--text);
+  border-radius: 0;
+  background-color: transparent;
+  background-clip: content-box;
   vertical-align: middle;
-  accent-color: var(--text);
+  cursor: pointer;
 }
 
-/* Estados (RF-6 (002) · 6.5): cada uno con su forma; el texto que los nombra lo pone el componente. */
-.block:disabled,
-.block[aria-disabled='true'] {
+.choice:checked,
+input:is([type='radio'], [type='checkbox']):checked {
+  background-color: var(--text);
+}
+
+.choice:disabled,
+input:is([type='radio'], [type='checkbox']):disabled {
+  border-style: dashed;
+  border-color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.choice:checked:disabled,
+input:is([type='radio'], [type='checkbox']):checked:disabled {
+  background-color: var(--text-muted);
+}
+
+@media (forced-colors: active) {
+  .choice,
+  input:is([type='radio'], [type='checkbox']) {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+  }
+
+  .choice:checked,
+  input:is([type='radio'], [type='checkbox']):checked {
+    background-color: CanvasText;
+  }
+}
+
+/* Estados (RF-6 (002) · 6.5): cada uno con su forma; el texto que los nombra lo pone el componente. Un campo
+   deshabilitado lleva el borde discontinuo; la principal, la raya discontinua de la barra (`piezas.css`); el texto
+   subrayado, la raya punteada. */
+:is(input, select, textarea).block:disabled,
+:is(input, select, textarea).block[aria-disabled='true'] {
   border: var(--stroke-border) dashed var(--text-muted);
   background-color: var(--background);
   color: var(--text-muted);
@@ -221,8 +332,26 @@ body:has([role='dialog']) .action-primary:not([role='dialog'] .action-primary) {
   box-shadow: none;
 }
 
-.block[aria-busy='true'] {
+:is(button, a).block:disabled,
+:is(button, a).block[aria-disabled='true'] {
+  background-color: transparent;
+  color: var(--text-muted);
+  text-decoration-style: dotted;
+  cursor: not-allowed;
+}
+
+:is(button, a).block.action-primary:disabled,
+:is(button, a).block.action-primary[aria-disabled='true'] {
+  border: var(--stroke-outline) dashed var(--text-muted);
+  background-color: var(--background);
+  text-decoration: none;
+}
+
+:is(input, select, textarea).block[aria-busy='true'] {
   border-style: dotted;
+}
+
+.block[aria-busy='true'] {
   cursor: progress;
 }
 
@@ -237,28 +366,30 @@ body:has([role='dialog']) .action-primary:not([role='dialog'] .action-primary) {
   color: var(--text-muted);
 }
 
-/* Movimiento (RF-9 (002); `.ap-boton-secundario:hover`): el secundario, el ícono y el pulsado se invierten a tinta
-   llena al pasar el cursor (solo con cursor) y al pulsarlos. El principal ya es tinta: se aclara su texto con un
-   subrayado. */
+/* Movimiento (RF-9 (002)): la principal se invierte (papel con borde de tinta) al pasar el cursor, como `.c-barra`; el texto
+   subrayado engorda su raya, sin invertir ninguna caja; el ícono se vela con `trama`. Solo con cursor. */
 @media (hover: hover) {
-  :is(button, a).block:not(:disabled, [aria-disabled='true'], .action-primary, .action-destructive):hover,
-  :is(button, a).icon-button:not(:disabled, [aria-disabled='true']):hover {
-    background-color: var(--text);
-    color: var(--surface);
+  :is(button, a).block.action-primary:not(:disabled, [aria-disabled='true']):hover {
+    background-color: var(--background);
+    color: var(--text);
   }
 
-  :is(button, a).block.action-primary:not(:disabled, [aria-disabled='true']):hover,
-  :is(button, a).block.action-destructive:not(:disabled, [aria-disabled='true']):hover {
-    text-decoration: underline;
-    text-decoration-thickness: 2px;
-    text-underline-offset: 4px;
+  :is(button, a).block:not(.action-primary, .icon-button):not(:disabled, [aria-disabled='true']):hover {
+    text-decoration-thickness: 4px;
+  }
+
+  :is(button, a).icon-button:not(:disabled, [aria-disabled='true']):hover {
+    background-color: var(--trama);
   }
 }
 
-:is(button, a).block:not(:disabled, [aria-disabled='true'], .action-primary):active,
-:is(button, a).block[aria-pressed='true']:not(:disabled) {
-  background-color: var(--text);
-  color: var(--surface);
+:is(button, a).block.action-primary:not(:disabled, [aria-disabled='true']):active {
+  background-color: var(--background);
+  color: var(--text);
+}
+
+:is(button, a).block:not(.action-primary, .icon-button):not(:disabled)[aria-pressed='true'] {
+  text-decoration-thickness: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -267,46 +398,22 @@ body:has([role='dialog']) .action-primary:not([role='dialog'] .action-primary) {
   }
 }
 
-/* Colores forzados (RNF-1 (003), D-T20 (003)): el borde de 3 px toma el color del sistema. */
+/* Colores forzados (RNF-1 (003), D-T20 (003)): los filetes y la raya toman el color del sistema. */
 @media (forced-colors: active) {
-  .block:not(.action-destructive),
+  .block,
   .leaflet-touch .leaflet-bar.block,
-  .icon-button {
+  .icon-button[aria-pressed='true'] {
     border-color: CanvasText;
   }
 }
 
 /* Contraste aumentado (RNF-1 (003), D-T20 (003), D-T21 (002)): el sistema ya es tinta sobre papel a 16:1; el borde
-   del texto suave pasa a tinta. */
+   del texto suave y el filete suave pasan a tinta. */
 @media (prefers-contrast: more) {
-  .block:disabled,
-  .block[aria-disabled='true'] {
+  :is(input, select, textarea).block:disabled,
+  :is(input, select, textarea).block[aria-disabled='true'],
+  :is(article, section, div, li, p, aside, form).block {
     border-color: var(--text);
-  }
-}
-
-/* RF-4 (008) · 4.5, D-T5 (008), RF-15 (019) · 15.1, RF-15 (021) · 15.3: la inicial de la cuenta en la cabecera, un
-   cuadrado de 44 px en tinta llena con la letra en papel, sin colores de eje, dentro del enlace de la cuenta. */
-.account-initial {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  inline-size: var(--size-icon-control);
-  block-size: var(--size-icon-control);
-  border: var(--stroke-border) solid var(--node-ring);
-  border-radius: 0;
-  background-color: var(--charcoal);
-  color: var(--on-charcoal);
-  box-shadow: none;
-  font-size: var(--type-lead-size);
-  font-weight: 800;
-  text-decoration: none;
-}
-
-@media (forced-colors: active) {
-  .account-initial {
-    border: 2px solid CanvasText;
   }
 }
 

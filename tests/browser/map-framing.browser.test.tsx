@@ -9,6 +9,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 // La entrada de la cuenta (`SessionEntry`) toma sus estilos de la cabecera, que la aplicación siempre carga.
 import '../../src/components/SiteHeader.css';
 import type { Location } from '../../shared/domain/location';

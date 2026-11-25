@@ -17,7 +17,7 @@ export function RegisterInfoPage() {
         <>
           <p>Aquí se entra por invitación: un facilitador te envía un enlace para crear tu acceso.</p>
           <p>
-            Si aún no tienes uno, <Link href="/solicitar">solicita tu inscripción</Link>.
+            Si aún no tienes uno, <Link href="/solicitar" className="enlace-texto">solicita tu inscripción</Link>.
           </p>
         </>
       )}

@@ -1,0 +1,55 @@
+/* «E3 · Celda»: la Acción Común fuera del mapa (PiezaArco.tsx). Halo de papel y trazo de tinta; sin sombras. */
+.pieza-arco {
+  display: block;
+  flex: none;
+  overflow: visible;
+  color: var(--text);
+}
+
+.pieza-arco__halo,
+.pieza-arco__trazo {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.pieza-arco__halo {
+  stroke: var(--background);
+}
+
+.pieza-arco__trazo {
+  stroke: var(--text);
+}
+
+/* Cerrada: guiones, como el Arco cerrado del mapa (puntas rectas para no comerse el hueco); el halo sigue entero. */
+.pieza-arco--cerrada .pieza-arco__trazo {
+  stroke-dasharray: 6 4;
+  stroke-linecap: butt;
+}
+
+.pieza-arco__disco {
+  fill: var(--text);
+}
+
+/* La celda «+N»: tinta llena con el número en papel, como la del mapa. */
+.pieza-arco__mas {
+  fill: var(--text);
+  stroke: var(--text);
+  stroke-width: 2px;
+  stroke-linejoin: miter;
+}
+
+.pieza-arco__mas-texto {
+  fill: var(--background);
+  font-size: var(--type-meta-size);
+  font-weight: 800;
+}
+
+@media (forced-colors: active) {
+  .pieza-arco__trazo {
+    stroke: CanvasText;
+  }
+
+  .pieza-arco__disco {
+    fill: CanvasText;
+  }
+}

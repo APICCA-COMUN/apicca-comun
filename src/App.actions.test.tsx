@@ -23,7 +23,7 @@ const authDouble: AuthService = {
 
 const FACILITATOR: SessionState = { status: 'person', uid: 'fab', role: 'facilitator', username: 'fabi' };
 
-type ActionClass = 'action-primary' | 'action-secondary' | 'action-destructive';
+type ActionClass = 'action-primary' | 'action-secondary' | 'action-destructive' | 'c-enlace';
 
 interface Screen {
   /** Nombre de la pantalla en la tabla de §4.9. */
@@ -94,14 +94,15 @@ export const SCREENS: Screen[] = [
   },
   // RF-11 (021), RF-12 (021) · 12.1, D-T22 (021): el Inicio, Prototipado y Mi tablero dieron paso al mapa. El azul es
   // «Prototipar un Ápice» (sin sesión abre el boceto; «Unirme» queda como acción secundaria), también en «Lo mío».
+  // «E3 · Celda»: en el Inicio las acciones secundarias («Unirme», «Lo mío», «Ver como lista») son enlaces de texto, `c-enlace`.
   {
     screen: 'Mapa sin sesión',
     path: '/',
     session: VISITOR,
     blue: 'Prototipar un Ápice',
     actions: [
-      ['Unirme', 'action-secondary'],
-      ['Ver como lista', 'action-secondary'],
+      ['Unirme', 'c-enlace'],
+      ['Ver como lista', 'c-enlace'],
     ],
     ready: /Prototipar un Ápice/,
   },
@@ -111,12 +112,12 @@ export const SCREENS: Screen[] = [
     session: FACILITATOR,
     blue: 'Prototipar un Ápice',
     actions: [
-      ['Lo mío', 'action-secondary'],
-      ['Ver como lista', 'action-secondary'],
+      ['Lo mío', 'c-enlace'],
+      ['Ver como lista', 'c-enlace'],
     ],
     ready: /Prototipar un Ápice/,
   },
-  { screen: 'Lo mío', path: '/?mio=1', session: FACILITATOR, blue: 'Prototipar un Ápice', actions: [['Lo mío', 'action-secondary']], ready: /Prototipar un Ápice/ },
+  { screen: 'Lo mío', path: '/?mio=1', session: FACILITATOR, blue: 'Prototipar un Ápice', actions: [['Lo mío', 'c-enlace']], ready: /Prototipar un Ápice/ },
 ];
 
 function Frame({ session, children }: { session: SessionState; children: ReactNode }) {
@@ -199,7 +200,9 @@ describe.each(SCREENS)('acciones en $screen', (row) => {
         expect(found.length, `falta la acción «${name}»`).toBeGreaterThan(0);
         for (const element of found) {
           expect(element.classList.contains(cls), `«${name}» debe llevar ${cls}`).toBe(true);
-          expect(element.classList.contains('block'), `«${name}» debe seguir siendo un bloque`).toBe(true);
+          // «E3 · Celda»: la acción es un bloque o una pieza de acción (rótulo grande `.c-barra` o enlace de texto `.c-enlace`).
+          const esPieza = ['block', 'c-barra', 'c-enlace'].some((pieza) => element.classList.contains(pieza));
+          expect(esPieza, `«${name}» debe seguir siendo un bloque o una pieza de acción`).toBe(true);
         }
       });
     }

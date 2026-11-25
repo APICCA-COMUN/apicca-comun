@@ -74,6 +74,27 @@ describe('expectBlocks', () => {
   });
 });
 
+describe('expectBlocks · «E3 · Celda»', () => {
+  it('un botón o enlace con una pieza (`c-*`) o de las leyendas no necesita `block`; un botón suelto, sí', () => {
+    mount(
+      `<button class="c-barra">Prototipar</button><a class="c-enlace" href="#">Ver</a><button class="leyenda-control__boton" aria-pressed="false"></button>
+       <button class="otra">Suelto</button>`,
+    );
+    expect(blockProblems(container)).toEqual(['sin «block»: <button class="otra">']);
+  });
+
+  it('`fill` y `stroke` valen en `style` con `var(--…)` o `none`; con un literal, falla', () => {
+    mount('<svg><polygon style="fill: var(--text); stroke: var(--contorno-superficie)"></polygon><polygon style="fill: none; stroke: var(--text)"></polygon></svg>');
+    expect(blockProblems(container)).toEqual([]);
+    mount('<svg><polygon style="fill: #ff0000"></polygon><polygon style="stroke: red"></polygon><polygon style="color: var(--text)"></polygon></svg>');
+    expect(blockProblems(container)).toEqual([
+      'color en style: <polygon style="fill: #ff0000">',
+      'color en style: <polygon style="stroke: red">',
+      'color en style: <polygon style="color: var(--text)">',
+    ]);
+  });
+});
+
 describe('blockNesting', () => {
   it('RF-3 (003) · 3.3: un bloque dentro de otro bloque falla', () => {
     mount('<section class="block"><div class="block"><p>Hola</p></div></section>');

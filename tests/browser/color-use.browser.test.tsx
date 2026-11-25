@@ -15,6 +15,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 import { AXES } from '../../shared/domain/apice';
 import { THEMES } from '../../shared/domain/identity';
 import { App } from '../../src/App';
@@ -70,7 +71,7 @@ const AXIS_TOKENS = AXES.flatMap((axis) => {
 for (const token of AXIS_TOKENS) ALLOWED[token] = AXIS_PLACES;
 
 const PROPERTIES = ['color', 'backgroundColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor', 'fill', 'stroke'] as const;
-/** `fill` y `stroke` solo se miran para los colores de eje: el resto de los tokens reservados no se pinta en SVG fuera de su lugar. */
+/** `fill` y `stroke` se miran para los colores de eje y del logo: el resto de los tokens reservados no se pinta en SVG fuera de su lugar. */
 const SVG_PROPERTIES = new Set<string>(['fill', 'stroke']);
 
 let host: HTMLDivElement | undefined;
@@ -99,15 +100,28 @@ async function waitFor<T>(find: () => T | null | undefined | false, timeoutMs = 
   }
 }
 
-/** El valor calculado de cada token reservado en el tema vigente. */
+/** Los tokens neutros del sistema «E3 · Celda» (tinta, tinta atenuada, papel, línea): son de todos los componentes. */
+const NEUTRAL_TOKENS = ['text', 'text-muted', 'background', 'surface', 'line', 'trama', 'on-accent', 'on-charcoal', 'on-charcoal-muted', 'charcoal'];
+
+function computedToken(token: string): string {
+  const probe = document.createElement('div');
+  probe.style.color = `var(--${token})`;
+  document.body.append(probe);
+  const value = getComputedStyle(probe).color;
+  probe.remove();
+  return value;
+}
+
+/** El valor calculado de cada token reservado en el tema vigente. Con la paleta de «E3 · Celda» el gris del logo vale lo
+    mismo que la tinta atenuada en el tema claro y que la tinta en el oscuro (#666666 y #FFFFFF): un valor que comparte con un
+    token neutro no se puede vigilar por valor (sería señalar a toda la página), así que ese token reservado se deja fuera.
+    El rojo y el azul del logo y los colores de eje siguen siendo valores propios y se vigilan completos. */
 function reservedColors(): Map<string, string[]> {
+  const neutral = new Set(NEUTRAL_TOKENS.map(computedToken));
   const byValue = new Map<string, string[]>();
   for (const token of Object.keys(ALLOWED)) {
-    const probe = document.createElement('div');
-    probe.style.color = `var(--${token})`;
-    document.body.append(probe);
-    const value = getComputedStyle(probe).color;
-    probe.remove();
+    const value = computedToken(token);
+    if (neutral.has(value)) continue;
     byValue.set(value, [...(byValue.get(value) ?? []), token]);
   }
   return byValue;
@@ -125,7 +139,9 @@ function misuses(container: Element): string[] {
         if (parseFloat(style[side]) === 0) continue;
       }
       const all = reserved.get(style[property]);
-      const tokens = SVG_PROPERTIES.has(property) ? all?.filter((token) => token.startsWith('axis-')) : all;
+      // `fill` y `stroke` solo vigilan colores de eje y del logo: el rojo y el azul del logo valen lo mismo que dos colores de eje
+      // (#FF0000 y #0096FF), así que un valor compartido basta que esté permitido para uno de ellos.
+      const tokens = SVG_PROPERTIES.has(property) ? all?.filter((token) => token.startsWith('axis-') || token.startsWith('logo-')) : all;
       if (tokens === undefined || tokens.length === 0) continue;
       // Un valor compartido por varios tokens basta que esté permitido para uno.
       if (tokens.some((token) => element.closest(ALLOWED[token]!) !== null)) continue;

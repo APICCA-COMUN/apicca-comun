@@ -35,6 +35,19 @@ export function matchesFilters(apice: Pick<ApiceSummary, 'axes' | 'status'>, fil
   return filters.status === null || apice.status === filters.status;
 }
 
+/**
+ * «Filtrar es apagar» (mapa): los ids de los ítems que NO pasan los filtros de ejes y Etapa, con el mismo predicado que
+ * `matchesFilters` (alguno de los ejes elegidos y la Etapa elegida; el filtro vacío no restringe), que a su vez es el de
+ * la consulta de Firestore (`axes array-contains-any`, `status ==`). No quita ítems: solo dice cuáles se apagan. Sin
+ * filtros, el conjunto vacío.
+ */
+export function dimmedIds(items: readonly (Pick<ApiceSummary, 'axes' | 'status'> & { id: string })[], filters: ListFilters): Set<string> {
+  const dimmed = new Set<string>();
+  if (!hasActiveFilters(filters)) return dimmed;
+  for (const item of items) if (!matchesFilters(item, filters)) dimmed.add(item.id);
+  return dimmed;
+}
+
 /** De la más reciente a la más antigua. */
 export function compareApices(a: Pick<ApiceSummary, 'updatedAt'>, b: Pick<ApiceSummary, 'updatedAt'>): number {
   return compareTimestampsDescending(a.updatedAt, b.updatedAt);

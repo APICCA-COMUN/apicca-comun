@@ -20,6 +20,13 @@ describe('pares obligatorios', () => {
     expect(has('field-border', 'surface', 3)).toBe(true);
   });
 
+  it('«E3 · Celda»: la tabla pide glifo-sobre-eje a 4,5:1 sobre cada eje y contorno-superficie a 3:1 sobre el papel', () => {
+    for (const axis of ['agua', 'alimento', 'cobijo', 'energia', 'comunicacion'])
+      expect(has('glifo-sobre-eje', `axis-${axis}-fill` as TokenName, 4.5), `${axis}`).toBe(true);
+    expect(has('contorno-superficie', 'surface', 3) && has('contorno-superficie', 'background', 3)).toBe(true);
+    expect(has('text-muted', 'background', 4.5)).toBe(true);
+  });
+
   it('RF-2 (003) · 2.2/2.4: los logo-* no tienen par de contraste (D-12 (003))', () => {
     for (const pair of REQUIRED_PAIRS) {
       expect(pair.fg.startsWith('logo-'), `${pair.fg}/${pair.bg}`).toBe(false);
@@ -43,7 +50,7 @@ describe('pares obligatorios', () => {
 
   it('RNF-1 (003): text y text-muted se miden sobre surface y background, ya no sobre grid', () => {
     expect(REQUIRED_PAIRS.some((p) => (p.bg as string) === 'grid' || (p.bg as string) === 'plate')).toBe(false);
-    expect(REQUIRED_PAIRS).toHaveLength(4 + 2 + 1 + 2 + 2 + 5 + 2 + 2);
+    expect(REQUIRED_PAIRS).toHaveLength(4 + 2 + 1 + 2 + 2 + 5 + 5 + 2 + 2 + 2);
   });
 
   it('RF-5 (003) · 5.1: falla si field-border claro baja de 3:1 sobre background', () => {

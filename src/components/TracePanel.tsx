@@ -2,6 +2,8 @@
 // lo elegido y suma o quita ápices al elegirlos en el mapa o en la lista; el panel dice cuántos faltan para tres, avisa
 // del tope de diez, lista lo elegido con «Quitar» y, desde tres, muestra el formulario. Si el servidor rechaza, muestra
 // el motivo y conserva lo elegido y lo escrito. «Cancelar» no guarda nada.
+// «E3 · Celda» (24-11-2026, Propuesta del asistente): sin cajas; «Quitar» y «Cancelar» son enlaces de texto, el texto va como
+// cuerpo y cada Ápice elegido, como fila con filete suave. Los avisos conservan su bloque.
 import { useId, useState, type FormEvent } from 'react';
 import type { Axis } from '../../shared/domain/apice';
 import { missingForPath } from '../../shared/domain/commonActions';
@@ -38,10 +40,10 @@ export function TracePanel({ chosen, notice, onRemove, onCancel, onProposed, cli
 
   if (session.status !== 'person') {
     return (
-      <section>
-        <h1>Conectar</h1>
-        <p>
-          Para conectar Ápices, únete a APICCA. <Link href="/solicitar">Unirme</Link>
+      <section className="trace-panel">
+        <h1 className="c-nombre">Conectar</h1>
+        <p className="c-cuerpo">
+          Para conectar Ápices, únete a APICCA. <Link href="/solicitar" className="c-enlace">Unirme</Link>
         </p>
       </section>
     );
@@ -64,8 +66,8 @@ export function TracePanel({ chosen, notice, onRemove, onCancel, onProposed, cli
 
   return (
     <section className="trace-panel">
-      <h1>Conectar</h1>
-      <p>Elige en el mapa los Ápices que conecta esta Acción Común.</p>
+      <h1 className="c-nombre">Conectar</h1>
+      <p className="c-cuerpo">Elige en el mapa los Ápices que conecta esta Acción Común.</p>
       <p role="status" className="block">
         {missingText(missing)}
       </p>
@@ -79,7 +81,7 @@ export function TracePanel({ chosen, notice, onRemove, onCancel, onProposed, cli
           {chosen.map((apice) => (
             <li key={apice.id}>
               <span>{apice.name}</span>
-              <button type="button" className="block action-secondary" onClick={() => onRemove(apice.id)}>
+              <button type="button" className="c-enlace action-secondary" onClick={() => onRemove(apice.id)}>
                 Quitar
               </button>
             </li>
@@ -101,7 +103,7 @@ export function TracePanel({ chosen, notice, onRemove, onCancel, onProposed, cli
           submitLabel="Proponer"
         />
       ) : (
-        <button type="button" className="block action-secondary" onClick={onCancel}>
+        <button type="button" className="c-enlace action-secondary" onClick={onCancel}>
           Cancelar
         </button>
       )}

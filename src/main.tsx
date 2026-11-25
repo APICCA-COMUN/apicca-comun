@@ -3,6 +3,7 @@ import './styles/fonts.css';
 import './styles/base.css';
 import './styles/blocks.css';
 import './styles/lots.css';
+import './styles/piezas.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';

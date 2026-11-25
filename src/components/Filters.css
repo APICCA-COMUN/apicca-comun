@@ -1,5 +1,5 @@
 /* Filtros de eje: botones de ícono cuadrados de 44 × 44 px. El estado presionado no depende solo del color:
-   se invierte (fondo tinta, texto papel) y el glifo sigue a la vista. */
+   lleva una raya de tinta debajo del glifo (`.icon-button[aria-pressed]`) y el glifo sigue a la vista. */
 .filter-axis {
   inline-size: var(--size-icon-control);
   block-size: var(--size-icon-control);
@@ -7,9 +7,7 @@
 }
 
 .filter-axis[aria-pressed='true'] {
-  background-color: var(--text);
-  border-color: var(--text);
-  color: var(--background);
+  border-block-end: var(--stroke-zone) solid var(--text);
 }
 
 fieldset > .filter-axis + .filter-axis {

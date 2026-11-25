@@ -1,8 +1,8 @@
 // RF-11 (021) · 11.2, 11.3, RF-14 (021) · 14.7, D-T22 (021) · En `/` (la página real, con la siembra parcial), con el sistema
-// «APICCA · Mapa»: desde 900 px el mapa ocupa la ventana bajo la cabecera, a la izquierda del panel de 430 px, sin
-// desplazamiento horizontal ni vertical (a 1100 y 1280 px). Por debajo de 900 px (360 px) el mapa va arriba, a todo el ancho y con
-// al menos el 60 % del alto de la ventana, y el panel debajo; la página se desplaza solo en vertical. Con la ficha abierta
-// el mapa no se encoge: el panel ocupa su lugar a la derecha (desde 900 px) o debajo (por debajo de 900 px).
+// «E3 · Celda»: desde 900 px la columna de lectura va a la izquierda (margen + columna + hueco, sin borde) y el mapa ocupa el
+// resto de la ventana bajo la cabecera, sin desplazamiento horizontal ni vertical (a 1100 y 1280 px). Por debajo de 900 px (360 px)
+// el mapa va arriba, a todo el ancho y con al menos el 60 % del alto de la ventana, y la columna debajo; la página se desplaza solo
+// en vertical. Con la ficha abierta el mapa no se encoge: la columna sigue a su izquierda (desde 900 px) o debajo (por debajo de 900 px).
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { commands, page } from 'vitest/browser';
 import { act } from 'react';
@@ -12,6 +12,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
@@ -52,13 +53,23 @@ async function mount(node: React.ReactNode) {
   await actNow(() => created.render(node));
 }
 
-const PANEL = 430;
+/** El ancho de la columna de lectura desde 900 px: el margen, la columna y el hueco de `Play.css` (con un píxel de redondeo). */
+function columnWidth(): number {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;visibility:hidden;inline-size:calc(clamp(16px, 3.3vw, 48px) + clamp(300px, 30vw, 344px) + 24px)';
+  host!.append(probe);
+  const width = probe.getBoundingClientRect().width;
+  probe.remove();
+  return width;
+}
 
-/** Sin desplazamiento horizontal; el mapa nace pegado al borde izquierdo y bajo la cabecera del sitio (con un píxel de redondeo). */
-function expectUnderHeader(map: HTMLElement) {
+/** Sin desplazamiento horizontal; el mapa nace bajo la cabecera del sitio (con un píxel de redondeo), pegado al borde derecho
+    desde 900 px (la columna va a su izquierda) y al izquierdo en un teléfono. */
+function expectUnderHeader(map: HTMLElement, wide: boolean) {
   const box = map.getBoundingClientRect();
   expect(box.width).toBeGreaterThan(0);
-  expect(Math.abs(box.left)).toBeLessThanOrEqual(1);
+  if (wide) expect(Math.abs(box.right - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  else expect(Math.abs(box.left)).toBeLessThanOrEqual(1);
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
   const header = host!.querySelector<HTMLElement>('header')!;
   expect(Math.abs(box.top - header.getBoundingClientRect().bottom)).toBeLessThanOrEqual(1);
@@ -90,14 +101,21 @@ describe.each(WIDTHS)('mapa a %i px', (width) => {
       </SessionProvider>,
     );
     const map = await waitFor(() => host!.querySelector<HTMLElement>('section[aria-label="Mapa de ápices"]'));
-    expectUnderHeader(map);
+    expectUnderHeader(map, wide);
     const box = map.getBoundingClientRect();
     const panel = host!.querySelector<HTMLElement>('.play__panel')!.getBoundingClientRect();
     if (wide) {
-      expect(Math.abs(box.right - (document.documentElement.clientWidth - PANEL))).toBeLessThanOrEqual(1);
-      expect(Math.abs(box.bottom - innerHeight)).toBeLessThanOrEqual(1);
+      // La columna a la izquierda, sin borde, y el mapa a su derecha hasta el borde de la ventana.
+      expect(Math.abs(box.left - columnWidth())).toBeLessThanOrEqual(1);
+      expect(Math.abs(panel.left)).toBeLessThanOrEqual(1);
+      // El mapa deja abajo la leyenda-control: el escenario (mapa y leyenda) es el que llega al pie de la ventana.
+      const stage = host!.querySelector<HTMLElement>('.play__stage')!.getBoundingClientRect();
+      const legend = host!.querySelector<HTMLElement>('.play__legend')!.getBoundingClientRect();
+      expect(Math.abs(stage.bottom - innerHeight)).toBeLessThanOrEqual(1);
+      expect(box.bottom).toBeLessThanOrEqual(legend.top + 1);
+      expect(Math.abs(legend.bottom - innerHeight)).toBeLessThanOrEqual(1);
       expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(innerHeight);
-      expect(Math.abs(panel.width - PANEL)).toBeLessThanOrEqual(1);
+      expect(Math.abs(panel.width - columnWidth())).toBeLessThanOrEqual(1);
       expect(Math.abs(panel.top - box.top)).toBeLessThanOrEqual(1);
     } else {
       expect(Math.abs(box.right - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
@@ -120,7 +138,7 @@ describe.each(WIDTHS)('mapa a %i px', (width) => {
     const cell = await waitFor(() => map.querySelector<HTMLButtonElement>('button.game-map__apice'));
     await actNow(() => cell.click());
     await waitFor(() => host!.querySelector<HTMLElement>('aside.game-panel'));
-    // La columna es `.play__panel`, con su borde de 3 px; el panel de dentro va a su lado.
+    // La columna es `.play__panel`, sin borde; el panel de dentro va en ella.
     const panel = host!.querySelector<HTMLElement>('.play__panel')!;
     const after = map.getBoundingClientRect();
     expect(Math.abs(after.width - before.width)).toBeLessThanOrEqual(1);
@@ -128,10 +146,11 @@ describe.each(WIDTHS)('mapa a %i px', (width) => {
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
     const box = panel.getBoundingClientRect();
     if (wide) {
-      // Junto al mapa, pegado al borde derecho: la columna de 430 px con su borde de 3 px.
-      expect(Math.abs(document.documentElement.clientWidth - box.right)).toBeLessThanOrEqual(1);
-      expect(Math.abs(box.left - after.right)).toBeLessThanOrEqual(1);
-      expect(Math.abs(box.width - PANEL)).toBeLessThanOrEqual(1);
+      // Junto al mapa, pegada al borde izquierdo: la columna (margen + columna + hueco), y el mapa no cambia de lugar.
+      expect(Math.abs(box.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(after.left - box.right)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.width - columnWidth())).toBeLessThanOrEqual(1);
+      expect(Math.abs(after.left - before.left)).toBeLessThanOrEqual(1);
     } else {
       // Debajo del mapa, a todo el ancho; la página baja hasta él.
       expect(Math.abs(box.width - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);

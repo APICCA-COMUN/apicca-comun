@@ -1,0 +1,65 @@
+/* «E3 · Celda»: la línea de ejes (EjesLinea.tsx). Las clases que pintan color de eje llevan «superficie» en el nombre
+   (RF-15 (019) · 15.2). Solo tokens; sin sombras. */
+.ejes-linea {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+
+.ejes-linea__eje {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-meta-size);
+  line-height: 1;
+  font-weight: 600;
+}
+
+.ejes-linea__celda {
+  flex: none;
+  display: block;
+}
+
+.ejes-linea__superficie {
+  stroke: var(--contorno-superficie);
+  stroke-width: 2px;
+  stroke-linejoin: miter;
+}
+
+.ejes-linea__superficie--agua {
+  fill: var(--axis-agua-fill);
+}
+
+.ejes-linea__superficie--alimento {
+  fill: var(--axis-alimento-fill);
+}
+
+.ejes-linea__superficie--cobijo {
+  fill: var(--axis-cobijo-fill);
+}
+
+.ejes-linea__superficie--energia {
+  fill: var(--axis-energia-fill);
+}
+
+.ejes-linea__superficie--comunicacion {
+  fill: var(--axis-comunicacion-fill);
+}
+
+.ejes-linea__hueca {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 2px;
+  stroke-linejoin: miter;
+}
+
+@media (forced-colors: active) {
+  .ejes-linea__superficie--agua,
+  .ejes-linea__superficie--alimento,
+  .ejes-linea__superficie--cobijo,
+  .ejes-linea__superficie--energia,
+  .ejes-linea__superficie--comunicacion {
+    fill: Canvas;
+  }
+}

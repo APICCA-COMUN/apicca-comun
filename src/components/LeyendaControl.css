@@ -1,0 +1,183 @@
+/* «E3 · Celda»: la leyenda que es control (LeyendaControl.tsx). Las clases que pintan color de eje llevan «superficie» o
+   «glifo» en el nombre (RF-15 (019) · 15.2). Solo tokens; sin sombras. */
+
+.leyenda-control {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.leyenda-control__grupos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.leyenda-control__grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.leyenda-control__fila {
+  display: flex;
+}
+
+/* Cinco ejes: 72 px cada uno (360 px en total); en un teléfono pasan a otra línea en vez de desbordar. */
+.leyenda-control__fila--ejes {
+  flex-wrap: wrap;
+  row-gap: 12px;
+}
+
+.leyenda-control__fila--nivel {
+  gap: 12px;
+}
+
+/* El botón es una columna: la celda y su nombre. Sin caja: el contorno lo dan la celda y el foco. */
+.leyenda-control__boton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-inline-size: 72px;
+  min-block-size: 48px;
+  block-size: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: var(--type-meta-size);
+  line-height: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Los nombres de las Etapas van en mayúsculas y son más anchos que las celdas: con 72 px de mínimo se tocaban («PROTOTIPO» con «EN MARCHA»).
+   Los ejes llevan 64 px (la fila entera mide 338 px, no 370) y las Etapas, 48 px más 8 px entre una y otra: así los tres grupos caben
+   en una sola franja a 1280 px. */
+.leyenda-control__fila--ejes .leyenda-control__boton {
+  min-inline-size: 64px;
+}
+
+.leyenda-control__grupo--etapa .leyenda-control__fila {
+  gap: 8px;
+}
+
+.leyenda-control__grupo--etapa .leyenda-control__boton {
+  min-inline-size: 48px;
+}
+
+.leyenda-control__boton--nivel {
+  min-inline-size: 48px;
+}
+
+.leyenda-control__celda {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: 35px;
+}
+
+.leyenda-control__nombre {
+  white-space: nowrap;
+}
+
+/* Las Etapas y los extremos del nivel son rótulos: van en mayúsculas por CSS, sin cambiar el texto de origen. Los ejes siguen en
+   minúscula (README del sistema). */
+.leyenda-control__nombre--rotulo,
+.leyenda-control__extremos {
+  text-transform: uppercase;
+}
+
+/* La Etapa elegida se subraya además de llevar contorno grueso. */
+.leyenda-control__nombre--elegido {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+@media (hover: hover) {
+  .leyenda-control__boton:hover .leyenda-control__nombre {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+}
+
+/* El eje encendido: el color del eje en la celda; el glifo, siempre en `glifo-sobre-eje`. */
+.leyenda-control__superficie--agua {
+  fill: var(--axis-agua-fill);
+}
+
+.leyenda-control__superficie--alimento {
+  fill: var(--axis-alimento-fill);
+}
+
+.leyenda-control__superficie--cobijo {
+  fill: var(--axis-cobijo-fill);
+}
+
+.leyenda-control__superficie--energia {
+  fill: var(--axis-energia-fill);
+}
+
+.leyenda-control__superficie--comunicacion {
+  fill: var(--axis-comunicacion-fill);
+}
+
+.leyenda-control__glifo {
+  display: flex;
+  color: var(--glifo-sobre-eje);
+}
+
+.leyenda-control__glifo--apagado {
+  color: var(--text-muted);
+}
+
+/* Las muestras de Etapa son neutras: el «agua» del patrón vale papel y el glifo, tinta del tema. El glifo no puede quedarse en
+   `glifo-sobre-eje` (tinta oscura fija, pensada para ir sobre el color del eje): en el tema oscuro caería sobre papel oscuro y
+   la muestra perdería el patrón. */
+.leyenda-control__etapa-superficie {
+  --axis-agua-fill: var(--background);
+  --glifo-sobre-eje: var(--text);
+}
+
+.leyenda-control__extremos {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--type-meta-size);
+  line-height: 14px;
+  font-weight: 500;
+}
+
+.leyenda-control__grupo--nivel {
+  inline-size: 168px;
+}
+
+@media (max-width: 639px) {
+  .leyenda-control__grupos {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .leyenda-control__grupo--nivel {
+    inline-size: 168px;
+  }
+}
+
+@media (forced-colors: active) {
+  .leyenda-control__superficie--agua,
+  .leyenda-control__superficie--alimento,
+  .leyenda-control__superficie--cobijo,
+  .leyenda-control__superficie--energia,
+  .leyenda-control__superficie--comunicacion {
+    fill: Canvas;
+  }
+}

@@ -99,7 +99,7 @@ export function RegisterPage({ token, ops = realRegisterOps }: { token: string; 
       {inspection.kind === 'rejected' && <p role="alert" className="block">{inspection.message}</p>}
       {inspection.kind === 'account-exists' && (
         <p>
-          Este correo ya tiene una cuenta. <Link href="/entrar">Entrar</Link>
+          Este correo ya tiene una cuenta. <Link href="/entrar" className="enlace-texto">Entrar</Link>
         </p>
       )}
       {inspection.kind === 'ready' && (

@@ -1,12 +1,11 @@
-/* Sistema «APICCA · Mapa» (`.ap-cabecera`, `.ap-nav`, `.ap-cabecera-fin`): la cabecera mide 64 px como mínimo, con borde
-   inferior de 3 px en tinta sobre papel, de lado a lado. Logo a la izquierda, navegación principal en mayúsculas (la
-   vigente con subrayado de 3 px; `.menu-link` lo pone), y a la derecha tema, avisos, cuenta y «Menú». Por debajo de
-   1100 px la navegación no cabe: se oculta y queda en el menú plegado (`GameMenu`). A 360 px caben el logo y los
-   cuatro controles en una fila, con 12 px a cada lado. Solo tokens. */
+/* «E3 · Celda» (`.ap-cabecera`, `.ap-nav`, `.ap-cabecera-fin`): la cabecera mide 64 px como mínimo y va sin borde: el
+   aire la separa del mapa y de la página. Logo a la izquierda, navegación principal en rótulos (la vigente
+   con raya de 2 px; `.menu-link` la pone) y a la derecha tema, avisos, cuenta y «Menú». Por debajo de 1100 px la
+   navegación no cabe: se oculta y queda en el menú plegado (`GameMenu`). A 360 px caben el logo y los cuatro controles en
+   una fila, con 12 px a cada lado. Solo tokens. */
 .site-header {
   box-sizing: border-box;
   min-block-size: 64px;
-  border-block-end: var(--stroke-border) solid var(--text);
   background-color: var(--background);
   color: var(--text);
 }
@@ -18,7 +17,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
-  min-block-size: 61px; /* 64 px menos el borde de 3 px: el alto total de la cabecera es 64 px. */
+  min-block-size: 64px;
   padding-inline: 12px;
 }
 
@@ -29,10 +28,30 @@
   gap: 24px;
 }
 
-/* El enlace de la cabecera no lleva los 44 px del menú: el subrayado de 3 px va pegado al texto (`.ap-nav a`). */
+/* Rótulo de la navegación: meta, 700, 0,1em, mayúsculas. El enlace de la cabecera no lleva los 44 px del menú: la raya de
+   la entrada vigente va pegada al texto. */
 .site-nav__link.menu-link {
+  position: relative;
   min-block-size: 0;
   padding: 4px 0;
+  border-block-end-width: var(--stroke-outline);
+  font-size: var(--type-meta-size);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 16px;
+}
+
+/* Área tocable de 44 px, centrada, con un pseudo-elemento transparente: la raya y el texto no se mueven. */
+.site-nav__link.menu-link::before {
+  content: '';
+  position: absolute;
+  inset-block-start: calc(50% - 22px);
+  inset-inline: 0;
+  block-size: var(--size-icon-control);
+}
+
+.site-nav__link.menu-link[aria-current='page'] {
+  font-weight: 800;
 }
 
 .site-header__actions {
@@ -42,12 +61,10 @@
   margin-inline-start: auto;
 }
 
-/* Botones de texto de la cabecera (`.ap-boton-chico`): 44 px de alto y 18 px de relleno (10 px a 360 px). */
-.site-header__actions a.block:not(.icon-button),
-.site-header__actions button.block:not(.icon-button) {
-  min-block-size: var(--size-icon-control);
-  padding-inline: 10px;
-  font-weight: 800;
+/* «Entrar» y «Menú» son enlaces de texto: el área tocable de 44 px la pone `.c-enlace`; aquí solo el aire entre ellos. */
+.site-header__actions a.c-enlace,
+.site-header__actions button.c-enlace {
+  padding-inline: 6px;
 }
 
 @media (min-width: 640px) {
@@ -58,11 +75,6 @@
 
   .site-header__actions {
     gap: 12px;
-  }
-
-  .site-header__actions a.block:not(.icon-button),
-  .site-header__actions button.block:not(.icon-button) {
-    padding-inline: 18px;
   }
 }
 
@@ -80,13 +92,52 @@
   }
 }
 
-/* RF-15 (021) · 15.3: la cuenta muestra la inicial y, desde 1280 px, el nombre de usuario y el rol a su lado. */
+/* RF-15 (021) · 15.3: la cuenta muestra la celda con la inicial y, desde 1280 px, el nombre de usuario y el rol a su lado. */
 a.account-entry {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-block-size: var(--size-icon-control);
   color: var(--text);
   text-decoration: none;
+}
+
+/* La celda de la cuenta: hexágono de contorno de tinta, sin relleno, con la inicial centrada (rótulo en tinta). */
+.account-celda {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+}
+
+.account-celda__forma {
+  display: block;
+}
+
+.account-celda__forma polygon {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2px;
+  stroke-linejoin: miter;
+}
+
+.account-celda__letra {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--type-lead-size);
+  font-weight: 800;
+  line-height: 1;
+}
+
+@media (forced-colors: active) {
+  .account-celda__forma polygon {
+    stroke: CanvasText;
+  }
 }
 
 .account-entry__text {
@@ -116,6 +167,8 @@ a.account-entry {
 
 a.account-entry:hover .account-entry__name {
   text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
 
 @media (min-width: 1280px) {

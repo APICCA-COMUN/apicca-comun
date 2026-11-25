@@ -1,0 +1,45 @@
+/* «E3 · Celda»: la celda hexagonal (Celda.tsx). Solo tokens; sin sombras. */
+
+.celda {
+  position: relative;
+  display: block;
+  flex: none;
+}
+
+.celda__forma {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: visible;
+}
+
+.celda__poligono {
+  fill: none;
+}
+
+.celda__dentro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.celda-superficie {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+/* El contorno de una celda con superficie, como el de la celda del mapa. */
+.celda__contorno {
+  fill: none;
+  stroke: var(--contorno-superficie);
+  stroke-linejoin: miter;
+}
+
+@media (forced-colors: active) {
+  .celda__contorno {
+    stroke: CanvasText;
+  }
+}

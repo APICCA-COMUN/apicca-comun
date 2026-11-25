@@ -40,7 +40,7 @@ export function ForgotPage() {
       </form>
       {done && <p role="status" className="block">{RESET_SENT}</p>}
       <p>
-        <Link href="/entrar">Volver a entrar</Link>
+        <Link href="/entrar" className="c-enlace">Volver a entrar</Link>
       </p>
     </div>
   );

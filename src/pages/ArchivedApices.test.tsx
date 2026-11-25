@@ -75,10 +75,10 @@ describe('ArchivedApices · bloques (002)', () => {
   it('RF-6 (002) · 6.3: los enlaces propios de la página no llevan clase de acción', () => {
     setup({ status: 'visitor' }, fakeListSource(0).source);
     const link = screen.getByRole('link', { name: 'Entrar' });
-    expect(link.className).toBe('');
+    expect(link.className).not.toMatch(/action-|\bblock\b/);
   });
 
-  it('RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1: la lista se presenta dentro de un lote con sus tarjetas como bloques', async () => {
+  it('RF-3 (003) · 3.2, 3.3, RF-17 (003) · 17.1: la lista se presenta dentro de un lote con sus Ápices como filas con filete (`.c-dato`), sin tarjetas', async () => {
     const { source } = fakeListSource(2);
     setup({ status: 'person', uid: 'u-ana', role: 'member', username: 'ana' }, source);
     const articles = await screen.findAllByRole('article');
@@ -88,7 +88,7 @@ describe('ArchivedApices · bloques (002)', () => {
     expect(lot?.classList.contains('block')).toBe(false);
     for (const article of articles) {
       expect(lot?.contains(article)).toBe(true);
-      expect(article.classList.contains('block')).toBe(true);
+      expect(article.classList.contains('c-dato') && !article.classList.contains('block')).toBe(true);
     }
   });
 });

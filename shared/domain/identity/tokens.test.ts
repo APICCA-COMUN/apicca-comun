@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { contrastRatio } from './color';
 import * as tokens from './tokens';
-import { MAP_TINT, THEMES, TOKENS, TOKEN_NAMES, TYPE_SCALE } from './tokens';
+import { MAP_TINT, THEMES, TOKENS, TOKEN_NAMES, TYPE_SCALE, type TokenName } from './tokens';
 
 const ms = (value: string): number => {
   const match = /^(\d+(?:\.\d+)?)(ms|s)$/.exec(value);
@@ -36,13 +36,13 @@ describe('tokens', () => {
   it('RNF-4 (002): los valores de plan §2 bis (muestra)', () => {
     // Sistema «APICCA · Mapa»: la acción principal es tinta; los ejes son iguales en los dos temas.
     expect(TOKENS.light['action-blue']).toBe('#141414');
-    expect(TOKENS.dark['axis-energia-fill']).toBe('#F2CC3D');
+    expect(TOKENS.dark['axis-energia-fill']).toBe('#FFD200');
     expect(TOKENS.light['axis-energia-stroke']).toBe('#141414');
   });
 
   it('RF-1 (003) · 1.1, 1.2: background papel en claro y casi negro en oscuro (sistema «APICCA · Mapa»)', () => {
-    expect(TOKENS.light.background).toBe('#F1EFE9');
-    expect(TOKENS.dark.background).toBe('#131312');
+    expect(TOKENS.light.background).toBe('#FFFFFF');
+    expect(TOKENS.dark.background).toBe('#121212');
   });
 
   it('RF-1 (003) · 1.3: grid y plate ya no existen en ningún tema', () => {
@@ -65,10 +65,10 @@ describe('tokens', () => {
 
   it('RF-3 (003) · 3.1, D-T2 (003): line, on-charcoal y on-charcoal-muted con los valores de §4.0', () => {
     // line es la trama del sistema; charcoal es la tinta llena, que en oscuro se invierte.
-    expect(TOKENS.light.line).toBe('#C8C5BA');
-    expect(TOKENS.dark.line).toBe('#3B3A36');
-    expect(TOKENS.light['on-charcoal']).toBe('#F1EFE9');
-    expect(TOKENS.dark['on-charcoal']).toBe('#131312');
+    expect(TOKENS.light.line).toBe('#D3D3D3');
+    expect(TOKENS.dark.line).toBe('#343434');
+    expect(TOKENS.light['on-charcoal']).toBe('#FFFFFF');
+    expect(TOKENS.dark['on-charcoal']).toBe('#121212');
   });
 
   it('RF-3 (003) · 3.1, D-T2 (003): radius-block 0 y sin sombras (sistema «APICCA · Mapa»)', () => {
@@ -103,7 +103,7 @@ describe('tokens', () => {
 
   it('RF-1 (008) · 1.1, 1.3: footer-bg es tinta llena, invertida en oscuro', () => {
     expect(TOKENS.light['footer-bg']).toBe('#141414');
-    expect(TOKENS.dark['footer-bg']).toBe('#F1EFE9');
+    expect(TOKENS.dark['footer-bg']).toBe('#FFFFFF');
   });
 
   it('RF-1 (008) · 1.1, 1.3: las medidas nuevas valen lo mismo que en el sistema de diseño, en los dos temas', () => {
@@ -155,7 +155,7 @@ describe('tokens', () => {
 
   it('RF-20 (019) · 20.3, D-T2 (019), D-T13 (019): node-ring contrasta 3:1 o más con background y surface, en los dos temas', () => {
     expect(TOKENS.light['node-ring']).toBe('#141414');
-    expect(TOKENS.dark['node-ring']).toBe('#F1EFE9');
+    expect(TOKENS.dark['node-ring']).toBe('#FFFFFF');
     for (const theme of THEMES) {
       const t = TOKENS[theme];
       expect(contrastRatio(t['node-ring'], t.background), `${theme} fondo`).toBeGreaterThanOrEqual(3);
@@ -172,6 +172,35 @@ describe('tokens', () => {
 describe('RF-1 (021) · 1.3: sin paleta del terreno', () => {
   it('RF-1 (021) · 1.3, D-T7 (021): el contrato de tokens ya no exporta la paleta del terreno de RF-1 (019)', () => {
     expect(Object.keys(tokens).filter((name) => /terrain/i.test(name))).toEqual([]);
+  });
+});
+
+describe('paleta «E3 · Celda»', () => {
+  it('los cinco ejes valen lo mismo en claro y en oscuro, con el glifo en tinta', () => {
+    const fills = { agua: '#0096FF', alimento: '#47C254', cobijo: '#FF8F00', energia: '#FFD200', comunicacion: '#FF0000' };
+    for (const theme of THEMES) {
+      for (const [k, v] of Object.entries(fills)) {
+        expect(TOKENS[theme][`axis-${k}-fill` as TokenName], `${theme} ${k}`).toBe(v);
+        expect(TOKENS[theme][`axis-${k}-stroke` as TokenName], `${theme} ${k} trazo`).toBe('#141414');
+      }
+      expect(TOKENS[theme]['glifo-sobre-eje']).toBe('#141414');
+    }
+  });
+
+  it('papel, tinta, suave y trama en claro y en oscuro', () => {
+    expect(TOKENS.light.surface).toBe('#FFFFFF');
+    expect(TOKENS.light.text).toBe('#141414');
+    expect(TOKENS.light['text-muted']).toBe('#666666');
+    expect(TOKENS.light.trama).toBe('#D3D3D3');
+    expect(TOKENS.light['on-charcoal-muted']).toBe('#D3D3D3');
+    expect(TOKENS.light['on-accent']).toBe('#FFFFFF');
+    expect(TOKENS.dark.surface).toBe('#121212');
+    expect(TOKENS.dark.text).toBe('#FFFFFF');
+    expect(TOKENS.dark['text-muted']).toBe('#B4B4B4');
+    expect(TOKENS.dark.trama).toBe('#343434');
+    expect(TOKENS.dark['on-charcoal-muted']).toBe('#343434');
+    expect(TOKENS.dark['on-accent']).toBe('#121212');
+    expect(TOKENS.dark['contorno-superficie']).toBe('#FFFFFF');
   });
 });
 

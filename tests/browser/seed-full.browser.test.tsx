@@ -9,6 +9,7 @@ import '../../src/styles/tokens.css';
 import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
+import '../../src/styles/piezas.css';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
@@ -94,7 +95,8 @@ describe('con la autora', () => {
     // RF-27 (021) · 27.4: la imagen sembrada se conserva en el almacén y la ficha no la muestra.
     // En el panel: el logo de apoyo del menú de juego también es una imagen (RF-13 (021) · 13.5).
     const panel = await waitFor(() => host!.querySelector<HTMLElement>('aside.game-panel'));
-    await waitFor(() => panel.querySelector('.superficie'));
+    // «E3 · Celda»: la ficha ya no lleva superficie propia; basta con que su contenido esté montado.
+    await waitFor(() => panel.querySelector('.apice-view__head h1'));
     expect(panel.querySelectorAll('img, canvas')).toHaveLength(0);
   });
 
@@ -110,7 +112,8 @@ describe('con la autora', () => {
 
   it('RNF-5 (002): los ápices de cinco ejes y con propuesta pendiente se montan con su contenido', async () => {
     await show(`/apices/${APICE_IDS.allAxes}`);
-    await waitFor(() => host!.querySelectorAll('[aria-label="Ejes"] li').length === 5);
+    // La línea de ejes de la ficha (`EjesLinea`): una celda con el nombre del eje en texto por cada uno de los cinco.
+    await waitFor(() => host!.querySelectorAll('.apice-view__head .ejes-linea__eje').length === 5);
     await show(`/apices/${APICE_IDS.withProposal}`);
     await waitFor(() => host!.querySelector('main section[aria-label]') !== null);
     expect(host!.querySelector('main')!.textContent).not.toContain('No encontramos esta página');
@@ -144,7 +147,8 @@ describe('con la facilitación', () => {
   it('RF-27 (021) · 27.1, 27.4: la ficha del ápice con una referencia retirada ya no la muestra ni la etiqueta, tampoco a la facilitación', async () => {
     await show(`/apices/${APICE_IDS.withRetractedReference}`);
     const main = await waitFor(() => host!.querySelector<HTMLElement>('aside.game-panel'));
-    await waitFor(() => main.querySelector('.superficie'));
+    // «E3 · Celda»: la ficha ya no lleva superficie propia; basta con que su contenido esté montado.
+    await waitFor(() => main.querySelector('.apice-view__head h1'));
     expect(main.querySelectorAll('.tag[data-condition="reference"], img, input[type="file"]')).toHaveLength(0);
     // Ni el texto alternativo de la referencia sembrada ni el motivo de su retiro.
     expect(main.textContent).not.toMatch(/Imagen retirada|No corresponde al ápice/);

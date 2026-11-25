@@ -1,47 +1,80 @@
 /* RF-14 (021) · 14.1, D-T23 (021): el panel abierto ocupa el lugar del contenido por defecto de la columna de la derecha
-   (`.play__panel` pone el ancho de 430 px y el borde de 3 px). Arriba, «Cerrar» a la derecha; debajo, el contenido, que se
-   desplaza por dentro mientras el mapa sigue a la vista. Sin sombra ni radio. Solo tokens. */
+   (`.play__panel` pone el ancho de 430 px). «E3 · Celda»: sin borde ni fondo propio, sin sombra ni radio. Arriba, la línea
+   de sección con el rótulo y «Cerrar» a la derecha; debajo, el contenido, que se desplaza por dentro mientras el mapa
+   sigue a la vista. Solo tokens. */
 .game-panel {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   block-size: 100%;
   min-block-size: 0;
-  background-color: var(--surface);
+  padding: 12px 16px 0;
+  background-color: transparent;
   color: var(--text);
 }
 
 .game-panel__bar {
-  display: flex;
   flex: none;
-  justify-content: flex-end;
-  padding: 12px 16px 0;
+  margin-block-end: 8px;
+}
+
+/* «Cerrar»: texto e ícono sin caja. El área de 44 px la da un pseudo-elemento que sale 14 px por arriba y por abajo del
+   rótulo (16 + 28 = 44), así la línea de sección conserva sus 30 px. */
+.game-panel__close {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.game-panel__close::before {
+  content: '';
+  position: absolute;
+  inset-block: -14px;
+  inset-inline: -12px;
+}
+
+@media (hover: hover) {
+  .game-panel__close:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
 }
 
 .game-panel__body {
   flex: 1 1 auto;
   min-block-size: 0;
   overflow: auto;
-  padding: 8px 16px 24px;
+  padding: 0 0 24px;
   overscroll-behavior: contain;
 }
 
+/* La línea de sección ya abre el panel: el lote del formulario (editar, nuevo) no repite su filete. */
+.game-panel .lot {
+  padding-block-start: 0;
+  border-block-start: 0;
+}
+
 /* El h1 del panel (la ficha y los formularios) usa `title`: el panel es angosto (D-T23 (021)). Gana sobre las hojas de
-   cada página, que piden `display` fuera del panel. */
-.game-panel .game-panel__body h1 {
+   cada página, que piden `display` fuera del panel. El nombre de la ficha (`.c-nombre`) lleva su propio tamaño. */
+.game-panel .game-panel__body h1:not(.c-nombre) {
   font-size: var(--type-title-size);
   line-height: var(--type-title-line);
 }
 
 /* Dentro de la columna de Inicio (la ficha bajo la cabecera): sin alto propio ni desplazamiento ni relleno, que pone la
-   columna; «Cerrar» queda arriba a la derecha de la ficha. */
+   columna. */
 .game-panel--embedded {
   block-size: auto;
-  background-color: transparent;
-}
-
-.game-panel--embedded .game-panel__bar {
-  padding: 0 0 8px;
+  padding: 0;
 }
 
 .game-panel--embedded .game-panel__body {

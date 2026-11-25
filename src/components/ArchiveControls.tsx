@@ -32,12 +32,12 @@ export function ArchiveControls({ id, isArchived, client = api }: Props) {
       {isArchived ? (
         <>
           <p role="status" className="block">Este ápice está <ConditionTag condition="archived">archivado</ConditionTag>: no se puede editar ni cambiar su visibilidad.</p>
-          <button type="button" className="block action-secondary" disabled={busy} onClick={() => void run('restoreApice')}>
+          <button type="button" className="c-enlace action-secondary" disabled={busy} onClick={() => void run('restoreApice')}>
             Restaurar
           </button>
         </>
       ) : (
-        <button type="button" className="block action-secondary" disabled={busy} onClick={() => void run('archiveApice')}>
+        <button type="button" className="c-enlace action-secondary" disabled={busy} onClick={() => void run('archiveApice')}>
           Archivar
         </button>
       )}

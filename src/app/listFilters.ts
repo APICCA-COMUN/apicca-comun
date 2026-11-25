@@ -23,3 +23,12 @@ export function filtersToSearch(filters: ListFilters): string {
   if (filters.status !== null) params.set('estado', filters.status);
   return `?${params.toString()}`;
 }
+
+/**
+ * En la vista de mapa «filtrar es apagar»: los filtros no van a la consulta (el mapa trae todo y los ápices que no pasan
+ * se apagan, `dimmedIds`); en la lista, sí van al servidor. Separa los de cada lado: `server` es lo que se pasa a la
+ * consulta (`useApiceListing`) y `dim` lo que se pasa a `dimmedIds`. Nunca hay filtros en los dos lados a la vez.
+ */
+export function splitFilters(filters: ListFilters, view: 'mapa' | 'lista'): { server: ListFilters; dim: ListFilters } {
+  return view === 'mapa' ? { server: NO_FILTERS, dim: filters } : { server: filters, dim: NO_FILTERS };
+}

@@ -1,5 +1,6 @@
-// RF-12 (003) · 12.3, RF-4 (003) · 4.5, D-T18 (003) · Filtros de eje en Chromium real: 44 × 44 px, cuadrados con borde de
-// 3 px y con el estado presionado visible sin depender solo del color (se invierte a tinta llena y el glifo sigue a la vista).
+// RF-12 (003) · 12.3, RF-4 (003) · 4.5, D-T18 (003) · Filtros de eje en Chromium real: 44 × 44 px, cuadrados y sin caja
+// («E3 · Celda»), con el estado presionado visible sin depender solo del color (una raya de tinta de 4 px debajo y el glifo
+// sigue a la vista).
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { act } from 'react';
@@ -9,6 +10,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 import { Filters } from '../../src/components/Filters';
 import { NO_FILTERS } from '../../shared/domain/discovery';
 
@@ -51,7 +53,7 @@ describe.each(['light', 'dark'] as const)('filtros de eje en el tema %s (003)', 
     document.documentElement.dataset['theme'] = theme;
   });
 
-  it('RF-12 (003) · 12.3: cada filtro mide 44 × 44, es cuadrado y lleva borde de 3 px', async () => {
+  it('RF-12 (003) · 12.3: cada filtro mide 44 × 44, es cuadrado y no lleva caja', async () => {
     await mount(<Filters filters={NO_FILTERS} onChange={() => {}} />);
     const buttons = host.querySelectorAll<HTMLElement>('fieldset button');
     expect(buttons).toHaveLength(5);
@@ -59,10 +61,12 @@ describe.each(['light', 'dark'] as const)('filtros de eje en el tema %s (003)', 
       const box = button.getBoundingClientRect();
       expect(Math.round(box.width)).toBe(44);
       expect(Math.round(box.height)).toBe(44);
-      // RF-3 (019) · 3.3, D-T4 (019): cuadrado (radio 0) con el borde de `stroke-border`.
+      // RF-3 (019) · 3.3, D-T4 (019): cuadrado (radio 0), sin borde a los lados ni arriba, sin sombra.
       const style = getComputedStyle(button);
       expect(style.borderRadius).toBe('0px');
-      expect(style.borderTopWidth).toBe('3px');
+      expect(style.borderTopWidth).toBe('0px');
+      expect(style.borderLeftWidth).toBe('0px');
+      expect(style.borderRightWidth).toBe('0px');
       expect(style.boxShadow).toBe('none');
     }
   });
@@ -71,10 +75,12 @@ describe.each(['light', 'dark'] as const)('filtros de eje en el tema %s (003)', 
     await mount(<Filters filters={{ axes: ['agua'], status: null }} onChange={() => {}} />);
     const on = host.querySelector<HTMLElement>('button[aria-pressed="true"]')!;
     const off = host.querySelector<HTMLElement>('button[aria-pressed="false"]')!;
-    // Presionado se invierte a tinta llena; sin presionar queda en papel. El glifo de cada eje sigue a la vista en los dos.
-    expect(getComputedStyle(on).backgroundColor).toBe(token('text', 'backgroundColor'));
-    expect(getComputedStyle(off).backgroundColor).toBe(token('surface', 'backgroundColor'));
-    expect(getComputedStyle(on).backgroundColor).not.toBe(getComputedStyle(off).backgroundColor);
+    // Presionado lleva una raya de tinta de 4 px debajo; sin presionar no lleva ninguna. El glifo de cada eje sigue a la vista en los dos.
+    expect(getComputedStyle(on).borderBottomWidth).toBe('4px');
+    expect(getComputedStyle(on).borderBottomStyle).toBe('solid');
+    expect(getComputedStyle(on).borderBottomColor).toBe(token('text', 'color'));
+    expect(getComputedStyle(off).borderBottomWidth).toBe('0px');
+    expect(getComputedStyle(on).backgroundColor).toBe(getComputedStyle(off).backgroundColor);
     for (const button of [on, off]) {
       const icon = button.querySelector<SVGElement | HTMLElement>('svg, .axis-icon')!;
       expect(icon.getBoundingClientRect().width).toBeGreaterThan(0);

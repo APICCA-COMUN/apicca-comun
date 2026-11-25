@@ -1,7 +1,23 @@
-/* «Conectar»: la lista de Ápices elegidos. Sistema «APICCA · Mapa»: una fila por Ápice (`.ap-fila`), con el nombre a la
-   izquierda y «Quitar» a la derecha, alineados, y un divisor de 1,5 px en `line` entre filas. Solo tokens. */
+/* «Conectar»: la lista de Ápices elegidos. «E3 · Celda»: una fila por Ápice, con el nombre a la izquierda y «Quitar»
+   (enlace de texto) a la derecha, alineados, y un filete suave de 1,5 px entre filas. El panel va en columna con aire
+   entre sus partes. Solo tokens. */
+.trace-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-inline-size: 0;
+}
+
+.trace-panel > * {
+  margin-block: 0;
+}
+
+.trace-panel > .c-enlace {
+  align-self: flex-start;
+}
+
 .trace-panel__chosen {
-  margin: 0 0 12px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -11,11 +27,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-block: 8px;
+  padding-block: 0;
+  min-block-size: 44px;
 }
 
 .trace-panel__chosen > li + li {
-  border-block-start: var(--stroke-divider) solid var(--line);
+  border-block-start: var(--stroke-divider) solid var(--trama);
 }
 
 .trace-panel__chosen > li > span {

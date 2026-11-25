@@ -145,6 +145,16 @@ describe('ForumThread', () => {
     await waitFor(() => expect(mod.calls).toEqual([{ op: 'archiveMessage', payload: { threadId: 'h1', messageId: 'm2' } }]));
   });
 
+  it('QA celda 2 · 6: «Archivar hilo» y «Archivar mensaje» son destructivos (raya discontinua), como «Archivar» de una Acción Común', async () => {
+    setup(facilitator, sourceOf().source);
+    const thread = await screen.findByRole('button', { name: 'Archivar hilo' });
+    const message = screen.getByRole('button', { name: 'Archivar mensaje' });
+    for (const button of [thread, message]) {
+      expect(button.classList.contains('action-destructive')).toBe(true);
+      expect(button.classList.contains('action-secondary')).toBe(false);
+    }
+  });
+
   it('RF-5 (009): el botón de archivar sigue a `isOpening`, no a la posición del mensaje', async () => {
     const [opening, reply] = MESSAGES as [ForumMessage, ForumMessage];
     setup(facilitator, sourceOf(HEAD, [reply, opening]).source);

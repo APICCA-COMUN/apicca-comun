@@ -24,6 +24,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
 import { firebaseSessionSource } from '../../src/data/sessionSource';
@@ -198,15 +199,16 @@ describe('RF-2 (019) · escala tipográfica', () => {
       expect(outside).toEqual([]);
       const h1 = host!.querySelector<HTMLElement>('h1');
       expect(h1, 'h1').not.toBeNull();
-      // En el panel del mapa el h1 usa `title`, porque el panel es angosto (D-T23 (021)); el título de Inicio usa `heading`.
-      const size = h1!.closest('aside.game-panel') !== null ? 'title' : h1!.closest('.play__intro') !== null ? 'heading' : 'display';
+      // En el panel del mapa el h1 usa `title`, porque el panel es angosto (D-T23 (021)); el título de Inicio y el nombre de la
+      // ficha (`.c-nombre`, «E3 · Celda») usan `heading`.
+      const size = h1!.matches('.c-nombre') || h1!.closest('.play__intro') !== null ? 'heading' : h1!.closest('aside.game-panel') !== null ? 'title' : 'display';
       expect(getComputedStyle(h1!).fontSize).toBe(measure('fontSize', `var(--type-${size}-size)`));
     });
   });
 });
 
 describe('RF-3 (019) · radios', () => {
-  it.each(ROUTES)('RF-3 (019) · 3.1, 3.2: en $path las acciones, los bloques y los lotes son cuadrados, con borde de 3 px y sin sombra', async ({ path, as }) => {
+  it.each(ROUTES)('RF-3 (019) · 3.1, 3.2: en $path las acciones, los bloques y los lotes son cuadrados, sin sombra y sin caja (la principal, una barra de tinta)', async ({ path, as }) => {
     await at(1280);
     await show(path, as);
     const failures: string[] = [];
@@ -219,15 +221,27 @@ describe('RF-3 (019) · radios', () => {
       if (corners(element).some((radius) => radius !== '0px')) failures.push(`${name(element)}: radio ${corners(element).join(' ')}`);
       if (style.boxShadow !== 'none') failures.push(`${name(element)}: sombra ${style.boxShadow}`);
     }
-    // Las acciones de texto y los lotes llevan el borde completo de 3 px; el estado deshabilitado lo cambia a discontinuo.
-    // Los botones de ícono de la cabecera van sin borde, como `.ap-boton-icono` del sistema.
-    for (const element of [...host!.querySelectorAll<HTMLElement>('button.block, a.block, .lot')].filter(visible)) {
-      if (element.matches('.site-header .icon-button')) {
-        if (getComputedStyle(element).borderTopWidth !== '0px') failures.push(`${name(element)}: la cabecera lleva borde`);
-        continue;
+    // «E3 · Celda»: ninguna acción ni lote es una caja. La principal es una barra de tinta con contorno de 2 px; la secundaria,
+    // la destructiva y los botones de ícono son texto sin borde (el estado deshabilitado de la principal lleva el contorno discontinuo);
+    // un lote abre con un filete de tinta arriba (o ninguno, si va dentro de otro o del panel) y no lleva borde a los otros lados.
+    for (const element of [...host!.querySelectorAll<HTMLElement>('button.block, a.block, .lot, .icon-button')].filter(visible)) {
+      if (element.closest('.leaflet-container') !== null || element.matches('.game-map__cell, .game-map__path-label')) continue;
+      const style = getComputedStyle(element);
+      const widths = [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth];
+      if (element.matches('.lot')) {
+        if (widths[1] !== '0px' || widths[2] !== '0px' || widths[3] !== '0px') failures.push(`${name(element)}: el lote lleva borde a los lados o abajo ${widths.join(' ')}`);
+        if (!['0px', '1px', '1.5px'].includes(widths[0]!)) failures.push(`${name(element)}: el filete del lote mide ${widths[0]}`);
+      } else if (element.matches('.action-primary')) {
+        if (widths.some((width) => width !== '2px')) failures.push(`${name(element)}: la barra principal no lleva contorno de 2 px ${widths.join(' ')}`);
+      } else if (element.matches('.icon-button.forum__filter, .site-header .icon-button')) {
+        // Sin caja; pulsado, solo suma la raya de tinta de abajo (4 px).
+        const pressed = element.getAttribute('aria-pressed') === 'true';
+        const wanted = [widths[0], widths[1], pressed ? '4px' : '0px', widths[3]];
+        if (widths[0] !== '0px' || widths[1] !== '0px' || widths[3] !== '0px' || widths[2] !== wanted[2]) failures.push(`${name(element)}: el botón de ícono lleva borde ${widths.join(' ')}`);
+      } else if (element.matches('.axis-toggle, .action-secondary, .action-destructive, .icon-button')) {
+        // Texto subrayado o ícono: sin caja (el pulsado de un ícono solo suma la raya de abajo).
+        if (widths[0] !== '0px' || widths[1] !== '0px' || widths[3] !== '0px') failures.push(`${name(element)}: lleva caja ${widths.join(' ')}`);
       }
-      if (element.closest('.leaflet-container') !== null || element.matches(':disabled, [aria-disabled="true"], .game-map__cell, .game-map__path-label')) continue;
-      if (getComputedStyle(element).borderTopWidth !== '3px') failures.push(`${name(element)}: borde ${getComputedStyle(element).borderTopWidth}`);
     }
     expect(failures).toEqual([]);
   });
@@ -368,30 +382,36 @@ describe.each(THEMES)('tema %s', (theme) => {
     delete document.documentElement.dataset['theme'];
   });
 
-  it('RF-15 (019) · 15.1, D-T9 (019): la inicial va sobre charcoal, con la letra en on-charcoal y un aro cuadrado de 3 px en node-ring', async () => {
+  it('RF-15 (019) · 15.1, D-T9 (019): la inicial va en una celda de contorno de tinta de 2 px, sin relleno, con la letra en tinta', async () => {
     document.documentElement.dataset['theme'] = theme;
     await at(1280);
     await show('/documentacion', AUTHOR);
-    const initial = host!.querySelector<HTMLElement>('.account-entry .account-initial')!;
-    const style = getComputedStyle(initial);
-    expect(style.backgroundColor).toBe(rgb(TOKENS[theme].charcoal));
-    expect(style.color).toBe(rgb(TOKENS[theme]['on-charcoal']));
-    expect(style.borderTopWidth).toBe('3px');
-    expect(style.borderTopStyle).toBe('solid');
+    const celda = host!.querySelector<HTMLElement>('.account-entry .account-celda')!;
+    const hex = getComputedStyle(celda.querySelector('polygon')!);
+    expect(hex.fill).toBe('none');
+    expect(hex.stroke).toBe(rgb(TOKENS[theme].text));
+    expect(hex.strokeWidth).toBe('2px');
+    const style = getComputedStyle(celda.querySelector('.account-celda__letra')!);
+    expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    expect(style.color).toBe(rgb(TOKENS[theme].text));
     expect(style.borderTopLeftRadius).toBe('0px');
-    expect(style.borderTopColor).toBe(rgb(TOKENS[theme]['node-ring']));
+    expect(contrastRatio(TOKENS[theme].text, TOKENS[theme].background)).toBeGreaterThanOrEqual(3);
   });
 
-  it.each(['/constitucion'])('RF-20 (019) · 20.3, D-T13 (019): en %s la línea y los tramos de cada tarjeta son de tinta y contrastan 3:1 con el fondo', async (path) => {
+  it.each(['/constitucion'])('RF-20 (019) · 20.3, D-T13 (019): en %s el filete de la lista y el de cada sección son de tinta y contrastan 3:1 con el fondo', async (path) => {
     document.documentElement.dataset['theme'] = theme;
     await at(1280);
     await show(path, undefined, ['Agua compartida']);
     const list = host!.querySelector<HTMLElement>('.constitution__list')!;
     const ink = rgb(TOKENS[theme].text);
-    expect(getComputedStyle(list, '::before').backgroundColor).toBe(ink);
-    const items = [...list.querySelectorAll<HTMLElement>('.constitution__item')].filter(visible);
-    expect(items.length).toBeGreaterThan(0);
-    for (const item of items) expect(getComputedStyle(item, '::before').backgroundColor).toBe(ink);
+    expect(getComputedStyle(list).borderTopColor).toBe(ink);
+    expect(getComputedStyle(list).borderTopStyle).toBe('solid');
+    const sections = [...list.querySelectorAll<HTMLElement>('.constitution__item .section-block')].filter(visible);
+    expect(sections.length).toBeGreaterThan(0);
+    for (const section of sections) {
+      expect(getComputedStyle(section).borderTopStyle).toBe('solid');
+      expect(getComputedStyle(section).borderTopWidth).not.toBe('0px');
+    }
     expect(contrastRatio(TOKENS[theme].text, TOKENS[theme].background)).toBeGreaterThanOrEqual(3);
   });
 });
@@ -418,7 +438,7 @@ describe('RF-22 (019) · pie al fondo', () => {
 
 /** La tarjeta de la lista del mapa con el nombre `apiceName` (RF-10 (021)): la superficie, la Etapa en texto y la ficha. */
 async function cardFor(apiceName: string): Promise<HTMLElement> {
-  return waitFor(() => [...host!.querySelectorAll<HTMLElement>('main article.block')].find((card) => card.querySelector('h3')?.textContent === apiceName));
+  return waitFor(() => [...host!.querySelectorAll<HTMLElement>('main article.apice-card')].find((card) => card.querySelector('h3')?.textContent === apiceName));
 }
 
 /** Un color de token, calculado sobre un elemento de prueba. */
@@ -440,14 +460,14 @@ describe('RF-4 (019) · la Etapa se ve en la superficie', () => {
     await at(1280);
     await show('/?vista=lista');
     const card = await cardFor(apiceName);
-    const surface = card.querySelector<HTMLElement>('.superficie')!;
+    // «E3 · Celda»: la superficie es la celda de 56 px (decorativa); la regla va en sus franjas y la Etapa, escrita en el rótulo.
+    const surface = card.querySelector<HTMLElement>('.apice-card__celda .superficie__franjas')!;
     expect(surface.dataset['rule']).toBe(rule);
-    expect(surface.getAttribute('aria-label')).toContain(`Etapa ${label}`);
     expect(getComputedStyle(surface.querySelector('.superficie__fondo')!).fill).toBe(colorOf(`var(--axis-${axis}-fill)`));
     // RF-1 (021) · 1.1, RF-27 (021) · 27.4: ninguna tarjeta muestra imagen, aunque el ápice guarde una.
     expect(card.querySelector('img, canvas')).toBeNull();
     // La Etapa va escrita: el patrón y el color no la dicen solos.
-    const text = [...card.querySelectorAll<HTMLElement>('p')].find((item) => item.textContent === label)!;
+    const text = [...card.querySelectorAll<HTMLElement>('.tag')].find((item) => item.textContent === label)!;
     expect(visible(text)).toBe(true);
   });
 
@@ -467,32 +487,35 @@ describe('RF-9 (019) · necesidades a la vista', () => {
     await at(1280);
     await show('/?vista=lista');
     const withNeeds = await cardFor('Huerta con imagen');
-    const note = [...withNeeds.querySelectorAll<HTMLElement>('p')].find((item) => item.textContent === 'Tiene necesidades')!;
+    const note = [...withNeeds.querySelectorAll<HTMLElement>('p span')].find((item) => item.textContent === 'Tiene necesidades')!;
     expect(visible(note)).toBe(true);
     expect(withNeeds.querySelector('.building__pin')).toBeNull();
     const without = await cardFor('Referencia retirada');
-    expect([...without.querySelectorAll('p')].some((item) => item.textContent === 'Tiene necesidades')).toBe(false);
+    expect([...without.querySelectorAll('p span')].some((item) => item.textContent === 'Tiene necesidades')).toBe(false);
   });
 });
 
 describe('RF-11 (019) · la ficha como taller', () => {
-  it.each([360, 1280])('RF-11 (019) · 11.1 a 11.4, D-T23 (019): a %i px la ficha lleva la superficie antes del h1, sin insignias de eje aparte, Ofrece y Necesita en una línea cada uno y la fecha larga', async (width) => {
+  it.each([360, 1280])('RF-11 (019) · 11.1 a 11.4, D-T23 (019): a %i px la ficha lleva el rótulo con la etapa antes del nombre, sin superficie propia ni insignias de eje aparte, Ofrece y Necesita en datos de filete y la fecha larga', async (width) => {
     await at(width);
     await show(`/apices/${APICE_IDS.withImage}`);
     const sheet = host!.querySelector<HTMLElement>('article.apice-view')!;
-    const surface = sheet.querySelector<HTMLElement>('.superficie')!;
     const head = sheet.querySelector<HTMLElement>('.apice-view__head')!;
     const h1 = head.querySelector('h1')!;
     expect(h1.textContent).toBe('Huerta con imagen');
-    expect(surface.compareDocumentPosition(h1) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(head.querySelector('.apice-view__rotulo')!.textContent).toContain('prototipo');
+    // «E3 · Celda»: la ficha ya no lleva su propia superficie de patrón; la celda grande la pone la columna de Inicio.
+    expect(sheet.querySelector('.superficie')).toBeNull();
+    const rotulo = head.querySelector('.apice-view__rotulo')!;
+    expect(rotulo.textContent).toContain('prototipo');
+    expect(rotulo.compareDocumentPosition(h1) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(sheet.querySelector('ul.apice-view__axes, .axis-badge')).toBeNull();
-    const [offers, needs] = [...sheet.querySelectorAll<HTMLElement>('.apice-view__datos > p.apice-view__dato')];
-    expect([offers!.querySelector('strong')!.textContent, needs!.querySelector('strong')!.textContent]).toEqual(['Ofrece:', 'Necesita:']);
+    const [offers, needs] = [...sheet.querySelectorAll<HTMLElement>('.apice-view__datos > .c-dato')];
+    expect([offers!.querySelector('.c-rot')!.textContent, needs!.querySelector('.c-rot')!.textContent]).toEqual(['Ofrece', 'Necesita']);
     expect(offers!.nextElementSibling).toBe(needs);
     expect(sheet.querySelector('section.lot')).toBeNull();
-    expect(getComputedStyle(offers!.querySelector('strong')!).fontWeight).toBe('800');
-    expect(px(getComputedStyle(offers!).fontSize)).toBe(14);
+    expect(getComputedStyle(offers!.querySelector('.c-rot')!).fontWeight).toBe('700');
+    expect(px(getComputedStyle(offers!.querySelector('.c-cuerpo')!).fontSize)).toBeGreaterThanOrEqual(16);
+    expect(['1px', '1.5px']).toContain(getComputedStyle(offers!).borderTopWidth);
     const location = [...host!.querySelectorAll('h2')].find((heading) => heading.textContent === 'Ubicación')!;
     expect(needs!.compareDocumentPosition(location) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(host!.textContent).toMatch(/Última edición el \d{1,2} de [a-z]+ de \d{4}/);
@@ -525,6 +548,6 @@ describe('RNF-5 (019) · movimiento', () => {
     history.replaceState(null, '', '/?vista=lista');
     dispatchEvent(new PopStateEvent('popstate'));
     const card = await cardFor('Los cinco ejes');
-    for (const part of card.querySelectorAll('.superficie, .superficie__franja, .superficie__glifos')) expect(getComputedStyle(part).animationName).toBe('none');
+    for (const part of card.querySelectorAll('.celda-superficie, .superficie__franja, .superficie__glifos')) expect(getComputedStyle(part).animationName).toBe('none');
   });
 });

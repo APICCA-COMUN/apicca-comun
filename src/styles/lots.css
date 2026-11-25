@@ -1,12 +1,12 @@
 /* Lotes (RF-3 (003) · 3.2, D-T1 (003), D-T4 (003), D-T20 (003)): superficie de apoyo del mapa, las listas agrupadas y los
-   formularios principales. Sistema «APICCA · Mapa»: papel, radio 0, borde de 3 px en tinta y ninguna sombra.
-   Solo colores de tokens. */
+   formularios principales. «E3 · Celda»: ya no hay caja; un lote es una sección que abre con un filete de tinta
+   (1,5 px) y aire, sin borde, sin radio y sin sombra. Solo colores de tokens. */
 
 .lot {
   box-sizing: border-box;
   max-width: 100%;
   min-width: 0;
-  border: var(--stroke-border) solid var(--field-border);
+  border: 0;
   border-radius: var(--radius-lot);
   box-shadow: none;
   background-color: var(--surface);
@@ -15,7 +15,14 @@
 }
 
 :is(article, section, div, aside).lot {
-  padding: 1rem;
+  padding: 24px 0 0;
+  border-block-start: var(--stroke-divider) solid var(--text);
+}
+
+/* Un lote dentro de otro (la lista de un lote, una sección de la propuesta) no repite el filete de apertura. */
+.lot .lot:not(.lot--access) {
+  padding-block-start: 0;
+  border-block-start: 0;
 }
 
 /* Lote de acceso (RF-13 (003) · 13.1, D-T19 (003)): el formulario de entrar y registro mide 440 px como máximo y queda
@@ -66,28 +73,27 @@ main > .lot {
   margin-block-end: var(--section-gap);
 }
 
-/* QA #16.1, opinión 3: una lista de bloques dentro de un lote no lleva otro marco; las filas (`.block`) ya tienen el suyo.
-   Sin viñetas ni sangría, con 12 px entre filas. */
+/* QA #16.1, opinión 3: una lista de bloques dentro de un lote no lleva otro marco; las filas (`.block`) llevan su filete
+   suave y su aire. Sin viñetas ni sangría, sin hueco entre filas. */
 .lot-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 /* QA #16.1, opinión 3: dentro de la propuesta (`article.lot`), sus secciones (Acuerdos, Objeciones, Deliberación,
-   Revisiones anteriores) no llevan otro marco de 3 px: serían cuatro marcos concéntricos con las filas. Cada una queda
-   separada por el filete de 3 px de las secciones del sistema. */
-.amendment-view > section.lot {
+   Revisiones anteriores) abren cada una con su filete de tinta, y las filas con el suave. */
+.lot.amendment-view > section.lot {
   padding: 0;
   padding-block-start: 24px;
-  border-width: var(--stroke-border) 0 0;
+  border-block-start: var(--stroke-divider) solid var(--text);
   background-color: transparent;
 }
 
-/* Colores forzados (RNF-1 (003), D-T20 (003)): el lote conserva su borde, con el color del sistema. */
+/* Colores forzados (RNF-1 (003), D-T20 (003)): el filete del lote toma el color del sistema. */
 @media (forced-colors: active) {
   .lot {
     border-color: CanvasText;

@@ -1,4 +1,4 @@
-/* El botón de eje con nombre es un bloque cuadrado de al menos 44 px de alto; presionado, se invierte (fondo tinta). */
+/* El botón de eje con nombre es un bloque cuadrado de al menos 44 px de alto; presionado, la raya del texto engorda y lleva una raya de tinta debajo (no solo el color). */
 .axis-toggle {
   display: inline-flex;
   align-items: center;
@@ -8,7 +8,6 @@
 }
 
 .axis-toggle[aria-pressed='true'] {
-  background-color: var(--charcoal);
-  border-color: var(--charcoal);
-  color: var(--on-charcoal);
+  border-block-end: var(--stroke-zone) solid var(--text);
+  text-decoration-thickness: 4px;
 }

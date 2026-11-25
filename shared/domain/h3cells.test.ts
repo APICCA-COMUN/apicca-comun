@@ -1,10 +1,9 @@
-// Las celdas H3 del mapa: la zona de siete celdas, su borde, los bordes en caché, las celdas de cada nivel y las rutas.
-import { cellToParent, latLngToCell } from 'h3-js';
+// Las celdas H3 del mapa: la zona de siete celdas, su borde, los bordes en caché, las celdas de cada nivel.
+import { cellToParent } from 'h3-js';
 import { describe, expect, it } from 'vitest';
 import {
   CELL_RESOLUTION,
   LEVEL_RESOLUTION,
-  ROUTE_LIMIT,
   cellBoundary,
   cellCenter,
   cellOfPoint,
@@ -12,7 +11,6 @@ import {
   edgeKm,
   isCellOf,
   outlineOf,
-  routeCells,
   zoneCells,
   zoneCode,
 } from './h3cells';
@@ -113,38 +111,7 @@ describe('cellsAround', () => {
   });
 });
 
-describe('routeCells', () => {
-  const at = (lat: number, lng: number, resolution = 8) => latLngToCell(lat, lng, resolution);
-
-  it('une las dos celdas, con las puntas, sin repetir ninguna', () => {
-    const from = at(4.6, -74.08);
-    const to = at(4.65, -74.05);
-    const route = routeCells(from, to)!;
-    expect(route[0]).toBe(from);
-    expect(route[route.length - 1]).toBe(to);
-    expect(new Set(route).size).toBe(route.length);
-    expect(route.length).toBeGreaterThan(2);
-  });
-
-  it('celdas pegadas dan solo las dos y la misma celda da una', () => {
-    const from = zoneCells(CENTRO)[0]!;
-    const next = zoneCells(CENTRO)[1]!;
-    expect(routeCells(from, next)).toEqual([from, next]);
-    expect(routeCells(from, from)).toEqual([from]);
-  });
-
-  it('más lejos que el tope no se dibuja', () => {
-    // Bogotá a Medellín son unas 270 celdas de resolución 8.
-    expect(routeCells(at(4.6, -74.08), at(6.24, -75.58))).toBeNull();
-    expect(routeCells(at(4.6, -74.08, 6), at(6.24, -75.58, 6))).not.toBeNull();
-    expect(ROUTE_LIMIT).toBeGreaterThan(40);
-  });
-
-  it('no lanza con celdas de otra resolución o inválidas', () => {
-    expect(() => routeCells(at(4.6, -74.08), at(4.6, -74.08, 6))).not.toThrow();
-    expect(routeCells('nada', 'nada')).toBeNull();
-  });
-
+describe('zonas del ejemplo', () => {
   it('las zonas del ejemplo caen en sitios distintos', () => {
     expect(cellCenter(CHAPINERO).lat).toBeGreaterThan(cellCenter(CENTRO).lat);
     expect(MEDELLIN).not.toBe(CENTRO);

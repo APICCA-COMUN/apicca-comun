@@ -106,7 +106,7 @@ describe('/entrar · bloques (002)', () => {
     const button = screen.getByRole('button', { name: 'Entrar' });
     expect(button.classList.contains('block')).toBe(true);
     expect(button.classList.contains('action-primary')).toBe(true);
-    expect(screen.getByRole('link', { name: 'Olvidé mi contraseña' }).className).toBe('');
+    expect(screen.getByRole('link', { name: 'Olvidé mi contraseña' }).className).not.toMatch(/action-|\bblock\b/);
   });
 });
 

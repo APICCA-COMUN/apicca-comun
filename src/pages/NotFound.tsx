@@ -12,7 +12,7 @@ export function NotFound() {
       <h1>{NOT_FOUND_TITLE}</h1>
       <p>Puede que el enlace esté mal escrito o que la página ya no exista.</p>
       <p>
-        <Link href="/">Volver al inicio</Link>
+        <Link href="/" className="c-enlace">Volver al inicio</Link>
       </p>
     </>
   );

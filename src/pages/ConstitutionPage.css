@@ -1,5 +1,5 @@
-/* RF-15 (003) · 15.1, RF-16 (003) · 16.1, D-T17 (003), D-T19 (003), RF-11 (005): principios en tarjetas unidas por una
-   línea vertical de tinta de 3 px (sistema «APICCA · Mapa»), directo sobre el fondo y sin lote.
+/* RF-15 (003) · 15.1, RF-16 (003) · 16.1, D-T17 (003), D-T19 (003), RF-11 (005): principios en filas con filete suave bajo un
+   filete de tinta («E3 · Celda»: sin caja ni línea vertical), directo sobre el fondo y sin lote.
    Solo tokens de color. */
 .constitution {
   box-sizing: border-box;
@@ -16,7 +16,7 @@
 /* La cabecera de la página se separa del contenido con el borde de sección de 3 px. */
 .constitution__head {
   padding-block-end: 24px;
-  border-block-end: var(--stroke-border) solid var(--text);
+  border-block-end: var(--stroke-divider) solid var(--text);
 }
 
 .constitution > * {
@@ -47,34 +47,14 @@
 
 /* Una línea vertical continua de 3 px en tinta une las secciones; cada tarjeta se une a ella con un tramo horizontal. */
 .constitution__list {
-  position: relative;
-  padding-inline-start: 36px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
-}
-
-.constitution__list::before {
-  content: '';
-  position: absolute;
-  inset-inline-start: 0;
-  inset-block: 0;
-  inline-size: var(--stroke-border);
-  background-color: var(--text);
+  gap: 0;
+  border-block-start: var(--stroke-divider) solid var(--text);
 }
 
 .constitution__item {
   position: relative;
-}
-
-.constitution__item::before {
-  content: '';
-  position: absolute;
-  inset-inline-start: -36px;
-  inset-block-start: 32px;
-  inline-size: 36px;
-  block-size: var(--stroke-border);
-  background-color: var(--text);
 }
 
 /* RF-4 (004), RF-5 (004): avisos, formulario del facilitador, acciones por sección y lista de documentos. */
@@ -85,7 +65,6 @@
 /* RF-11 (008) · 11.6, RF-2 (019), D-T3 (019): el pie va alineado con las tarjetas, en tamaño meta. */
 .constitution__updated {
   margin: 0;
-  padding-inline-start: 36px;
   font-size: var(--type-meta-size);
   color: var(--text-muted);
 }
@@ -118,7 +97,7 @@
 
 .constitution__documents {
   padding-block-start: 24px;
-  border-block-start: var(--stroke-border) solid var(--text);
+  border-block-start: var(--stroke-divider) solid var(--text);
 }
 
 .constitution__documents ul {
@@ -128,10 +107,11 @@
   gap: 1rem;
 }
 
-/* Los formularios del facilitador llevan el borde de 3 px de las fichas. */
+/* Los formularios del facilitador abren con un filete de tinta, sin caja. */
 .constitution__form {
-  padding: 20px;
-  border: var(--stroke-border) solid var(--text);
+  padding: 20px 0;
+  border: 0;
+  border-block-start: var(--stroke-divider) solid var(--text);
 }
 
 .constitution__document p {

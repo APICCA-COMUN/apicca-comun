@@ -14,11 +14,11 @@ const base = {
 };
 
 describe('ApiceCard', () => {
-  it('RF-21 (001), RF-22 (001), RF-2 (021) · 2.1: muestra los datos de la tarjeta, con la superficie del Ápice en lugar de la imagen, y enlaza a la ficha', () => {
+  it('RF-21 (001), RF-22 (001), RF-2 (021) · 2.1: muestra los datos de la fila, con la celda de superficie del Ápice en lugar de la imagen, y enlaza a la ficha', () => {
     render(<ApiceCard apice={base} />);
     const card = screen.getByRole('article');
     expect(within(card).getByRole('link', { name: 'Cosecha de lluvia' }).getAttribute('href')).toBe('/apices/a1');
-    expect(card.querySelector('.superficie svg.superficie__franja')).not.toBeNull();
+    expect(card.querySelector('.apice-card__celda svg.celda-superficie')).not.toBeNull();
     expect(within(card).getByText('agua')).toBeTruthy();
     expect(within(card).getByText('cobijo')).toBeTruthy();
     expect(within(card).getAllByText('Prototipo').length).toBeGreaterThan(0);
@@ -40,31 +40,51 @@ describe('ApiceCard', () => {
   });
 });
 
-describe('ApiceCard · bloques (002)', () => {
-  it('RF-6 (002) · 6.1: la tarjeta es un bloque y pasa expectBlocks', () => {
+describe('ApiceCard · sin caja («E3 · Celda»)', () => {
+  it('RF-6 (002) · 6.1: la fila es un dato con filete suave (`.c-dato`), no una tarjeta, y pasa expectBlocks', () => {
     const { container } = render(<ApiceCard apice={base} />);
-    expect(screen.getByRole('article').classList.contains('block')).toBe(true);
+    const card = screen.getByRole('article');
+    expect(card.classList.contains('c-dato')).toBe(true);
+    expect(card.classList.contains('block')).toBe(false);
+    expect(container.querySelector('.superficie')).toBeNull();
     expectBlocks(container);
+  });
+
+  it('la celda es decorativa, de 56 px, y el nombre es un título enlazado', () => {
+    const { container } = render(<ApiceCard apice={base} />);
+    const celda = container.querySelector('.apice-card__celda svg.celda-superficie')!;
+    expect(celda.getAttribute('aria-hidden')).toBe('true');
+    expect(celda.getAttribute('width')).toBe('56');
+    expect(within(screen.getByRole('heading', { level: 3 })).getByRole('link', { name: 'Cosecha de lluvia' })).toBeTruthy();
+  });
+
+  it('el rótulo suave dice la Etapa, la zona (si hay) y la fecha, y la descripción es un cuerpo', () => {
+    const located = { ...base, location: { lat: 4.6, lng: -74.1, precision: 'approximate' as const, zone: { cell: '872830828ffffff', lat: 4.6, lng: -74.1 } } };
+    const { container, rerender } = render(<ApiceCard apice={located} />);
+    const rotulo = container.querySelector('.apice-card__rotulo')!;
+    expect(rotulo.classList.contains('c-rot') && rotulo.classList.contains('c-suave')).toBe(true);
+    expect(rotulo.textContent).toBe('Prototipo · Zona 0828 · Editado el 3 de septiembre de 2026');
+    expect(container.querySelector('.apice-card__descripcion')!.classList.contains('c-cuerpo')).toBe(true);
+    rerender(<ApiceCard apice={base} />);
+    expect(container.querySelector('.apice-card__rotulo')!.textContent).toBe('Prototipo · Editado el 3 de septiembre de 2026');
+  });
+
+  it('con `onToggle` lleva la casilla «Sumar a la Acción Común», descrita por el nombre', () => {
+    render(<ApiceCard apice={base} chosen onToggle={() => undefined} />);
+    const box = screen.getByRole('checkbox', { name: 'Sumar a la Acción Común' }) as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    expect(box.getAttribute('aria-describedby')).toBe(screen.getByRole('heading', { level: 3 }).id);
   });
 });
 
 describe('ApiceCard · identidad (002)', () => {
-  it('RF-4 (002) · 4.2: cada eje se muestra con su ícono y su nombre', () => {
+  it('RF-4 (002) · 4.2: cada eje se muestra con su celda de color y su nombre en texto', () => {
     const { container } = render(<ApiceCard apice={{ ...base, axes: ['agua', 'energía'] }} />);
-    const list = within(screen.getByRole('list', { name: 'Ejes' }));
-    expect(list.getByText('agua')).toBeTruthy();
-    expect(list.getByText('energía')).toBeTruthy();
-    expect(container.querySelector('ul .axis-icon--agua')).toBeTruthy();
-    expect(container.querySelector('ul .axis-icon--energia')).toBeTruthy();
-  });
-
-  it('la superficie de la tarjeta lleva una franja por eje, contorno y nombre accesible con la Etapa', () => {
-    const { container } = render(<ApiceCard apice={base} />);
-    const surface = container.querySelector('.superficie')!;
-    expect(surface.classList.contains('superficie--contorno')).toBe(true);
-    expect(surface.getAttribute('role')).toBe('img');
-    expect(surface.getAttribute('aria-label')).toBe('agua y cobijo, Etapa Prototipo');
-    expect(surface.querySelectorAll('svg.superficie__franja')).toHaveLength(2);
+    const group = within(screen.getByRole('group', { name: 'Ejes' }));
+    expect(group.getByText('agua')).toBeTruthy();
+    expect(group.getByText('energía')).toBeTruthy();
+    expect(container.querySelector('.ejes-linea__superficie--agua')).toBeTruthy();
+    expect(container.querySelector('.ejes-linea__superficie--energia')).toBeTruthy();
   });
 
   it('RF-13 (002) · 13.1, 13.3: el estado es una etiqueta con el texto de la 001', () => {
@@ -90,7 +110,7 @@ describe('ApiceCard · identidad (002)', () => {
       ['en marcha', 'eco'],
     ] as const) {
       const { container, unmount } = render(<ApiceCard apice={{ ...base, status }} />);
-      expect(container.querySelector('.superficie')!.getAttribute('data-rule')).toBe(rule);
+      expect(container.querySelector('.apice-card__celda .superficie__franjas')!.getAttribute('data-rule')).toBe(rule);
       expect(container.querySelector('.tag[data-condition="status"]')!.textContent).toBe(APICE_STAGE_LABEL[status]);
       unmount();
     }
@@ -108,7 +128,7 @@ describe('ApiceCard · identidad (002)', () => {
 });
 
 describe('ApiceRow', () => {
-  it('es una fila con la superficie de 56 × 34, el nombre y el código de zona; enlaza a la ficha', () => {
+  it('es una fila con la celda del Ápice (30 de ancho), el nombre y el código de zona; enlaza a la ficha', () => {
     const located = { ...base, location: { lat: 4.6, lng: -74.1, precision: 'approximate' as const, zone: { cell: '872830828ffffff', lat: 4.6, lng: -74.1 } } };
     const { container } = render(
       <ul>
@@ -117,9 +137,10 @@ describe('ApiceRow', () => {
     );
     const link = screen.getByRole('link', { name: /Cosecha de lluvia/ });
     expect(link.getAttribute('href')).toBe('/apices/a1');
-    expect(container.querySelector('.superficie')!.getAttribute('aria-hidden')).toBe('true');
-    expect((container.querySelector('.superficie') as HTMLElement).style.inlineSize).toBe('56px');
-    expect((container.querySelector('.superficie') as HTMLElement).style.blockSize).toBe('34px');
+    const celda = container.querySelector('.apice-row__celda svg.celda-superficie')!;
+    expect(celda.getAttribute('aria-hidden')).toBe('true');
+    expect(celda.getAttribute('width')).toBe('30');
+    expect(container.querySelector('.apice-row__celda')!.hasAttribute('data-off')).toBe(false);
     expect(container.querySelector('.apice-row__zone')!.textContent).toBe('0828');
     expect(container.textContent).toContain('agua y cobijo, Etapa Prototipo, zona 0828');
   });
@@ -132,6 +153,27 @@ describe('ApiceRow', () => {
     );
     expect(container.querySelector('.apice-row__zone')).toBeNull();
     expect(screen.getByRole('link').getAttribute('aria-current')).toBe('true');
+  });
+
+  it('fuera del filtro, la fila sigue pero atenuada (celda apagada) y lo dice en su descripción', () => {
+    const { container } = render(
+      <ul>
+        <ApiceRow apice={base} dimmed />
+      </ul>,
+    );
+    expect(screen.getByRole('link').classList.contains('c-fila-off')).toBe(true);
+    expect(container.querySelector('.apice-row__celda')!.getAttribute('data-off')).toBe('true');
+    expect(container.querySelector('.apice-row__description')!.textContent).toContain(', fuera del filtro');
+  });
+
+  it('dentro del filtro, la fila no se atenúa ni dice «fuera del filtro»', () => {
+    const { container } = render(
+      <ul>
+        <ApiceRow apice={base} dimmed={false} />
+      </ul>,
+    );
+    expect(screen.getByRole('link').classList.contains('c-fila-off')).toBe(false);
+    expect(container.textContent).not.toContain('fuera del filtro');
   });
 });
 

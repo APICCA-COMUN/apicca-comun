@@ -1,7 +1,17 @@
 /* RF-1 (002) · 1.6 y RF-2 (003) · 2.1–2.4: capas del logo sin placa; la variante monocroma es la 1.6. */
 .logo {
+  position: relative;
   display: inline-block;
   line-height: 0;
+}
+
+/* Área tocable de 44 px de alto, centrada, con un pseudo-elemento transparente; el dibujo del logo no cambia. */
+.logo::before {
+  content: '';
+  position: absolute;
+  inset-block-start: calc(50% - 22px);
+  inset-inline: 0;
+  block-size: var(--size-icon-control);
 }
 
 .logo__svg {

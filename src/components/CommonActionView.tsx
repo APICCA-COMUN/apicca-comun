@@ -4,8 +4,12 @@
 // sin sesión, el aviso de unirse; quien puede, «Sumarme» o «Retirarme»; la autora, «Editar», cerrar o reabrir y
 // «Archivar»; un facilitador, «Archivar». Una que no existe o no se puede leer se ve igual, sin pistas (RF-5 (010) · 5.2).
 // Cambiar los ápices de una Acción Común queda para una fase posterior (RF-4 (010) · 4.2, en `pending`).
+// «E3 · Celda» (24-11-2026, Propuesta del asistente): sin caja. Rótulo suave con el estado, nombre, línea de ejes, autoría,
+// descripción, participantes y Ápices como datos y filas (`.c-dato`, `.c-fila`), «Sumarme» como rótulo grande (`.c-barra`) y
+// el resto de acciones como enlaces de texto (`.c-enlace`). Tras el título y la autoría va el Arco (`PiezaArco`, 329 × 120) con las
+// celdas de los Ápices que une, si se conoce la forma de al menos dos. El GamePanel pone la línea de sección con «Cerrar».
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
-import { AXES, type Axis } from '../../shared/domain/apice';
+import { AXES, type Axis, type ApiceStatus } from '../../shared/domain/apice';
 import {
   canArchive,
   canJoin,
@@ -21,7 +25,10 @@ import { useSession } from '../app/session';
 import { usePageTitle } from '../app/usePageTitle';
 import { api, ApiClientError, type ApiOps, type OpClient } from '../data/api';
 import { firestoreCommonActionSource, type CommonActionDetail, type CommonActionSource } from '../data/commonActions';
-import { AXIS_LABEL, AxisBadge } from './AxisIcon';
+import { AXIS_LABEL } from './AxisIcon';
+import { CeldaSuperficie } from './Celda';
+import { CeldaHueca, EjesLinea } from './EjesLinea';
+import { PiezaArco, type ApicePieza } from './PiezaArco';
 import { DocBlocks } from './DocBlocks';
 import './CommonActionView.css';
 
@@ -31,13 +38,15 @@ interface Props {
   client?: OpClient<ApiOps>;
   /** Tras sumarse, retirarse o cambiarla: el mapa vuelve a pedir las Acciones Comunes. */
   onChange?: () => void;
+  /** Los ejes y la etapa de cada Ápice que une, para dibujar su celda; sin ellos, la fila lleva una celda hueca. */
+  apiceInfo?: ReadonlyMap<string, { axes: readonly Axis[]; status: ApiceStatus }>;
 }
 
 const STATUS_LABEL: Record<CommonActionStatus, string> = { abierta: 'Abierta', cerrada: 'Cerrada', archivada: 'Archivada' };
 const FAILED = 'No se pudo completar la acción. Inténtalo de nuevo.';
 const hiddenText = (count: number): string => `Une además ${count === 1 ? '1 ápice' : `${count} ápices`} que no puedes ver.`;
 
-export function CommonActionView({ id, source = firestoreCommonActionSource, client = api, onChange }: Props) {
+export function CommonActionView({ id, source = firestoreCommonActionSource, client = api, onChange, apiceInfo }: Props) {
   const session = useSession();
   const [action, setAction] = useState<CommonActionDetail | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -60,18 +69,23 @@ export function CommonActionView({ id, source = firestoreCommonActionSource, cli
     void load();
   }, [load]);
 
-  if (action === undefined || session.status === 'loading') return <p>Cargando…</p>;
+  if (action === undefined || session.status === 'loading') return <p className="c-cuerpo c-suave">Cargando…</p>;
   if (action === null) {
     return (
-      <section>
-        <h1>Acción Común</h1>
-        <p>Esta Acción Común no existe.</p>
+      <section className="common-action">
+        <h1 className="c-nombre">Acción Común</h1>
+        <p className="c-cuerpo">Esta Acción Común no existe.</p>
       </section>
     );
   }
 
   const viewer: CommonActionViewer | null = session.status === 'person' ? { uid: session.uid, role: session.role, status: 'active' } : null;
   const state = { status: action.status, authorUid: action.authorUid, authorSuspended: false };
+  // El Arco de la Acción Común (E3 · Celda): las celdas de sus Ápices con su arco; solo cuando se sabe la forma de al menos dos.
+  const piezas: ApicePieza[] = action.apices.flatMap((apice) => {
+    const info = apiceInfo?.get(apice.id);
+    return info === undefined ? [] : [{ id: apice.id, name: apice.name, axes: [...info.axes], status: info.status }];
+  });
   const participates = viewer !== null && action.participantUids.includes(viewer.uid);
 
   const run = async (call: () => Promise<unknown>) => {
@@ -93,65 +107,91 @@ export function CommonActionView({ id, source = firestoreCommonActionSource, cli
   return (
     <article className="common-action">
       <header className="common-action__head">
-        <p className="common-action__status" data-status={action.status}>
+        <p className="common-action__status c-rot c-suave" data-status={action.status}>
           {STATUS_LABEL[action.status]}
         </p>
-        <h1>{action.title}</h1>
-        {action.axis !== null && <AxisBadge axis={action.axis} />}
-        <p>Propuesta por @{action.authorUsername}</p>
+        <h1 className="c-nombre">{action.title}</h1>
+        {action.axis !== null && <EjesLinea ejes={[action.axis]} />}
+        <p className="c-cuerpo c-suave">Propuesta por @{action.authorUsername}</p>
       </header>
+      {!editing && piezas.length >= 2 && (
+        <div className="common-action__arco">
+          <PiezaArco apices={piezas} ancho={329} alto={120} cel={44} eje={action.axis} cerrada={action.status === 'cerrada'} />
+        </div>
+      )}
       {editing ? (
         <EditForm action={action} busy={busy} onCancel={() => setEditing(false)} onSave={(fields) => run(() => client.call('editCommonAction', { actionId: id, ...fields }))} />
       ) : (
-        <DocBlocks blocks={parseMarkdown(action.description)} />
+        <div className="common-action__descripcion c-cuerpo">
+          <DocBlocks blocks={parseMarkdown(action.description)} />
+        </div>
       )}
-      <h2 id={`${id}-participants`}>Participantes ({action.participants.length})</h2>
-      <ul aria-label={`Participantes (${action.participants.length})`} className="common-action__people">
-        {action.participants.map((person) => (
-          <li key={person.uid}>@{person.username}</li>
-        ))}
-      </ul>
-      <h2>Ápices que une</h2>
-      <ul aria-label="Ápices que une" className="common-action__apices">
-        {action.apices.map((apice) => (
-          <li key={apice.id}>
-            <Link href={`/apices/${apice.id}`}>{apice.name}</Link>
-          </li>
-        ))}
-      </ul>
-      {action.hiddenApices > 0 && <p>{hiddenText(action.hiddenApices)}</p>}
+      <div className="common-action__datos">
+        <div className="c-dato c-dato--columna">
+          <h2 className="c-rot" id={`${id}-participants`}>
+            Participantes ({action.participants.length})
+          </h2>
+          <ul aria-label={`Participantes (${action.participants.length})`} className="common-action__people c-cuerpo">
+            {action.participants.map((person) => (
+              <li key={person.uid}>@{person.username}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="c-dato c-dato--columna">
+          <h2 className="c-rot">Ápices que une</h2>
+          <ul aria-label="Ápices que une" className="common-action__apices">
+            {action.apices.map((apice) => {
+              const info = apiceInfo?.get(apice.id);
+              return (
+                <li key={apice.id}>
+                  <Link href={`/apices/${apice.id}`} className="c-fila c-fila--tocable">
+                    {info === undefined ? <CeldaHueca /> : <CeldaSuperficie axes={info.axes} status={info.status} ancho={28} />}
+                    <span className="c-nm">{apice.name}</span>
+                    <span className="c-rot c-suave" aria-hidden="true">
+                      {apice.status}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          {action.hiddenApices > 0 && <p className="c-cuerpo c-suave">{hiddenText(action.hiddenApices)}</p>}
+        </div>
+      </div>
       {session.status === 'visitor' && action.status === 'abierta' && (
         <p className="block">
-          Para sumarte a esta Acción Común, únete a APICCA. <Link href="/solicitar">Unirme</Link>
+          Para sumarte a esta Acción Común, únete a APICCA. <Link href="/solicitar" className="enlace-texto">Unirme</Link>
         </p>
       )}
       {!editing && (
         <div className="common-action__actions">
           {!participates && canJoin(viewer, state) && (
-            <button type="button" className="block action-primary" disabled={busy} onClick={() => void run(() => client.call('joinCommonAction', { actionId: id }))}>
+            <button type="button" className="c-barra action-primary" disabled={busy} onClick={() => void run(() => client.call('joinCommonAction', { actionId: id }))}>
               Sumarme
             </button>
           )}
-          {participates && canLeave(viewer, state) && (
-            <button type="button" className="block action-secondary" disabled={busy} onClick={() => void run(() => client.call('leaveCommonAction', { actionId: id }))}>
-              Retirarme
-            </button>
-          )}
-          {canManage(viewer, state) && (
-            <>
-              <button type="button" className="block action-secondary" disabled={busy} onClick={() => setEditing(true)}>
-                Editar
+          <div className="common-action__enlaces">
+            {participates && canLeave(viewer, state) && (
+              <button type="button" className="c-enlace action-secondary" disabled={busy} onClick={() => void run(() => client.call('leaveCommonAction', { actionId: id }))}>
+                Retirarme
               </button>
-              <button type="button" className="block action-secondary" disabled={busy} onClick={() => void setStatus(action.status === 'abierta' ? 'cerrada' : 'abierta')}>
-                {action.status === 'abierta' ? 'Cerrar Acción Común' : 'Reabrir Acción Común'}
+            )}
+            {canManage(viewer, state) && (
+              <>
+                <button type="button" className="c-enlace action-secondary" disabled={busy} onClick={() => setEditing(true)}>
+                  Editar
+                </button>
+                <button type="button" className="c-enlace action-secondary" disabled={busy} onClick={() => void setStatus(action.status === 'abierta' ? 'cerrada' : 'abierta')}>
+                  {action.status === 'abierta' ? 'Cerrar Acción Común' : 'Reabrir Acción Común'}
+                </button>
+              </>
+            )}
+            {canArchive(viewer, state) && (
+              <button type="button" className="c-enlace c-enlace--destructiva action-secondary" disabled={busy} onClick={() => void setStatus('archivada')}>
+                Archivar
               </button>
-            </>
-          )}
-          {canArchive(viewer, state) && (
-            <button type="button" className="block action-secondary" disabled={busy} onClick={() => void setStatus('archivada')}>
-              Archivar
-            </button>
-          )}
+            )}
+          </div>
         </div>
       )}
       {error !== null && (
@@ -200,7 +240,7 @@ export interface ActionFieldsProps {
 export function ActionFields({ ids, title, description, axis, onTitle, onDescription, onAxis, onSubmit, onCancel, busy, submitLabel }: ActionFieldsProps) {
   return (
     <form className="common-action__form" onSubmit={onSubmit}>
-      <label htmlFor={`${ids}-title`}>Título</label>
+      <label htmlFor={`${ids}-title`} className="c-rot">Título</label>
       <input
         id={`${ids}-title`}
         className="block"
@@ -210,7 +250,7 @@ export function ActionFields({ ids, title, description, axis, onTitle, onDescrip
         maxLength={COMMON_ACTION_LIMITS.title}
         onChange={(event) => onTitle(event.target.value)}
       />
-      <label htmlFor={`${ids}-description`}>Descripción</label>
+      <label htmlFor={`${ids}-description`} className="c-rot">Descripción</label>
       <textarea
         id={`${ids}-description`}
         className="block"
@@ -221,7 +261,7 @@ export function ActionFields({ ids, title, description, axis, onTitle, onDescrip
         rows={5}
         onChange={(event) => onDescription(event.target.value)}
       />
-      <label htmlFor={`${ids}-axis`}>Eje principal (opcional)</label>
+      <label htmlFor={`${ids}-axis`} className="c-rot">Eje principal (opcional)</label>
       <select id={`${ids}-axis`} className="block" value={axis} onChange={(event) => onAxis(event.target.value as Axis | '')}>
         <option value="">Sin eje</option>
         {AXES.map((option) => (
@@ -231,10 +271,10 @@ export function ActionFields({ ids, title, description, axis, onTitle, onDescrip
         ))}
       </select>
       <div className="common-action__actions">
-        <button type="submit" className="block action-primary" disabled={busy}>
+        <button type="submit" className="c-barra action-primary" disabled={busy}>
           {submitLabel}
         </button>
-        <button type="button" className="block action-secondary" disabled={busy} onClick={onCancel}>
+        <button type="button" className="c-enlace action-secondary" disabled={busy} onClick={onCancel}>
           Cancelar
         </button>
       </div>

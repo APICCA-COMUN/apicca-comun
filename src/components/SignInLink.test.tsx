@@ -15,7 +15,7 @@ describe('SignInLink', () => {
     render(<SignInLink />);
     const link = screen.getByRole('link', { name: 'Entrar' });
     expect(link.getAttribute('href')).toBe('/entrar');
-    expect(link.className).toBe('');
+    expect(link.className).not.toMatch(/action-|\bblock\b/);
   });
 
   it('RF-9 (024) · 9.2: no guarda nada antes del clic', () => {

@@ -147,7 +147,7 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
       {error !== undefined && <p role="alert" className="block">{error}</p>}
 
       {hasLocation && (
-        <div role="radiogroup" aria-label="Precisión">
+        <div role="radiogroup" aria-label="Precisión" className="choice-group">
           {PRECISION_OPTIONS.map((option) => (
             <label key={option.value}>
               <input
@@ -164,20 +164,20 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
         </div>
       )}
 
-      {value.mode === 'remove' ? (
-        <button type="button" className="block action-secondary" onClick={() => onChange(KEEP_LOCATION)}>
-          Conservar ubicación
-        </button>
-      ) : (
-        (value.mode === 'set' || stored !== null) && (
-          <button type="button" className="block action-secondary" onClick={() => onChange(stored !== null ? { mode: 'remove' } : KEEP_LOCATION)}>
-            Quitar ubicación
+      {/* QA celda 2 · 3: los botones contiguos van separados (`.button-group`, 12 px). */}
+      <div className="button-group">
+        {value.mode === 'remove' ? (
+          <button type="button" className="block action-secondary" onClick={() => onChange(KEEP_LOCATION)}>
+            Conservar ubicación
           </button>
-        )
-      )}
-
-      {PointMap !== null && (
-        <>
+        ) : (
+          (value.mode === 'set' || stored !== null) && (
+            <button type="button" className="block action-secondary" onClick={() => onChange(stored !== null ? { mode: 'remove' } : KEEP_LOCATION)}>
+              Quitar ubicación
+            </button>
+          )
+        )}
+        {PointMap !== null && (
           <button
             type="button"
             className="block action-secondary"
@@ -187,6 +187,11 @@ export function LocationPicker({ stored, exact, value, onChange, error, map = La
           >
             Marcar en el mapa
           </button>
+        )}
+      </div>
+
+      {PointMap !== null && (
+        <>
           {mapOpen && (
             <MapBoundary>
               <Suspense fallback={<p role="status" className="block">Cargando el mapa…</p>}>

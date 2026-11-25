@@ -38,4 +38,10 @@ describe('tourSteps', () => {
     const titles = tourSteps({ apices: 3, paths: 2, signedIn: true }).map((step) => step.title);
     expect(titles).toEqual(['Mira un Ápice', 'Mira una Acción Común', 'Prototipa y conecta']);
   });
+
+  it('E3 · Celda: el paso de la Acción Común habla del arco, no de una fila de celdas (la cadena `ruta` salió)', () => {
+    const paso = tourSteps({ apices: 3, paths: 2, signedIn: false }).find((step) => step.key === 'camino')!;
+    expect(paso.text).toBe('Cada arco con nombre es una Acción Común que une Ápices. El mapa se acercó a una: elige su nombre para ver quién participa.');
+    expect(paso.text).not.toMatch(/fila de celdas/i);
+  });
 });

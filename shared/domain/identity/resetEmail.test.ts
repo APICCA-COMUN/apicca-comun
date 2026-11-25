@@ -60,10 +60,10 @@ describe('resetEmail', () => {
     }
   });
 
-  it('RF-2 (003) · 2.5: el fondo del cuerpo es papel (#F1EFE9), leído de TOKENS.light.background', () => {
-    expect(TOKENS.light.background).toBe('#F1EFE9');
-    expect(mail.body).toContain('<body bgcolor="#F1EFE9" style="margin: 0; padding: 0; background-color: #F1EFE9;');
-    expect(mail.body).toContain('<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F1EFE9"');
+  it('RF-2 (003) · 2.5: el fondo del cuerpo es papel (#FFFFFF), leído de TOKENS.light.background', () => {
+    expect(TOKENS.light.background).toBe('#FFFFFF');
+    expect(mail.body).toContain('<body bgcolor="#FFFFFF" style="margin: 0; padding: 0; background-color: #FFFFFF;');
+    expect(mail.body).toContain('<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF"');
   });
 
   it('RF-2 (003) · 2.5: resetEmail.ts no tiene literales de color propios', () => {

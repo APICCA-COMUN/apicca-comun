@@ -428,8 +428,47 @@ export function tessellationPath(layout: MapLayout, area: MapArea): string {
   return d;
 }
 
+/**
+ * El teselado «que flota» (sistema «APICCA · Mapa»: el mapa no es una trama infinita, solo existen las zonas): lo mismo
+ * que `tessellationPath`, pero solo con las celdas de las zonas dibujadas, como un solo trazado SVG (`d`). Cada zona
+ * aporta sus siete celdas de resolución 8 (la central y el anillo, `block.cells`) y nada más; sin zonas, `''`. Usa la
+ * misma proyección, el mismo marco (`layout.origin`, `layout.scale`) y el mismo redondeo que `tessellationPath`, así que
+ * una celda sale con los mismos vértices en ambos trazados. Como en aquel, una celda se recorta si su centro cae a más de
+ * dos radios de la ventana `area`; los hexágonos que asoman por el borde se conservan enteros.
+ *
+ * Solo en el nivel cercano (0). En los niveles alejados (1 y 2) devuelve `''` a propósito: ahí cada grupo ya es una sola
+ * celda dibujada (res. 6 o 4) y no hay celdas vacías debajo; una trama bajo los grupos repetiría su contorno. También
+ * devuelve `''` si las celdas serían menores de lo que se distingue o el área no tiene tamaño. Las celdas con contenido
+ * (Ápices, «+N») se pintan encima, como con `tessellationPath`; el terreno de los Ápices sin ubicación no tiene celdas H3
+ * y no cuenta.
+ */
+export function zonesTessellationPath(layout: MapLayout, area: MapArea): string {
+  if (layout.level !== 0 || layout.radius < TESSELLATION_MIN_RADIUS || area.width <= 0 || area.height <= 0) return '';
+  const slack = 2 * layout.radius;
+  const round = (value: number): number => Math.round(value * 10) / 10;
+  const seen = new Set<string>();
+  let d = '';
+  for (const block of layout.blocks) {
+    for (const cell of block.cells) {
+      if (seen.has(cell)) continue;
+      seen.add(cell);
+      const drawn = drawCell(cell, layout.origin, layout.scale);
+      if (Math.abs(drawn.x - area.x) > area.width / 2 + slack || Math.abs(drawn.y - area.y) > area.height / 2 + slack) continue;
+      d += `M${drawn.points.map(([x, y]) => `${round(x)} ${round(y)}`).join('L')}Z`;
+    }
+  }
+  return d;
+}
+
 const fitsIn = (bounds: MapBounds, viewport: MapViewport, margin: number): boolean =>
   bounds.maxX - bounds.minX <= viewport.width - 2 * margin && bounds.maxY - bounds.minY <= viewport.height - 2 * margin;
+
+/** Si el encuadre `frame` deja todo `bounds` dentro de la ventana, con el margen. */
+const showsAll = (bounds: MapBounds, frame: MapFrame, viewport: MapViewport): boolean =>
+  bounds.minX >= frame.x - viewport.width / 2 + FRAME_MARGIN &&
+  bounds.maxX <= frame.x + viewport.width / 2 - FRAME_MARGIN &&
+  bounds.minY >= frame.y - viewport.height / 2 + FRAME_MARGIN &&
+  bounds.maxY <= frame.y + viewport.height / 2 - FRAME_MARGIN;
 
 const centered = (layout: MapLayout, bounds: MapBounds): MapFrame => ({
   level: layout.level,
@@ -496,6 +535,67 @@ export function frameOn(
   return { ...frame, x: nearest.x, y: nearest.y };
 }
 
+/** El centro en el lienzo del lugar donde está un Ápice en este nivel (su celda, su zona si va en el «+N», su terreno o su grupo), o `null`. */
+function placeOfId(layout: MapLayout, id: string): { x: number; y: number } | null {
+  for (const block of layout.blocks) {
+    const spot = block.spots.find((candidate) => candidate.id === id);
+    if (spot) return { x: spot.x, y: spot.y };
+    if (block.ids.includes(id)) return { x: block.x, y: block.y };
+  }
+  const loose = layout.terrain?.spots.find((candidate) => candidate.id === id);
+  if (loose) return { x: loose.x, y: loose.y };
+  const group = layout.groups.find((candidate) => candidate.ids.includes(id));
+  return group ? { x: group.x, y: group.y } : null;
+}
+
+/** Los centros de todo lo que el nivel dibuja: zonas, grupos y el terreno de los Ápices sin ubicación. */
+function contentCenters(layout: MapLayout): { x: number; y: number }[] {
+  const centers: { x: number; y: number }[] = [
+    ...layout.blocks.map((block) => ({ x: block.x, y: block.y })),
+    ...layout.groups.map((group) => ({ x: group.x, y: group.y })),
+  ];
+  if (layout.terrain !== null) centers.push({ x: layout.terrain.x + layout.terrain.width / 2, y: layout.terrain.y + layout.terrain.height / 2 });
+  return centers;
+}
+
+/**
+ * El encuadre de `from` llevado al nivel `wanted` desde fuera (la leyenda, la rueda, el teclado): el centro se conserva
+ * (en proporción a la escala) y la ventana nunca queda vacía; si en ese nivel caben todos los Ápices en la ventana pero el centro
+ * conservado deja alguno fuera o recortado, se encuadra todo centrado, como `frameMap`. Con `anchorId` (el Ápice elegido) y a la vista en ese nivel,
+ * el centro va a él. Si el centro conservado no deja ninguna zona, grupo o terreno dentro de la ventana, va al contenido más
+ * cercano a ese centro. `farScale` es la escala del nivel más lejano cuando hubo que alejarlo para que cupiera todo.
+ */
+export function frameAtLevel(
+  apices: readonly MapApice[],
+  from: MapFrame,
+  wanted: MapLevel,
+  viewport: MapViewport,
+  anchorId: string | null = null,
+  farScale?: number,
+): MapFrame {
+  if (from.level === wanted) return from;
+  const scale = wanted === 2 && farScale !== undefined ? farScale : LEVEL_SCALE[wanted];
+  const kept: MapFrame = { level: wanted, scale, x: (from.x * scale) / from.scale, y: (from.y * scale) / from.scale };
+  const layout = layoutMap(apices, wanted, scale);
+  if (anchorId !== null) {
+    const anchor = placeOfId(layout, anchorId);
+    if (anchor !== null) return { ...kept, x: anchor.x, y: anchor.y };
+  }
+  const centers = contentCenters(layout);
+  if (centers.length === 0) return kept;
+  // Si todo cabe en la ventana en ese nivel (como en el encuadre inicial, `frameMap`), se encuadra entero y centrado: así ningún
+  // grupo ni terreno queda recortado por el borde de la ventana, que acaba donde empieza la leyenda del pie, aunque el centro
+  // conservado lo dejara medio fuera (p. ej. al alejar desde el nivel cercano de «Conectar»).
+  if (layout.bounds !== null && fitsIn(layout.bounds, viewport, FRAME_MARGIN) && !showsAll(layout.bounds, kept, viewport)) {
+    return centered(layout, layout.bounds);
+  }
+  const inside = centers.some((c) => Math.abs(c.x - kept.x) <= viewport.width / 2 - FRAME_MARGIN && Math.abs(c.y - kept.y) <= viewport.height / 2 - FRAME_MARGIN);
+  if (inside) return kept;
+  let nearest = centers[0]!;
+  for (const c of centers) if (Math.hypot(c.x - kept.x, c.y - kept.y) < Math.hypot(nearest.x - kept.x, nearest.y - kept.y)) nearest = c;
+  return { ...kept, x: nearest.x, y: nearest.y };
+}
+
 /** Lo que ocupan los Ápices pedidos en un nivel: sus celdas, la zona entera si uno va en el «+N», o sus grupos. `null` si ninguno está. */
 function boundsOfIds(layout: MapLayout, wanted: ReadonlySet<string>): MapBounds | null {
   let bounds = EMPTY_BOUNDS;
@@ -539,10 +639,24 @@ export function frameFit(
   const reserved = Math.max(0, reservedBottom);
   const free: MapViewport = { width: viewport.width, height: Math.max(1, viewport.height - reserved) };
   const lowered = (frame: MapFrame): MapFrame => (reserved === 0 ? frame : { ...frame, y: frame.y + reserved / 2 });
-  const seen: { first: MapFrame | null } = { first: null };
+  const seen: { first: MapFrame | null; apart: MapFrame | null } = { first: null, apart: null };
   const consider = (layout: MapLayout): MapFrame | null => {
     const bounds = boundsOfIds(layout, wanted);
-    if (bounds === null || !fitsIn(bounds, free, margin)) return null;
+    if (bounds === null) return null;
+    if (!fitsIn(bounds, free, margin)) {
+      // No caben, pero en este nivel sus paradas son distintas y la ruta se dibuja: se guarda por si ningún nivel cercano cumple
+      // ambas cosas. El centro va a la celda más cercana al medio, para no quedar en un vacío entre ellas.
+      if (seen.apart === null && drawn !== undefined && drawn(layout)) {
+        const middle = centered(layout, bounds);
+        let nearest: { x: number; y: number } | null = null;
+        for (const id of wanted) {
+          const place = placeOfId(layout, id);
+          if (place !== null && (nearest === null || Math.hypot(place.x - middle.x, place.y - middle.y) < Math.hypot(nearest.x - middle.x, nearest.y - middle.y))) nearest = place;
+        }
+        seen.apart = lowered({ ...middle, ...(nearest ?? {}) });
+      }
+      return null;
+    }
     const frame = lowered(centered(layout, bounds));
     seen.first ??= frame;
     return drawn === undefined || drawn(layout) ? frame : null;
@@ -551,7 +665,8 @@ export function frameFit(
     const frame = consider(layoutMap(apices, level));
     if (frame !== null) return frame;
   }
-  if (seen.first !== null) return seen.first;
+  // Sin un nivel donde quepan y se dibuje: si caben en alguno (sin dibujarse), el más cercano donde se dibuja, aunque no quepa, gana.
+  if (seen.first !== null) return seen.apart ?? seen.first;
   let layout = layoutMap(apices, 2);
   let scale: number = LEVEL_SCALE[2];
   for (let step = 0; step < MAX_FAR_STEPS; step += 1) {

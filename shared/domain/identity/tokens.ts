@@ -4,29 +4,29 @@
 export const THEMES = ['light', 'dark'] as const;
 export type ThemeName = (typeof THEMES)[number];
 
-// Sistema «APICCA · Mapa» (23-11-2026, https://claude.ai/artifact/QEdX1nvqa6nqKbyzzpDyfU): papel y tinta, cinco
+// Paleta «E3 · Celda» (24-11-2026) sobre el sistema «APICCA · Mapa» (23-11-2026, https://claude.ai/artifact/QEdX1nvqa6nqKbyzzpDyfU): papel y tinta, cinco
 // colores de eje planos, radio 0 y sin sombras. Los nombres de siempre se conservan y toman los valores del sistema;
 // los nuevos (`trama`, `ruta`, `contorno-superficie`, `glifo-sobre-eje` y los trazos) vienen de su `tokens.json`.
 // Lo que no sale del sistema (acción principal y destructiva en tinta) es propuesta del asistente.
 const light = {
   // papel
-  background: '#F1EFE9',
+  background: '#FFFFFF',
   // trama: celdas vacías del teselado y divisores, solo decoración (1,5:1)
-  line: '#C8C5BA',
-  surface: '#F1EFE9',
+  line: '#D3D3D3',
+  surface: '#FFFFFF',
   // tinta
   text: '#141414',
-  // suave: texto secundario, solo sobre papel (6,67:1)
-  'text-muted': '#56534C',
+  // suave: texto secundario, solo sobre papel (5,74:1)
+  'text-muted': '#666666',
   charcoal: '#141414',
-  'on-charcoal': '#F1EFE9',
-  'on-charcoal-muted': '#C8C5BA',
+  'on-charcoal': '#FFFFFF',
+  'on-charcoal-muted': '#D3D3D3',
   'footer-bg': '#141414',
   // Lo destructivo y el error van en tinta; los distingue la palabra y la forma, no el color.
   'brand-red': '#141414',
   // La acción principal es tinta llena con texto en papel.
   'action-blue': '#141414',
-  'on-accent': '#F1EFE9',
+  'on-accent': '#FFFFFF',
   'field-border': '#141414',
   focus: '#141414',
   'node-ring': '#141414',
@@ -35,21 +35,21 @@ const light = {
   'logo-gray': '#666666',
   'logo-red': '#FF0000',
   'logo-blue': '#0096FF',
-  // Ejes: fondos de superficie, nunca color de texto; el glifo va siempre en `glifo-sobre-eje` (5,1:1 a 11,8:1).
-  'axis-agua-fill': '#3E8FB3',
+  // Ejes: fondos de superficie, nunca color de texto; el glifo va siempre en `glifo-sobre-eje` (4,61:1 a 12,69:1).
+  'axis-agua-fill': '#0096FF',
   'axis-agua-stroke': '#141414',
-  'axis-alimento-fill': '#86A150',
+  'axis-alimento-fill': '#47C254',
   'axis-alimento-stroke': '#141414',
-  'axis-cobijo-fill': '#E0862E',
+  'axis-cobijo-fill': '#FF8F00',
   'axis-cobijo-stroke': '#141414',
-  'axis-energia-fill': '#F2CC3D',
+  'axis-energia-fill': '#FFD200',
   'axis-energia-stroke': '#141414',
-  'axis-comunicacion-fill': '#E5645C',
+  'axis-comunicacion-fill': '#FF0000',
   'axis-comunicacion-stroke': '#141414',
-  trama: '#C8C5BA',
-  // Celda de una Acción Común: el glifo del eje va encima en su color (5,1:1 a 11,8:1 en claro).
+  trama: '#D3D3D3',
+  // Celda de una Acción Común: el glifo del eje va encima en su color (4,61:1 a 12,69:1 en claro).
   ruta: '#141414',
-  // Contorno de 2 px de toda superficie de patrón: los ejes dan 1,4:1 a 3,2:1 sobre el papel claro.
+  // Contorno de 2 px de toda superficie de patrón: los ejes dan 1,45:1 a 4:1 sobre el papel claro.
   'contorno-superficie': '#141414',
   'glifo-sobre-eje': '#141414',
   // Radio 0 en todo.
@@ -76,39 +76,39 @@ const light = {
 export type TokenName = keyof typeof light;
 
 const dark: Record<TokenName, string> = {
-  background: '#131312',
-  line: '#3B3A36',
-  surface: '#131312',
-  text: '#F1EFE9',
-  'text-muted': '#B8B4AA',
-  charcoal: '#F1EFE9',
-  'on-charcoal': '#131312',
-  'on-charcoal-muted': '#3B3A36',
-  'footer-bg': '#F1EFE9',
-  'brand-red': '#F1EFE9',
-  'action-blue': '#F1EFE9',
-  'on-accent': '#131312',
-  'field-border': '#F1EFE9',
-  focus: '#F1EFE9',
-  'node-ring': '#F1EFE9',
+  background: '#121212',
+  line: '#343434',
+  surface: '#121212',
+  text: '#FFFFFF',
+  'text-muted': '#B4B4B4',
+  charcoal: '#FFFFFF',
+  'on-charcoal': '#121212',
+  'on-charcoal-muted': '#343434',
+  'footer-bg': '#FFFFFF',
+  'brand-red': '#FFFFFF',
+  'action-blue': '#FFFFFF',
+  'on-accent': '#121212',
+  'field-border': '#FFFFFF',
+  focus: '#FFFFFF',
+  'node-ring': '#FFFFFF',
   veil: 'rgb(0 0 0 / .65)',
   'logo-gray': '#FFFFFF',
   'logo-red': '#FF0000',
   'logo-blue': '#0096FF',
-  'axis-agua-fill': '#3E8FB3',
+  'axis-agua-fill': '#0096FF',
   'axis-agua-stroke': '#141414',
-  'axis-alimento-fill': '#86A150',
+  'axis-alimento-fill': '#47C254',
   'axis-alimento-stroke': '#141414',
-  'axis-cobijo-fill': '#E0862E',
+  'axis-cobijo-fill': '#FF8F00',
   'axis-cobijo-stroke': '#141414',
-  'axis-energia-fill': '#F2CC3D',
+  'axis-energia-fill': '#FFD200',
   'axis-energia-stroke': '#141414',
-  'axis-comunicacion-fill': '#E5645C',
+  'axis-comunicacion-fill': '#FF0000',
   'axis-comunicacion-stroke': '#141414',
-  trama: '#3B3A36',
-  // En oscuro la ruta no es tinta (sería clara): gris para que los glifos de eje se lean (3,1:1 a 7,3:1).
-  ruta: '#3B3A36',
-  'contorno-superficie': '#F1EFE9',
+  trama: '#343434',
+  // En oscuro la ruta no es tinta (sería clara): gris para que los glifos de eje se lean (3,11:1 a 8,58:1).
+  ruta: '#343434',
+  'contorno-superficie': '#FFFFFF',
   'glifo-sobre-eje': '#141414',
   'radius-block': '0px',
   'radius-lot': '0px',

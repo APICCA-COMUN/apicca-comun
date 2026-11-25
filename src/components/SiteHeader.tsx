@@ -4,6 +4,8 @@
 // entrada vigente subrayada, y a la derecha el tema, la campana de avisos (con sesión), «Entrar» o la cuenta y «Menú».
 // Por debajo de 1100 px la navegación se pliega en «Menú» (`GameMenu`), con las mismas cinco entradas. Los datos de
 // los avisos entran por `noticesSource` y `client`, como en `NoticeBell` (las pruebas de `Play` los inyectan).
+// «E3 · Celda» (24-11-2026, Propuesta del asistente): sin cajas. La cabecera cierra con un filete horizontal de tinta, la
+// navegación son rótulos (la vigente, con raya), «Entrar» y «Menú» son enlaces de texto y la cuenta es una celda con su inicial.
 import { MAIN_MENU } from '../../shared/domain/navigation';
 import { isCurrentEntry } from '../app/currentSection';
 import { Link, useRoute } from '../app/router';

@@ -1,10 +1,10 @@
-/* Tarjeta de una sección de la constitución: borde de 3 px en tinta (`.block`), sin redondeo ni sombra, con
-   `clamp(20px, 4vw, 28px)` de relleno. El número va en grande junto al título, en `text`. Solo colores de tokens. */
+/* Sección de la constitución: una fila con filete suave arriba (`.block`), sin caja, redondeo ni sombra, con
+   `clamp(20px, 4vw, 28px)` de aire arriba y abajo. El número va en grande junto al título, en `text`. Solo colores de tokens. */
 .block.section-block {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: clamp(20px, 4vw, 28px);
+  padding: clamp(20px, 4vw, 28px) 0;
   border-radius: var(--radius-block);
 }
 

@@ -29,14 +29,17 @@ describe('SketchPanel', () => {
   it('RF-23 (021) · 23.1: elegir ejes y etapa cambia el boceto y muestra la superficie del Ápice', () => {
     const spy = vi.fn();
     const { container } = render(<Harness spy={spy} />);
-    expect(container.querySelector('.superficie')).toBeNull();
+    expect(container.querySelector('.celda-superficie')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Agua' }));
     expect(spy).toHaveBeenLastCalledWith({ axes: ['agua'], status: 'idea' });
     fireEvent.change(screen.getByLabelText('Etapa'), { target: { value: 'prototipo' } });
     expect(spy).toHaveBeenLastCalledWith({ axes: ['agua'], status: 'prototipo' });
-    const surface = container.querySelector('.superficie')!;
-    expect(surface.getAttribute('data-rule')).toBe('encaje');
-    expect(surface.getAttribute('aria-label')).toBe('agua, Etapa Prototipo');
+    // La vista previa es una celda hexagonal (no un rectángulo) con contorno de tinta.
+    const celda = container.querySelector('.celda-superficie')!;
+    expect(celda.querySelector('[data-rule]')!.getAttribute('data-rule')).toBe('encaje');
+    expect(celda.getAttribute('aria-label')).toBe('agua, Etapa Prototipo');
+    expect(celda.querySelector('polygon.celda__contorno')).not.toBeNull();
+    expect(container.querySelector('.superficie')).toBeNull();
     expect(screen.getByText('agua · prototipo')).toBeTruthy();
   });
 

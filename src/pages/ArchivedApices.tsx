@@ -41,7 +41,7 @@ function Archived({ session, source }: { session: Extract<SessionState, { status
           empty={() => <p className="block block-empty">{all ? 'No hay ápices archivados.' : 'No tienes ápices archivados.'}</p>}
         />
       </div>
-      <Link href="/">Volver al inicio</Link>
+      <Link href="/" className="c-enlace">Volver al inicio</Link>
     </section>
   );
 }

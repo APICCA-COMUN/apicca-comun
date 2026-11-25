@@ -55,28 +55,59 @@ function setup(doc: ApiceDoc | null, session: SessionState, handlers = {}) {
 }
 
 describe('ApiceView', () => {
-  it('RF-12 (003) · 12.1, 12.5, RF-3 (003) · 3.2: el contenido del ápice va en un lote con su superficie arriba y el nombre debajo', () => {
+  it('«E3 · Celda»: la ficha no es una caja: es un artículo con el rótulo suave, el nombre, la línea de ejes y los datos, sin superficie propia', () => {
     const { container } = render(
       <SessionProvider initial={{ status: 'visitor' }}>
         <ApiceView id="a1" source={fakeSource(apice()).source} client={fakeClient({}).client} />
       </SessionProvider>,
     );
-    const lot = container.querySelector('.lot')!;
-    expect(lot).not.toBeNull();
-    expect(lot.matches('article')).toBe(true);
-    expect(container.querySelectorAll('article.lot').length).toBe(1);
-    // La ficha ya no es un bloque: solo lo son sus paneles internos.
-    expect(lot.classList.contains('block')).toBe(false);
-    const heading = lot.querySelector('h1')!; // RF-18 (019) · 18.1, D-T12 (019)
-    const surface = lot.querySelector('.superficie')!;
+    const article = container.querySelector('article.apice-view')!;
+    expect(article).not.toBeNull();
+    expect(article.classList.contains('lot') || article.classList.contains('block')).toBe(false);
+    expect(container.querySelectorAll('article').length).toBe(1);
+    const heading = article.querySelector('h1')!; // RF-18 (019) · 18.1, D-T12 (019)
     expect(heading.textContent).toBe('Cosecha de lluvia');
-    expect(surface).not.toBeNull();
-    // La superficie va primero, a todo el ancho de la ficha, sin contorno propio: el borde de 3 px ya lo cumple.
-    expect(surface.parentElement).toBe(lot);
-    expect(surface.classList.contains('superficie--contorno')).toBe(false);
-    expect(surface.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(heading.parentElement).not.toBe(lot);
+    expect(heading.classList.contains('c-nombre')).toBe(true);
+    expect(container.querySelector('.superficie')).toBeNull();
+    const rotulo = article.querySelector('.apice-view__rotulo')!;
+    expect(rotulo.classList.contains('c-rot') && rotulo.classList.contains('c-suave')).toBe(true);
+    expect(rotulo.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(heading.compareDocumentPosition(article.querySelector('.ejes-linea')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelectorAll('.c-dato').length).toBeGreaterThanOrEqual(4);
     expectBlocks(container, { nesting: true });
+  });
+
+  it('«E3 · Celda»: `ampliacion` se pinta tras la línea de ejes y antes de la descripción', () => {
+    const { container } = render(
+      <SessionProvider initial={{ status: 'visitor' }}>
+        <ApiceView id="a1" source={fakeSource(apice()).source} client={fakeClient({}).client} ampliacion={<div data-testid="grande" />} />
+      </SessionProvider>,
+    );
+    const grande = screen.getByTestId('grande');
+    expect(container.querySelector('.ejes-linea')!.compareDocumentPosition(grande) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(grande.compareDocumentPosition(screen.getByText('Captamos agua de lluvia.')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('«E3 · Celda»: las Acciones Comunes del Ápice van como dato «Acción Común», con un enlace a cada una; sin ellas no hay dato', () => {
+    const { container } = render(
+      <SessionProvider initial={{ status: 'visitor' }}>
+        <ApiceView
+          id="a1"
+          source={fakeSource(apice()).source}
+          client={fakeClient({}).client}
+          acciones={[{ id: 'x1', title: 'Cosecha colectiva' }]}
+        />
+      </SessionProvider>,
+    );
+    expect(screen.getByRole('link', { name: 'Cosecha colectiva' }).getAttribute('href')).toBe('/acciones/x1');
+    expect(container.querySelector('ul[aria-label="Acciones Comunes del Ápice"]')).not.toBeNull();
+    cleanup();
+    const sin = render(
+      <SessionProvider initial={{ status: 'visitor' }}>
+        <ApiceView id="a1" source={fakeSource(apice()).source} client={fakeClient({}).client} />
+      </SessionProvider>,
+    );
+    expect(sin.container.querySelector('ul[aria-label="Acciones Comunes del Ápice"]')).toBeNull();
   });
 
   it('RF-22 (001): la ficha muestra todos los datos', () => {
@@ -85,7 +116,9 @@ describe('ApiceView', () => {
     expect(screen.getByText('Captamos agua de lluvia.')).toBeTruthy();
     expect(screen.getByText('Canaletas y tanques')).toBeTruthy();
     expect(screen.getByText('Mano de obra')).toBeTruthy();
-    expect(screen.getByText('agua y cobijo · prototipo')).toBeTruthy(); // RF-17 (019) · 17.2: el rótulo dice la Etapa
+    expect(screen.getByText('prototipo')).toBeTruthy(); // RF-17 (019) · 17.2: el rótulo dice la Etapa
+    expect(screen.getByText('agua')).toBeTruthy(); // la línea de ejes dice cada eje en texto
+    expect(screen.getByText('cobijo')).toBeTruthy();
     expect(screen.getByText(/Creado por ana/)).toBeTruthy();
     expect(screen.getByText(/beto/)).toBeTruthy();
     expect(screen.getByText(/3 de septiembre de 2026/)).toBeTruthy(); // RF-11 (019) · 11.4
@@ -226,13 +259,21 @@ describe('ApiceView · sin imagen (021)', () => {
   }
 });
 
-describe('ApiceView · bloques (002)', () => {
-  // Los controles de la ficha son de VisibilityControl y ArchiveControls;
-  // la página pone la ficha misma, que es una tarjeta, y el enlace «Historial», que es un enlace normal.
-  it('RF-6 (002) · 6.1, 6.3: la ficha es un lote (antes un bloque; RF-3 (003) · 3.2, D-T21 (003)) y el enlace «Historial» no lleva clase de acción', () => {
+describe('ApiceView · acciones (E3 · Celda)', () => {
+  // Los controles de la ficha son de VisibilityControl y ArchiveControls; «Editar» e «Historial» son enlaces de texto.
+  it('«Editar» e «Historial» son enlaces de texto (`.c-enlace`), sin caja; «Editar» sigue marcada como secundaria', () => {
     setup(apice(), ana);
-    expect(screen.getByRole('article', { name: '' }).classList.contains('lot')).toBe(true);
-    expect(screen.getByRole('link', { name: 'Historial' }).className).toBe('');
+    expect(screen.getByRole('article', { name: '' }).classList.contains('lot')).toBe(false);
+    const historial = screen.getByRole('link', { name: 'Historial' });
+    expect(historial.classList.contains('c-enlace')).toBe(true);
+    expect(historial.classList.contains('block')).toBe(false);
+    const editar = screen.getByRole('link', { name: 'Editar' });
+    expect(editar.classList.contains('c-enlace') && editar.classList.contains('action-secondary')).toBe(true);
+    for (const name of ['Hacer privado', 'Archivar']) {
+      const boton = screen.getByRole('button', { name });
+      expect(boton.classList.contains('c-enlace') && boton.classList.contains('action-secondary')).toBe(true);
+      expect(boton.classList.contains('block')).toBe(false);
+    }
   });
 });
 
@@ -241,31 +282,25 @@ describe('ApiceView · identidad (002)', () => {
     vi.restoreAllMocks();
   });
 
-  it('RF-4 (002) · 4.2: los ejes los dicen la superficie (con su glifo), el rótulo y el nombre accesible; no hay insignias aparte', () => {
-    setup(apice({ axes: ['agua', 'cobijo'] }), { status: 'visitor' });
-    const container = document.body;
-    expect(screen.getByText('agua y cobijo · prototipo')).toBeTruthy();
-    expect(screen.getByRole('img', { name: 'agua y cobijo, Etapa Prototipo' })).toBeTruthy();
-    expect(container.querySelector('.axis-badge')).toBeNull();
-    expect(container.querySelector('[aria-label="Ejes"]')).toBeNull();
-  });
-
-  it('la superficie de la ficha lleva una franja por eje y la regla de su Etapa', () => {
+  it('RF-4 (002) · 4.2: los ejes los dicen la línea de ejes (celda de color y nombre en minúscula) y el rótulo dice la etapa; no hay insignias aparte', () => {
     const { container } = render(
       <SessionProvider initial={{ status: 'visitor' }}>
-        <ApiceView id="a1" source={fakeSource(apice()).source} client={fakeClient({}).client} />
+        <ApiceView id="a1" source={fakeSource(apice({ axes: ['agua', 'cobijo'] })).source} client={fakeClient({}).client} />
       </SessionProvider>,
     );
-    const surface = container.querySelector('.superficie')!;
-    expect(surface.getAttribute('data-rule')).toBe('encaje');
-    expect(surface.getAttribute('aria-label')).toBe('agua y cobijo, Etapa Prototipo');
-    expect(surface.querySelectorAll('svg.superficie__franja')).toHaveLength(2);
+    const linea = container.querySelector('.ejes-linea')!;
+    expect([...linea.querySelectorAll('.ejes-linea__eje')].map((e) => e.textContent)).toEqual(['agua', 'cobijo']);
+    // El color nunca es la única señal, y las clases que pintan color de eje llevan «superficie» (RF-15 (019) · 15.2).
+    expect(linea.querySelectorAll('[class*="ejes-linea__superficie--"]').length).toBe(2);
+    expect(screen.getByText('prototipo')).toBeTruthy();
+    expect(container.querySelector('.axis-badge')).toBeNull();
+    expect(container.querySelector('[aria-label="Ejes"]')).toBeNull();
   });
 
   it('el rótulo agrega el código de la zona cuando el Ápice tiene una', () => {
     const location = { lat: 4.6, lng: -74.1, precision: 'approximate' as const, zone: { cell: '872830828ffffff', lat: 4.6, lng: -74.1 } };
     setup(apice({ location }), { status: 'visitor' });
-    expect(screen.getByText('agua y cobijo · prototipo · zona 0828')).toBeTruthy();
+    expect(screen.getByText('Zona 0828 · prototipo')).toBeTruthy();
   });
 
   it('RF-13 (002) · 13.1, 13.3: el estado, la visibilidad y el archivo son etiquetas con los textos de la 001', () => {
@@ -277,7 +312,7 @@ describe('ApiceView · identidad (002)', () => {
       ).container;
     const tag = (container: HTMLElement, condition: string) => container.querySelector(`.tag[data-condition="${condition}"]`)?.textContent;
     const active = show(apice());
-    expect(screen.getByText('agua y cobijo · prototipo')).toBeTruthy(); // RF-17 (019) · 17.2: la etapa la dice el rótulo
+    expect(screen.getByText('prototipo')).toBeTruthy(); // RF-17 (019) · 17.2: la etapa la dice el rótulo
     expect(tag(active, 'visibility')).toBe('público');
     cleanup();
     expect(tag(show(apice({ isArchived: true })), 'archived')).toBe('archivado');
@@ -292,20 +327,19 @@ describe('ApiceView · taller (019)', () => {
       </SessionProvider>,
     ).container;
 
-  it('RF-11 (019) · 11.2, D-T23 (019): «Ofrece:» y «Necesita:» son una línea cada uno en el cuerpo de la ficha, con su ícono y sin lotes anidados, antes de Ubicación', () => {
+  it('RF-11 (019) · 11.2, D-T23 (019): «Ofrece» y «Necesita» son una fila de datos cada una, con su ícono y sin lotes anidados, antes de Ubicación', () => {
     const container = show(apice());
-    const body = container.querySelector('.apice-view__body')!;
-    const rows = body.querySelectorAll('.apice-view__datos > p.apice-view__dato');
-    expect(rows.length).toBe(2);
-    expect(rows[0]!.querySelector('strong')!.textContent).toBe('Ofrece:');
-    expect(rows[1]!.querySelector('strong')!.textContent).toBe('Necesita:');
+    const datos = container.querySelector('.apice-view__datos')!;
+    const rows = datos.querySelectorAll(':scope > .c-dato');
+    expect(rows[0]!.querySelector('.c-rot')!.textContent).toBe('Ofrece');
+    expect(rows[1]!.querySelector('.c-rot')!.textContent).toBe('Necesita');
     expect(rows[0]!.querySelector('svg.icono--ofrece')).not.toBeNull();
     expect(rows[1]!.querySelector('svg.icono--necesita')).not.toBeNull();
     expect(rows[0]!.nextElementSibling).toBe(rows[1]);
-    expect(body.querySelector('section.lot')).toBeNull();
-    const datos = container.querySelector('.apice-view__datos')!;
-    expect(datos.compareDocumentPosition(screen.getByRole('heading', { name: 'Ubicación' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector('section.lot')).toBeNull();
+    expect(rows[1]!.compareDocumentPosition(screen.getByRole('heading', { name: 'Ubicación' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole('heading', { name: /Ofrece|Necesita/ })).toBeNull();
+    expect(rows[3]!.querySelector('.c-rot')!.textContent).toBe('Autoría');
   });
 
   it('RF-11 (019) · 11.4: la fecha de la última edición es larga, en hora de Bogotá', () => {

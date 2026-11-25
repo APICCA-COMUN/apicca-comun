@@ -136,7 +136,8 @@ a {
   overflow: auto;
   background-color: var(--surface);
   color: var(--text);
-  border: var(--stroke-border) solid var(--field-border);
+  border: 0;
+  border-block-start: var(--stroke-divider) solid var(--text);
 }
 
 /* Con colores forzados, el sistema elige los colores; el foco sigue visible. */

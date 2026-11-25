@@ -13,6 +13,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 // La entrada de la cuenta (`SessionEntry`) toma sus estilos de la cabecera, que la aplicación siempre carga.
 import '../../src/components/SiteHeader.css';
 import { SessionProvider, type SessionState } from '../../src/app/session';
@@ -105,7 +106,8 @@ describe.each([
     const rect = notice.getBoundingClientRect();
     expect(rect.left).toBeGreaterThanOrEqual(0);
     expect(rect.right).toBeLessThanOrEqual(window.innerWidth);
-    expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight);
+    // El alto del escenario es fraccionario y el desplazamiento de la página, entero: hasta 1 px de diferencia.
+    expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight + 1);
     const link = notice.querySelector('a')!.getBoundingClientRect();
     expect(link.right).toBeLessThanOrEqual(window.innerWidth);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
@@ -114,7 +116,8 @@ describe.each([
   it('RF-10 (024), RF-2 (008) · 2.2: los botones y enlaces del panel conservan los 44 px de alto', async () => {
     await open(width, height);
     const controls = [...bench!.querySelectorAll<HTMLElement>('.play__home button, .play__home a.block')].filter((control) => control.getBoundingClientRect().height > 0);
-    expect(controls.length).toBeGreaterThan(3);
+    // «Lo mío», «Ver como lista» y «Ver propuestas»: la leyenda-control ya no vive en el panel y los filtros se quitaron.
+    expect(controls.length).toBeGreaterThanOrEqual(3);
     for (const control of controls) {
       // El sistema da 44 px a los controles del panel (`--size-icon-control`) y 48 px a las acciones (`--size-control`).
       const wanted = 43.5;

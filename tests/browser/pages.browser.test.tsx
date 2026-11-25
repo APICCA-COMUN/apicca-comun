@@ -12,6 +12,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 import { THEMES } from '../../shared/domain/identity';
 import { App } from '../../src/App';
 import { SessionProvider } from '../../src/app/session';
@@ -38,10 +39,10 @@ const SCREENS: { name: string; path: string; as?: Account; ready?: string | stri
   { name: 'lo-mio', path: '/?mio=1', as: AUTHOR },
   { name: 'lista', path: '/?vista=lista' },
   { name: 'documentacion', path: '/documentacion' },
-  // Los caminos (RF-18 (021), RF-19 (021), RF-20 (021)): el panel de la Acción Común sembrada, la lista y el trazo.
-  { name: 'camino', path: `/acciones/${ACTION.id}`, ready: ['Agua lluvia del barrio', 'Participantes (1)'] },
-  { name: 'caminos', path: '/acciones', ready: 'Agua lluvia del barrio' },
-  { name: 'trazar-camino', path: '/acciones/nueva', as: AUTHOR, ready: 'Faltan 3 ápices.' },
+  // Las Acciones Comunes (RF-18 (021), RF-19 (021), RF-20 (021)): el panel de la Acción Común sembrada, la lista y el Arco.
+  { name: 'arco', path: `/acciones/${ACTION.id}`, ready: ['Agua lluvia del barrio', 'Participantes (1)'] },
+  { name: 'acciones', path: '/acciones', ready: 'Agua lluvia del barrio' },
+  { name: 'conectar', path: '/acciones/nueva', as: AUTHOR, ready: 'Faltan 3 ápices.' },
   // El primer contacto (RF-21 (021), RF-23 (021), RNF-7 (021)): la invitación sobre el mapa y el panel del boceto.
   { name: 'bienvenida', path: '/?bienvenida=1', ready: 'Te damos la bienvenida a APICCA' },
   { name: 'boceto', path: '/boceto', ready: 'Haz un boceto' },
@@ -232,6 +233,12 @@ const NARROW_ROUTES: { path: string; as?: Account }[] = [
   { path: '/boceto' },
 ];
 
+/** Lo que un `clip-path` de SVG recorta no se ve ni desplaza la página, aunque su caja (`getBoundingClientRect`) sea mayor:
+    las celdas con superficie recortan sus franjas al hexágono. */
+function clippedByPath(element: Element): boolean {
+  return element.closest('[clip-path]') !== null || element.querySelector('[clip-path]') !== null;
+}
+
 /** El borde derecho visible de un elemento: lo que un antepasado recorta no desplaza la página. */
 function visibleRight(element: Element): number {
   let right = element.getBoundingClientRect().right;
@@ -251,7 +258,7 @@ describe.each(THEMES)('pantalla angosta en el tema %s', (theme) => {
     if (as !== undefined) expect(location.pathname + location.search).toBe(path);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
     const wide = [...host!.querySelectorAll<HTMLElement>('*')]
-      .filter((el) => visibleRight(el) > innerWidth + 0.5)
+      .filter((el) => !clippedByPath(el) && visibleRight(el) > innerWidth + 0.5)
       .map((el) => el.outerHTML.slice(0, 100));
     expect(wide).toEqual([]);
   });

@@ -1,5 +1,5 @@
-/* El panel del boceto. Sistema «APICCA · Mapa»: la vista previa es una ficha (superficie arriba, borde de 3 px, y debajo
-   el nombre y el rótulo «agua · idea»), como la del Ápice, pero con borde discontinuo: todavía no existe. Solo tokens. */
+/* El panel del boceto. Sistema «APICCA · Mapa»: la vista previa es una ficha (superficie arriba y debajo el nombre y el
+   rótulo «agua · idea»), como la del Ápice, pero sin caja y con filetes discontinuos arriba y abajo: todavía no existe. Solo tokens. */
 
 .sketch-panel__field {
   display: flex;
@@ -13,12 +13,17 @@
   display: flex;
   flex-direction: column;
   margin: 0 0 1rem;
-  border: var(--stroke-border) dashed var(--field-border);
+  border: 0;
+  border-block: var(--stroke-divider) dashed var(--field-border);
   border-radius: var(--radius-lot);
 }
 
-.sketch-panel__preview .superficie {
-  border-block-end: var(--stroke-border) dashed var(--field-border);
+/* La vista previa es una celda hexagonal con su contorno de 2 px en tinta (celda.md), no un rectángulo sin contorno. */
+.sketch-panel__celda {
+  display: flex;
+  justify-content: center;
+  padding-block: 1rem;
+  border-block-end: var(--stroke-divider) dashed var(--field-border);
 }
 
 .sketch-panel__preview figcaption {

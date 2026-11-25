@@ -34,14 +34,14 @@ export function VisibilityControl({ id, visibility, client = api }: Props) {
 
   return (
     <section aria-label="Visibilidad">
-      <p>
+      <p className="c-cuerpo">
         Este ápice es <ConditionTag condition="visibility">{visibility === 'public' ? 'público' : 'privado'}</ConditionTag>
         {visibility === 'public' ? ': cualquier persona lo ve.' : ': solo lo ven las cuentas con sesión.'}
         {visibility === 'public' ? ' Si lo haces privado, dejará de verse para quien no tenga sesión.' : ''}
       </p>
       <button
         type="button"
-        className="block action-secondary"
+        className="c-enlace action-secondary"
         disabled={busy}
         onClick={() => void change()}
       >

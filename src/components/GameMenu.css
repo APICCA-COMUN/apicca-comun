@@ -49,7 +49,7 @@ button.game-menu__toggle {
 
 .game-menu__account {
   padding-block-start: 12px;
-  border-block-start: var(--stroke-border) solid var(--text);
+  border-block-start: var(--stroke-divider) solid var(--text);
 }
 
 .game-menu__who {
@@ -82,7 +82,7 @@ button.game-menu__toggle {
   gap: 4px;
   margin: 0;
   padding: 8px 12px;
-  border: var(--stroke-border) solid var(--text);
+  border: 0;
   border-radius: var(--radius-block);
   background-color: var(--charcoal);
   color: var(--on-charcoal);

@@ -1,5 +1,5 @@
 // Auxiliar de prueba (RF-6 (002) · 6.1, RF-2 (002) · 2.1, plan §0): todo control, diálogo y aviso
-// es un bloque; radios y casillas llevan `choice`; ningún atributo `style` escribe un color (D-T20 (002)).
+// es un bloque; radios y casillas llevan `choice`; ningún atributo `style` escribe un color (D-T20 (002)); `fill` y `stroke` valen solo con `var(--…)`.
 // Fuera quedan `input[type=hidden]` y lo que está dentro del mapa, que estiliza `pin.css`.
 // `blockNesting` (RF-3 (003) · 3.3, D-T4 (003), D-24 (003), D-28 (003)) marca un bloque dentro de otro.
 import { expect } from 'vitest';
@@ -23,6 +23,9 @@ const COLOR_PROPERTIES = [
   'box-shadow',
 ];
 
+/** Propiedades de pintura SVG: se aceptan con un token. */
+const SVG_PAINT = ['fill', 'stroke'];
+
 /** La etiqueta de apertura, para que el mensaje diga qué elemento falla. */
 const openingTag = (element: Element): string => element.outerHTML.slice(0, element.outerHTML.indexOf('>') + 1);
 
@@ -33,6 +36,16 @@ const CONTROLS = 'button, input, select, textarea';
 /** Un contenedor de bloque: `.block` que no es un control ni un enlace con forma de botón. */
 const isBlockContainer = (element: Element): boolean =>
   element.classList.contains('block') && !element.matches(`${CONTROLS}, a, .icon-button`);
+
+/**
+ * «E3 · Celda»: un botón o enlace con una pieza del sistema no es un bloque y no lleva caja: las piezas `c-*`
+ * (`.c-barra`, `.c-enlace`, `.c-rot`, `.c-fila`, `.c-art`…) y los controles de las leyendas (`.leyenda-control__boton`).
+ */
+const isPieza = (element: Element): boolean =>
+  [...element.classList].some((name) => name.startsWith('c-') || name.startsWith('leyenda-control'));
+
+/** Un valor de `style` que no es un color escrito a mano: `var(--token)`, o `none` (sin relleno ni trazo). */
+const isTokenValue = (value: string): boolean => /^var\(--[\w-]+\)$/.test(value.trim()) || value.trim() === 'none';
 
 const isAlert = (element: Element): boolean => element.matches('[role="alert"], [role="status"]');
 
@@ -74,11 +87,18 @@ export function blockProblems(container: ParentNode, options: { nesting?: boolea
     }
     // Con `nesting`, un aviso dentro de otro bloque va como texto en línea y no lleva `.block` (D-T4 (003)).
     if (options.nesting && isAlert(element) && insideBlock(element)) continue;
+    if (element.matches('button, a') && isPieza(element)) continue;
     if (!element.classList.contains('block')) problems.push(`sin «block»: ${openingTag(element)}`);
   }
   for (const element of container.querySelectorAll<HTMLElement>('[style]')) {
     if (inMap(element)) continue;
-    if (COLOR_PROPERTIES.some((property) => element.style.getPropertyValue(property) !== '')) {
+    // `fill` y `stroke` (dibujo SVG) pueden venir de un token (`var(--…)`); un literal sigue prohibido.
+    const writesColor = COLOR_PROPERTIES.some((property) => {
+      const value = element.style.getPropertyValue(property);
+      if (value === '') return false;
+      return !(SVG_PAINT.includes(property) && isTokenValue(value));
+    });
+    if (writesColor) {
       problems.push(`color en style: ${openingTag(element)}`);
     }
   }

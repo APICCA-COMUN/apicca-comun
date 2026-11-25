@@ -1,8 +1,14 @@
 // RF-14 (021) · 14.1, 14.8, 14.9, D-T23 (021): el panel de Inicio con la ficha, «Prototipar un Ápice», «Editar ápice», el
 // boceto, «Conectar» o una Acción Común. Es una región complementaria con nombre que ocupa el lugar del contenido por
-// defecto del panel de la derecha, y trae «Cerrar» (el ícono de cerrar en un botón de 44 px). Con `autoFocus`, al abrirse
+// defecto del panel de la derecha. «E3 · Celda» (24-11-2026): sin borde ni fondo propio; abre con la línea de sección
+// (`.c-seccion`): el rótulo con el TIPO del panel («Ápice», «Acción Común») a la izquierda y «Cerrar» (texto + ícono, área de
+// 44 px) a la derecha. El `label` es el nombre accesible de la región; `section` da el rótulo visible cuando difiere (así el h1 no
+// repite el mismo texto de la línea de sección).
+// Con `autoFocus`, al abrirse
 // lleva el foco a su título apenas aparece (la ficha puede tardar en cargar); sin él, no lo mueve. Un aviso (`notice`, el de
-// cambios sin guardar) va arriba del contenido. RNF-1 (021): Escape lo cierra, salvo que un control de adentro ya lo haya
+// cambios sin guardar) va arriba del contenido; al aparecer, el panel (y la columna o la página, si hace falta) se desplaza hasta
+// mostrarlo y el foco pasa a él, para que «Cerrar» no parezca no hacer nada (QA celda 2 · 4); con `prefers-reduced-motion`,
+// sin animación; si el aviso se va y el foco quedó en el aire, vuelve a «Cerrar». RNF-1 (021): Escape lo cierra, salvo que un control de adentro ya lo haya
 // atendido. Con `embedded`, el panel va dentro de la columna de Inicio, debajo de su cabecera (la ficha del Ápice): no se
 // desplaza por su cuenta, lo hace la columna, y al abrirse lleva la ficha a la vista si no se ve.
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
@@ -10,7 +16,10 @@ import { Icono } from './Glifo';
 import './GamePanel.css';
 
 export interface GamePanelProps {
+  /** El nombre accesible de la región. */
   label: string;
+  /** El rótulo visible de la línea de sección (el tipo: «Ápice», «Acción Común»); sin él, el `label`. */
+  section?: string;
   onClose: () => void;
   autoFocus?: boolean;
   notice?: ReactNode;
@@ -27,9 +36,13 @@ function focusHeading(body: HTMLElement): boolean {
   return true;
 }
 
-export function GamePanel({ label, onClose, autoFocus = false, notice, embedded = false, children }: GamePanelProps) {
+export function GamePanel({ label, section = label, onClose, autoFocus = false, notice, embedded = false, children }: GamePanelProps) {
   const body = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLElement>(null);
+  const noticeBox = useRef<HTMLDivElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const hasNotice = Boolean(notice);
+  const hadNotice = useRef(false);
 
   // En un teléfono (menos de 900 px) el panel va debajo del mapa, fuera de la ventana: al abrirse, la página baja hasta él.
   // Se espera un cuadro para que el desplazamiento al inicio que hace la ruta al navegar no lo deshaga.
@@ -51,8 +64,46 @@ export function GamePanel({ label, onClose, autoFocus = false, notice, embedded 
       }
       element.scrollIntoView({ block: 'start' });
     });
-    return () => cancelAnimationFrame(frame);
+    // La ficha puede cargar después: mientras el panel es corto («Cargando…»), la página no llega a bajar hasta su comienzo
+    // (el final del documento la frena). En un teléfono, cada vez que el panel crece se vuelve a llevar a la vista, hasta
+    // que la persona toca o desplaza la página, o pasan dos segundos.
+    let follow: ResizeObserver | undefined;
+    let stop: (() => void) | undefined;
+    if (phone && typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver(() => {
+        if (typeof element.scrollIntoView === 'function') element.scrollIntoView({ block: 'start' });
+      });
+      follow = observer;
+      const events = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
+      const timer = window.setTimeout(() => stop?.(), 2000);
+      stop = () => {
+        window.clearTimeout(timer);
+        observer.disconnect();
+        for (const name of events) window.removeEventListener(name, stop!);
+      };
+      for (const name of events) window.addEventListener(name, stop, { passive: true });
+      observer.observe(element);
+    }
+    return () => {
+      cancelAnimationFrame(frame);
+      stop?.();
+      follow?.disconnect();
+    };
   }, [embedded]);
+
+  // QA celda 2 · 4: el aviso aparece arriba del cuerpo, que puede estar desplazado: se lleva a la vista y recibe el foco.
+  useEffect(() => {
+    const box = noticeBox.current;
+    if (hasNotice && box !== null) {
+      const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      box.focus({ preventScroll: true });
+      if (typeof box.scrollIntoView === 'function') box.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+    } else if (!hasNotice && hadNotice.current) {
+      const active = document.activeElement;
+      if (active === null || active === document.body) closeButton.current?.focus({ preventScroll: true });
+    }
+    hadNotice.current = hasNotice;
+  }, [hasNotice]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
@@ -72,13 +123,19 @@ export function GamePanel({ label, onClose, autoFocus = false, notice, embedded 
 
   return (
     <aside ref={panel} className={embedded ? 'game-panel game-panel--embedded' : 'game-panel'} aria-label={label} onKeyDown={onKeyDown}>
-      <div className="game-panel__bar">
-        <button type="button" className="block icon-button" aria-label="Cerrar" title="Cerrar" onClick={onClose}>
-          <Icono name="cerrar" />
+      <div className="game-panel__bar c-seccion">
+        <span className="c-rot">{section}</span>
+        <button ref={closeButton} type="button" className="game-panel__close c-rot" onClick={onClose}>
+          Cerrar
+          <Icono name="cerrar" size={12} />
         </button>
       </div>
       <div ref={body} className="game-panel__body">
-        {notice}
+        {hasNotice && (
+          <div ref={noticeBox} tabIndex={-1} className="game-panel__notice">
+            {notice}
+          </div>
+        )}
         {children}
       </div>
     </aside>

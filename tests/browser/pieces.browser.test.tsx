@@ -4,7 +4,7 @@
 // controles (RF-4 (021) · 4.1, RF-9 (021) · 9.1, RNF-7 (021); antes, el mapa tintado de RF-8 (002) · 8.1). Las referencias
 // viven en `__screenshots__/` con sufijo de plataforma y se versionan solo cuando la persona las aprueba
 // (T-8.4). La tolerancia es la de `vitest.config.ts` (D-T12 (002)). La 003 suma las piezas
-// nuevas (T-7.5 (003), RNF-2 (003), D-T22 (003)): caminos y nodos, botones de ícono, pie, etiqueta, lote y campo.
+// nuevas (T-7.5 (003), RNF-2 (003), D-T22 (003)): Arcos y celdas, botones de ícono, pie, etiqueta, lote y campo.
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { cdp, page } from 'vitest/browser';
 import { act, type ReactElement } from 'react';
@@ -14,6 +14,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 import { THEMES } from '../../shared/domain/identity';
 import { AXES } from '../../shared/domain/apice';
 import { Logo } from '../../src/components/Logo';

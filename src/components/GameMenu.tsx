@@ -32,7 +32,7 @@ export function GameMenu() {
 
   return (
     <>
-      <button type="button" className="block action-secondary game-menu__toggle" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+      <button type="button" className="c-enlace action-secondary game-menu__toggle" aria-haspopup="dialog" onClick={() => setOpen(true)}>
         Menú
       </button>
       <Dialog open={open} labelledBy={titleId} onClose={close} className="game-menu">

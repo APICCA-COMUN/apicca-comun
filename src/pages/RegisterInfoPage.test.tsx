@@ -25,7 +25,7 @@ describe('RegisterInfoPage', () => {
 describe('RegisterInfoPage · bloques (002)', () => {
   it('RF-6 (002) · 6.3: el enlace a la solicitud es un enlace normal, sin clase de acción', () => {
     render(<RegisterInfoPage />);
-    expect(screen.getByRole('link', { name: /solicit/i }).className).toBe('');
+    expect(screen.getByRole('link', { name: /solicit/i }).className).not.toMatch(/action-|\bblock\b/);
   });
 });
 

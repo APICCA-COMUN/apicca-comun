@@ -6,9 +6,11 @@ import { describe, expect, it } from 'vitest';
 import { CELL_RESOLUTION, LEVEL_RESOLUTION, isCellOf } from './h3cells';
 import {
   CELL_WIDTH,
+  drawCell,
   LEVEL_SCALE,
   UNLOCATED_KEY,
   blockBounds,
+  frameAtLevel,
   frameFit,
   frameMap,
   frameOn,
@@ -18,6 +20,7 @@ import {
   projectKm,
   scaleBar,
   tessellationPath,
+  zonesTessellationPath,
   unprojectKm,
   type MapApice,
   type MapBounds,
@@ -327,6 +330,69 @@ describe('hexmap · teselado vacío', () => {
   });
 });
 
+describe('hexmap · zonesTessellationPath (el mapa flota)', () => {
+  const AREA = { x: 0, y: 0, width: 40000, height: 40000 };
+  const hexagons = (d: string): string[] => d.split('M').slice(1);
+  const expectedFor = (layout: ReturnType<typeof layoutMap>): Set<string> =>
+    new Set(
+      layout.blocks.flatMap((block) =>
+        block.cells.map((cell) => {
+          const drawn = drawCell(cell, layout.origin, layout.scale);
+          return `M${drawn.points.map(([x, y]) => `${Math.round(x * 10) / 10} ${Math.round(y * 10) / 10}`).join('L')}Z`;
+        }),
+      ),
+    );
+
+  it('contiene exactamente 7 hexágonos por zona y nada fuera de ellas', () => {
+    for (const apices of [[at('a', CENTRO)], [at('a', CENTRO), at('b', CHAPINERO)], BOGOTA]) {
+      const layout = layoutMap(apices, 0);
+      const d = zonesTessellationPath(layout, AREA);
+      const cells = hexagons(d);
+      expect(cells).toHaveLength(7 * layout.blocks.length);
+      expect(d.split('Z').length - 1).toBe(cells.length);
+      expect(new Set(cells.map((cell) => `M${cell}`))).toEqual(expectedFor(layout));
+    }
+  });
+
+  it('una zona con varios Ápices sigue siendo de 7 celdas, y el terreno sin ubicar no suma celdas', () => {
+    const layout = layoutMap([...crowd(9, CENTRO), nowhere('x')], 0);
+    expect(hexagons(zonesTessellationPath(layout, AREA))).toHaveLength(7);
+  });
+
+  it('usa el mismo redondeo que tessellationPath: cada celda sale igual en los dos trazados', () => {
+    const layout = layoutMap([at('a', CENTRO)], 0);
+    const full = new Set(hexagons(tessellationPath(layout, { x: 0, y: 0, width: 800, height: 500 })).map((cell) => `M${cell}`));
+    const floating = [...expectedFor(layout)];
+    expect(floating.filter((cell) => full.has(cell))).toHaveLength(7);
+  });
+
+  it('sin zonas, sin Ápices ubicados, o con celdas diminutas o sin área, no dibuja nada', () => {
+    expect(zonesTessellationPath(layoutMap([], 0), AREA)).toBe('');
+    expect(zonesTessellationPath(layoutMap([nowhere('x')], 0), AREA)).toBe('');
+    const layout = layoutMap([at('a', CENTRO)], 0);
+    expect(zonesTessellationPath({ ...layout, radius: 2 }, AREA)).toBe('');
+    expect(zonesTessellationPath(layout, { ...AREA, width: 0 })).toBe('');
+  });
+
+  it('recorta como tessellationPath: las celdas cuyo centro queda lejos de la ventana no entran', () => {
+    const layout = layoutMap([at('a', CENTRO), at('b', MEDELLIN)], 0);
+    const near = zonesTessellationPath(layout, { x: 0, y: 0, width: 800, height: 500 });
+    expect(near).toBe('');
+    const block = layout.blocks[0]!;
+    const here = zonesTessellationPath(layout, { x: block.x, y: block.y, width: 400, height: 300 });
+    expect(hexagons(here)).toHaveLength(7);
+    // Una ventana que solo roza la zona deja entrar las celdas cuyo centro está a menos de dos radios del borde.
+    const edge = zonesTessellationPath(layout, { x: block.x + 200 + 3 * layout.radius, y: block.y, width: 400, height: 300 });
+    expect(hexagons(edge).length).toBeGreaterThan(0);
+    expect(hexagons(edge).length).toBeLessThan(7);
+  });
+
+  it('en los niveles alejados no dibuja trama: cada grupo ya es una celda', () => {
+    expect(zonesTessellationPath(layoutMap(BOGOTA, 1), AREA)).toBe('');
+    expect(zonesTessellationPath(layoutMap(BOGOTA, 2), AREA)).toBe('');
+  });
+});
+
 describe('hexmap · frameFit', () => {
   const ALL = [at('a', CENTRO), at('b', VECINA), at('c', SUBA), at('d', CENTRO), at('e', MEDELLIN)];
 
@@ -403,6 +469,15 @@ describe('hexmap · frameFit', () => {
 
   it('RF-4 (024) · 4.1: si la Acción Común no se dibuja en ningún nivel, queda el primero en que caben', () => {
     expect(frameFit(ALL, ['a', 'b'], WIDE, undefined, () => false)).toEqual(frameFit(ALL, ['a', 'b'], WIDE));
+  });
+
+  it('RF-4 (024) · 4.1: si la Acción Común se dibuja en un nivel pero sus paradas no caben juntas, se queda en ese nivel centrada en una de ellas', () => {
+    const only0 = (layout: { level: number }) => layout.level === 0;
+    const frame = frameFit(ALL, ['a', 'c'], WIDE, undefined, only0);
+    expect(frame.level).toBe(0);
+    expect(frame.scale).toBe(LEVEL_SCALE[0]);
+    const spots = layoutMap(ALL, 0).blocks.flatMap((block) => block.spots);
+    expect(spots.some((spot) => (spot.id === 'a' || spot.id === 'c') && spot.x === frame.x && spot.y === frame.y)).toBe(true);
   });
 
   it('RF-3 (024), D-12 (024): sin área reservada (o con 0) el encuadre es el de siempre', () => {
@@ -546,5 +621,78 @@ describe('hexmap · vecino y escala', () => {
       expect(bar.px).toBeGreaterThan(40);
       expect(bar.px).toBeCloseTo((bar.meters / 1000) * scale);
     }
+  });
+});
+
+describe('hexmap · frameAtLevel', () => {
+  const APICES = [at('a', CENTRO), at('b', VECINA), at('c', SUBA), at('e', MEDELLIN)];
+  const HOME = frameMap(APICES, WIDE);
+
+  it('sin cambio de nivel devuelve el mismo encuadre', () => {
+    expect(frameAtLevel(APICES, HOME, HOME.level, WIDE)).toBe(HOME);
+  });
+
+  it('con un cambio de nivel nunca deja la ventana sin contenido (zonas, grupos o terreno cerca del centro)', () => {
+    const levels = [0, 1, 2] as const;
+    for (const from of levels) {
+      for (const to of levels) {
+        if (to === from) continue;
+        // Un centro lejos de todo: sobre el océano, a 40 000 unidades de las celdas.
+        const lost: typeof HOME = { level: from, scale: LEVEL_SCALE[from], x: 40000, y: -40000 };
+        const frame = frameAtLevel(APICES, lost, to, WIDE);
+        expect(frame.level).toBe(to);
+        const layout = layoutMap(APICES, to, frame.scale);
+        const near = [...layout.blocks.map((block) => block.outline), ...layout.groups.map((group) => group.points)].some((points) => {
+          const box = boxOf(points);
+          return box.maxX >= frame.x - WIDE.width / 2 && box.minX <= frame.x + WIDE.width / 2 && box.maxY >= frame.y - WIDE.height / 2 && box.minY <= frame.y + WIDE.height / 2;
+        });
+        expect(near).toBe(true);
+      }
+    }
+  });
+
+  it('conserva el centro, en proporción a la escala, cuando ya hay contenido dentro de la ventana', () => {
+    const near = layoutMap(APICES, 0).blocks[0]!;
+    const from: typeof HOME = { level: 0, scale: LEVEL_SCALE[0], x: near.x + 10, y: near.y };
+    const frame = frameAtLevel(APICES, from, 1, WIDE);
+    expect(frame.scale).toBe(LEVEL_SCALE[1]);
+    expect(frame.x).toBeCloseTo(((near.x + 10) * LEVEL_SCALE[1]) / LEVEL_SCALE[0]);
+  });
+
+  it('si en el nivel pedido caben todos en la ventana, los encuadra enteros aunque el centro conservado los recortara', () => {
+    const near = [at('a', CENTRO), at('b', VECINA), at('c', SUBA), at('d', CHAPINERO), nowhere('u')];
+    const tall = { width: 1000, height: 520 };
+    const layout2 = layoutMap(near, 2);
+    expect(layout2.bounds).not.toBeNull();
+    const bounds = layout2.bounds!;
+    expect(bounds.maxY - bounds.minY).toBeLessThanOrEqual(tall.height - 48);
+    // Desde el nivel cercano, centrado en la zona de CENTRO: conservar el centro dejaría el grupo de abajo medio fuera.
+    const block = layoutMap(near, 0).blocks.find((candidate) => candidate.ids.includes('a'))!;
+    const from: typeof HOME = { level: 0, scale: LEVEL_SCALE[0], x: block.x, y: block.y };
+    const keptY = (block.y * LEVEL_SCALE[2]) / LEVEL_SCALE[0];
+    const keptX = (block.x * LEVEL_SCALE[2]) / LEVEL_SCALE[0];
+    const clipped = bounds.minY < keptY - tall.height / 2 + 24 || bounds.maxY > keptY + tall.height / 2 - 24 || bounds.minX < keptX - tall.width / 2 + 24 || bounds.maxX > keptX + tall.width / 2 - 24;
+    expect(clipped, 'premisa: conservar el centro recortaría').toBe(true);
+    const frame = frameAtLevel(near, from, 2, tall);
+    expect(frame.level).toBe(2);
+    const shown = layoutMap(near, 2, frame.scale).bounds!;
+    expect(shown.minY).toBeGreaterThanOrEqual(frame.y - tall.height / 2 + 24 - 0.5);
+    expect(shown.maxY).toBeLessThanOrEqual(frame.y + tall.height / 2 - 24 + 0.5);
+    expect(shown.minX).toBeGreaterThanOrEqual(frame.x - tall.width / 2 + 24 - 0.5);
+    expect(shown.maxX).toBeLessThanOrEqual(frame.x + tall.width / 2 - 24 + 0.5);
+    // Una ventana más baja (la leyenda con filtro ocupa más): vuelve a encuadrar.
+    const low = { width: 1000, height: bounds.maxY - bounds.minY + 60 };
+    const again = frameAtLevel(near, from, 2, low);
+    const seen = layoutMap(near, 2, again.scale).bounds!;
+    expect(seen.maxY).toBeLessThanOrEqual(again.y + low.height / 2 - 24 + 0.5);
+    expect(seen.minY).toBeGreaterThanOrEqual(again.y - low.height / 2 + 24 - 0.5);
+  });
+
+  it('con un Ápice elegido a la vista en el nivel pedido, se centra en él', () => {
+    const lost: typeof HOME = { level: 2, scale: LEVEL_SCALE[2], x: 40000, y: -40000 };
+    const frame = frameAtLevel(APICES, lost, 0, WIDE, 'a');
+    const spot = layoutMap(APICES, 0).blocks.flatMap((block) => block.spots).find((candidate) => candidate.id === 'a')!;
+    expect(frame.x).toBeCloseTo(spot.x);
+    expect(frame.y).toBeCloseTo(spot.y);
   });
 });

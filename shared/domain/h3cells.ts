@@ -1,5 +1,5 @@
 // Celdas H3 del mapa: la única puerta a `h3-js` en el sitio. El teselado a la vista (zonas de siete celdas, celdas de los
-// niveles alejados, rutas entre Ápices) sale de aquí; `hexmap.ts` y `mapPaths.ts` solo piden celdas y las proyectan.
+// niveles alejados) sale de aquí; `hexmap.ts` solo pide celdas y las proyecta.
 // Puro, sin React ni DOM. Todo lo que puede lanzar la biblioteca (celdas inválidas, caminos entre pentágonos, resoluciones
 // cruzadas) se atrapa aquí y devuelve un valor neutro: el mapa nunca se rompe por una celda.
 import {
@@ -9,9 +9,7 @@ import {
   cellsToMultiPolygon,
   getHexagonEdgeLengthAvg,
   getResolution,
-  greatCircleDistance,
   gridDisk,
-  gridPathCells,
   isValidCell,
   latLngToCell,
 } from 'h3-js';
@@ -117,40 +115,5 @@ export function cellsAround(point: Point, resolution: number, rings: number): st
     return gridDisk(latLngToCell(point.lat, point.lng, resolution), Math.max(0, Math.floor(rings)));
   } catch {
     return [];
-  }
-}
-
-/** Cuántas celdas caben, a lo más, en una ruta entre dos Ápices; más larga no se dibuja. */
-export const ROUTE_LIMIT = 120;
-
-/**
- * Las celdas que unen a dos celdas de la misma resolución, con las dos puntas, en orden; `null` si la ruta pasa del
- * tope (`ROUTE_LIMIT`). Si H3 no puede trazar el camino (celdas de otra base o junto a un pentágono), se muestrea la
- * línea recta entre los centros.
- */
-export function routeCells(from: string, to: string): string[] | null {
-  try {
-    const a = cellToLatLng(from);
-    const b = cellToLatLng(to);
-    const resolution = getResolution(from);
-    const reach = greatCircleDistance(a, b, 'km') / (Math.sqrt(3) * edgeKm(resolution));
-    if (reach > ROUTE_LIMIT) return null;
-    try {
-      const path = gridPathCells(from, to);
-      return path.length > 0 && path.length <= ROUTE_LIMIT + 1 ? path : null;
-    } catch {
-      const steps = Math.max(1, Math.ceil(reach * 2));
-      const cells: string[] = [];
-      for (let step = 0; step <= steps; step += 1) {
-        const t = step / steps;
-        const cell = latLngToCell(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, resolution);
-        if (cells[cells.length - 1] !== cell) cells.push(cell);
-      }
-      cells[0] = from;
-      cells[cells.length - 1] = to;
-      return cells.length <= ROUTE_LIMIT + 1 ? cells : null;
-    }
-  } catch {
-    return null;
   }
 }

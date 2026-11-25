@@ -26,7 +26,7 @@ export function tourSteps({ apices, paths, signedIn }: TourInput): TourStep[] {
     steps.push({
       key: 'camino',
       title: 'Mira una Acción Común',
-      text: 'Cada fila de celdas con nombre es una Acción Común que une Ápices. El mapa se acercó a una: elige su nombre para ver quién participa.',
+      text: 'Cada arco con nombre es una Acción Común que une Ápices. El mapa se acercó a una: elige su nombre para ver quién participa.',
     });
   }
   steps.push(

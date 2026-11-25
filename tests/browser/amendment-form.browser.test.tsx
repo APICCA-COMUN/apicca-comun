@@ -9,6 +9,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 import { AmendmentForm } from '../../src/components/AmendmentForm';
 
 const SECTIONS = [

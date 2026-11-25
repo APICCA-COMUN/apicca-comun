@@ -1,7 +1,7 @@
 // RF-4 (021) · 4.1 a 4.4, RF-6 (021) · 6.1 a 6.3, RF-7 (021) · 7.1 a 7.5, RF-8 (021) · 8.1 a 8.6, RF-9 (021) · 9.1, 9.2,
 // D-T17 (021) · Lienzo del mapa propio, teselado con H3 y dibujado con las superficies del sistema «APICCA · Mapa».
-// Dibuja lo que calcula `shared/domain/hexmap.ts`: el teselado vacío, los bordes de zona y las rutas en una capa SVG
-// decorativa y, encima, un botón por celda de Ápice, por grupo y por «+N». Sin teselas, sin imágenes y sin ninguna
+// Dibuja lo que calcula `shared/domain/hexmap.ts`: la trama de las zonas, los bordes de zona y los Arcos en capas SVG
+// decorativas y, entre ellas, un botón por celda de Ápice, por grupo y por «+N». Sin teselas, sin imágenes y sin ninguna
 // petición a la red; los colores salen de los tokens (GameMap.css).
 // - Una zona son siete celdas con un borde de 4 px. Cada Ápice es una celda con su superficie de patrón: el color dice el
 //   eje, el glifo lo repite y la regla dice la Etapa. Un Ápice de varios ejes va en franjas verticales.
@@ -14,10 +14,13 @@
 //   Un solo lugar está en el orden del tabulador. La rueda solo cambia el nivel con Ctrl o ⌘ (`wheel.ts`).
 // - Los Ápices sin ubicación van en un terreno aparte, con su rótulo, y se eligen como los demás.
 // - Con `fill` ocupa todo el alto de la página del mapa, sin borde ni radio (RF-11 (021) · 11.2, D-T22 (021)).
-// - RF-18 (021) · 18.1 a 18.8, D-T30 (021): cada Acción Común es una fila de celdas de `ruta`, con el glifo de su eje, que
-//   une las celdas de sus Ápices a la vista (`mapPaths.ts`), con un rótulo que la nombra y abre su panel; la cerrada
-//   va con borde discontinuo y su rótulo dice «Cerrada». El rótulo entra en el foco itinerante. La Acción Común en
-//   borrador de «Conectar» no lleva rótulo.
+// - RF-18 (021) · 18.1 a 18.8, D-T30 (021), «E3 · Celda»: cada Acción Común es un Arco (`mapArcs.ts`, `ArcLayer.tsx`) que
+//   une las celdas de sus Ápices a la vista, con un rótulo (glifo del eje y nombre) que la nombra y abre su panel; la
+//   cerrada va con línea discontinua y su rótulo dice «Cerrada». El rótulo entra en el foco itinerante. La Acción Común
+//   en borrador de «Conectar» no lleva rótulo.
+// - Apagado: con `dimmedIds` (lo que el filtro deja fuera) y, con un Ápice o una Acción Común elegidos, todo lo que no
+//   es de ellos se dibuja en `trama` sin dejar de ser un botón (`data-off`). La página sabe dónde cae lo elegido con
+//   `onAnchor`, y puede llevar el nivel (`level`, `onLevelChange`) y esconder los controles de zoom (`hideZoomControls`).
 // - RF-3 (024), D-T4 (024), D-12 (024): el recorrido de bienvenida mueve el encuadre hasta lo que nombra cada paso, sin
 //   que lo tape su tarjeta. RF-4 (024), D-T6 (024): abrir una Acción Común por su dirección encuadra sus Ápices.
 import {
@@ -38,14 +41,14 @@ import {
 import { APICE_STAGE_LABEL, type Axis } from '../../shared/domain/apice';
 import { MAP_LIMIT } from '../../shared/domain/discovery';
 import {
-  LEVEL_SCALE,
+  frameAtLevel,
   frameFit,
   frameMap,
   frameOn,
   layoutMap,
   mapNeighbor,
   scaleBar,
-  tessellationPath,
+  zonesTessellationPath,
   type MapBlock,
   type MapFrame,
   type MapGroup,
@@ -56,26 +59,22 @@ import {
   type MapVertex,
   type MapViewport,
 } from '../../shared/domain/hexmap';
-import { axisIdentity } from '../../shared/domain/identity';
+import { buildArc, placeArcLabel, type Arc, type ArcLabelBox } from '../../shared/domain/mapArcs';
 import {
-  labelRect,
-  pathCells,
-  pathLabelCandidates,
   pathLabelWidth,
   pathPoints,
-  placeLabel,
   pointInRect,
   rectsOverlap,
   shiftIntoView,
-  type LabelCandidate,
   type LabelRect,
-  type PathLabel,
   type PathPoint,
 } from '../../shared/domain/mapPaths';
 import { Dialog } from '../components/Dialog';
 import { Glifo } from '../components/Glifo';
-import { Superficie, SuperficieStripes, axesText } from '../components/Superficie';
+import { CeldaSuperficie } from '../components/Celda';
+import { SuperficieStripes, axesText } from '../components/Superficie';
 import type { ListedApice } from '../data/apices';
+import { ArcLayer, type ArcItem } from './ArcLayer';
 import { bindModifierWheelZoom } from './wheel';
 import './GameMap.css';
 
@@ -86,7 +85,7 @@ export interface MapPath {
   closed: boolean;
   /** Los Ápices que une, en el orden de la Acción Común. */
   apiceIds: readonly string[];
-  /** Su eje: el glifo de cada celda de la ruta. Sin eje, la ruta va sin glifo. */
+  /** Su eje: el glifo de su rótulo. Sin eje, el rótulo va sin glifo. */
   axis?: Axis | null;
   draft?: boolean;
 }
@@ -117,6 +116,27 @@ interface Props {
     ids: readonly string[];
     reserve?: () => number;
   } | null;
+  /** Los Ápices que el filtro deja fuera (`dimmedIds` de `discovery.ts`): se dibujan apagados, siguen siendo botones. */
+  dimmedIds?: ReadonlySet<string>;
+  /**
+   * Dónde cae lo elegido, en coordenadas de la ventana (`client`): el punto medio del borde de abajo de la celda del Ápice
+   * elegido, 4 px más abajo; o, con una Acción Común elegida, la muestra central de su Arco. Se llama tras cada cambio de
+   * encuadre, arrastre o cambio de tamaño, solo si el punto se movió más de 0,5 px, y con `null` si no hay elección o
+   * queda fuera de la ventana del mapa.
+   */
+  onAnchor?(point: { x: number; y: number } | null): void;
+  /** El nivel de acercamiento, llevado desde fuera. Sin él, el mapa lo lleva solo. */
+  level?: MapLevel;
+  /** El nivel cambió (por los controles, la rueda, el teclado o al acercar un grupo): con `level`, la página decide si lo sigue. */
+  onLevelChange?(level: MapLevel): void;
+  /** Sin los botones Acercar, Alejar y Ver todo (los lleva la página). Por defecto se muestran. */
+  hideZoomControls?: boolean;
+  /**
+   * El encuadre inicial va al nivel cercano (0), sobre las zonas de los Ápices a la vista, aunque todos quepan alejados:
+   * «Conectar» pide celdas que se puedan pulsar, no grupos (QA celda 2 · C3). Lo que la persona mueve o la página lleva en
+   * `level` manda sobre esto.
+   */
+  startClose?: boolean;
 }
 
 /** Ventana de respaldo, para cuando el lienzo todavía no se puede medir. */
@@ -133,9 +153,7 @@ const WHEEL_PAUSE_MS = 300;
 const TESSELLATION_SNAP = 240;
 /** Píxeles por unidad del patrón de las celdas: el del sistema, algo más denso para que se lea a 92 px. */
 const PATTERN_SCALE = 0.42;
-/** Hasta dónde llegan, medido desde el borde de la celda, el papel de 5 px y la tinta de 7 px del elegido y el contorno del boceto (en píxeles). */
-const RING_PAPER = 5;
-const RING_INK = 12;
+/** Hasta dónde llega, medido desde el borde de la celda, el contorno discontinuo del boceto (en píxeles). El elegido ya no lleva anillo: lo dice la línea de llamada y su contorno de 4 px. */
 const RING_SKETCH = 19;
 
 /** Lo que cada rótulo deja libre contra el borde del lienzo. */
@@ -162,6 +180,11 @@ const moreId = (key: string): string => `more:${key}`;
 const groupId = (key: string): string => `group:${key}`;
 const pathId = (id: string): string => `path:${id}`;
 const pathText = (path: MapPath): string => (path.closed ? `${path.title} · Cerrada` : path.title);
+/** Lo que dice, sin depender del color, una celda apagada (Propuesta del asistente: texto de interfaz por decidir). */
+const OFF_BY_FILTER = 'Fuera de los filtros';
+const OFF_BY_PICK = 'Sin relación con lo elegido';
+/** Propuesta del asistente (QA celda 2 · 2): lo que dice, sin depender del color, una celda marcada en «Conectar». */
+const CHOSEN_FOR_PATH = 'Elegido para la Acción Común';
 
 const apiceLabel = (apice: ListedApice): string =>
   `${apice.name}, ${apice.axes.length > 0 ? `${axesText(apice.axes)}, ` : ''}${APICE_STAGE_LABEL[apice.status]}`;
@@ -222,7 +245,7 @@ interface LabelAreas {
  * derecha. Los rótulos se miden contra esto para no cortarse ni quedar debajo (RF-4 (021) · 4.3, RF-8 (021) · 8.2).
  */
 /** @internal Para las pruebas. */
-export function labelAreas(viewport: MapViewport, barPx: number, offsetX: number, offsetY: number): LabelAreas {
+export function labelAreas(viewport: MapViewport, barPx: number, offsetX: number, offsetY: number, controls = true): LabelAreas {
   const toWorld = (left: number, top: number, right: number, bottom: number): LabelRect => ({
     left: left - offsetX,
     top: top - offsetY,
@@ -239,12 +262,16 @@ export function labelAreas(viewport: MapViewport, barPx: number, offsetX: number
         OVERLAY_INSET + LEGEND_FRAME_WIDTH + barPx,
         viewport.height - OVERLAY_INSET,
       ),
-      toWorld(
-        viewport.width - OVERLAY_INSET - CONTROL_SIZE,
-        viewport.height - OVERLAY_INSET - controlsHeight,
-        viewport.width - OVERLAY_INSET,
-        viewport.height - OVERLAY_INSET,
-      ),
+      ...(controls
+        ? [
+            toWorld(
+              viewport.width - OVERLAY_INSET - CONTROL_SIZE,
+              viewport.height - OVERLAY_INSET - controlsHeight,
+              viewport.width - OVERLAY_INSET,
+              viewport.height - OVERLAY_INSET,
+            ),
+          ]
+        : []),
     ],
   };
 }
@@ -311,7 +338,7 @@ const below = (x: number, left: number, width: number, top: number): LabelRect =
 const zoneText = (block: MapBlock): string => `Zona ${block.code} · ${block.ids.length === 1 ? '1 Ápice' : `${block.ids.length} Ápices`}`;
 const UNLOCATED_TEXT = 'Sin ubicación';
 
-/** Dónde va el rótulo de cada zona, del terreno sin ubicar y de los grupos sin ubicación, y de cada Acción Común. */
+/** Dónde va el rótulo de cada zona, del terreno sin ubicar y de los grupos sin ubicación, y de cada Arco. */
 export interface LabelPlan {
   areas: LabelAreas;
   /** De qué lado va el nombre de cada Ápice elegido, ya contado entre los rótulos para que ninguno lo tape. */
@@ -319,7 +346,7 @@ export interface LabelPlan {
   zones: Map<string, Placement>;
   terrain: Placement | null;
   groups: Map<string, Placement>;
-  paths: Map<string, PathLabel | null>;
+  paths: Map<string, ArcLabelBox | null>;
 }
 
 /** Un Ápice elegido: su celda y su nombre, que se ve junto a ella siempre. */
@@ -328,17 +355,37 @@ export interface PressedApice {
   name: string;
 }
 
+/** Una Acción Común con su Arco ya calculado. */
 export interface DrawnPath {
   path: MapPath;
-  /** Las celdas de `ruta` de la Acción Común: ocupadas para los rótulos. */
-  cells: readonly { x: number; y: number }[];
-  candidates: LabelCandidate[];
+  arc: Arc;
 }
+
+/** Los centros de todo lo que lleva patrón o tinta en el nivel (Ápices, «+N», grupos y los del terreno sin ubicar): el Arco los esquiva. */
+export function apiceCenters(layout: MapLayout): PathPoint[] {
+  const centers: PathPoint[] = [];
+  for (const block of layout.blocks) {
+    for (const spot of block.spots) centers.push({ x: spot.x, y: spot.y });
+    if (block.moreCell !== null) centers.push({ x: block.moreCell.x, y: block.moreCell.y });
+  }
+  for (const spot of layout.terrain?.spots ?? []) centers.push({ x: spot.x, y: spot.y });
+  for (const item of layout.groups) centers.push({ x: item.x, y: item.y });
+  return centers;
+}
+
+/** La caja de una celda: lo que los rótulos de zona no pueden tapar. */
+const cellRect = (points: readonly MapVertex[]): LabelRect => ({
+  left: Math.min(...points.map(([x]) => x)),
+  right: Math.max(...points.map(([x]) => x)),
+  top: Math.min(...points.map(([, y]) => y)),
+  bottom: Math.max(...points.map(([, y]) => y)),
+});
 
 /**
  * Coloca todos los rótulos del lienzo (RF-4 (021) · 4.3, D-T30 (021)): primero los de zona, terreno y grupos sin ubicación,
- * que se voltean si no caben; luego los de las Acciones Comunes, la elegida primero, cada uno en el primer lugar que no
- * tapa una celda con patrón, otro rótulo, la leyenda ni los controles. Una Acción Común sin sitio queda sin rótulo.
+ * que se voltean si no caben (los de zona, tampoco sobre una celda de Ápice o «+N»); luego los de los Arcos, el elegido
+ * primero, cada uno en el primer lugar junto a su curva que no tapa un Ápice, otro rótulo, la leyenda ni los controles
+ * (`placeArcLabel`). Un Arco sin sitio queda sin rótulo.
  */
 /** @internal Para las pruebas. */
 export function planLabels(
@@ -357,6 +404,12 @@ export function planLabels(
     taken.push(tag.rect);
   }
   const zones = new Map<string, Placement>();
+  // Las celdas de Ápice y los «+N» tampoco se tapan con el rótulo de una zona vecina.
+  const cells: LabelRect[] = [];
+  for (const block of layout.blocks) {
+    for (const spot of block.spots) cells.push(cellRect(spot.points));
+    if (block.moreCell !== null) cells.push(cellRect(block.moreCell.points));
+  }
   for (const block of layout.blocks) {
     const width = pathLabelWidth(zoneText(block).length);
     const bottomEdge = Math.max(...block.outline.map(([, y]) => y));
@@ -364,7 +417,7 @@ export function planLabels(
       { x: block.x, y: block.y },
       [above(block.label.x, -width / 2, width, block.label.y), below(block.label.x, -width / 2, width, bottomEdge + LABEL_OFFSET)],
       areas,
-      taken,
+      [...taken, ...cells],
     );
     zones.set(block.key, placement);
     taken.push(placement.rect);
@@ -397,21 +450,14 @@ export function planLabels(
     groups.set(group.key, placement);
     taken.push(placement.rect);
   }
-  const paths = new Map<string, PathLabel | null>();
-  // Las celdas de `ruta` de todas las Acciones Comunes, con su glifo, tampoco se tapan.
-  const routeCells = drawn.flatMap(({ cells }) => cells.map(({ x, y }) => ({ x, y })));
+  const paths = new Map<string, ArcLabelBox | null>();
+  const apices = apiceCenters(layout);
   const ordered = [...drawn].sort((a, b) => Number(b.path.id === selectedPathId) - Number(a.path.id === selectedPathId));
-  for (const { path, candidates } of ordered) {
+  for (const { path, arc } of ordered) {
     if (path.draft === true) continue;
-    const characters = pathText(path).length;
-    const label = placeLabel(layout, candidates, characters, {
-      view: areas.view,
-      blocked: areas.blocked,
-      taken,
-      busy: routeCells,
-    });
-    paths.set(path.id, label);
-    if (label !== null) taken.push(labelRect(label, label.width ?? pathLabelWidth(characters)));
+    const box = placeArcLabel(arc, pathText(path), { apices, rects: [...taken, ...areas.blocked] }, areas.view);
+    paths.set(path.id, box);
+    if (box !== null) taken.push({ left: box.x, top: box.y, right: box.x + box.w, bottom: box.y + box.h });
   }
   return { areas, tags, zones, terrain, groups, paths };
 }
@@ -465,6 +511,15 @@ interface CellProps {
   radius: number;
   pressed: boolean;
   sketch: boolean;
+  /** Apagada: lo que dice (`OFF_BY_FILTER`, `OFF_BY_PICK`) o `undefined` si está encendida. */
+  off: string | undefined;
+  /** Lo que dice una celda marcada en «Conectar» (`CHOSEN_FOR_PATH`), o `undefined`. */
+  chosenText?: string | undefined;
+  /**
+   * Marcada en «Conectar» sin ser la elegida: su nombre sale solo al apuntarla o enfocarla, de una en una. Varias marcadas a la
+   * vez no pueden mostrar todos sus nombres sin pisarse ni caer sobre un patrón (regla 5); la lista del panel ya las nombra.
+   */
+  tagOnPoint?: boolean;
   tabbable: boolean;
   /** De qué lado va su nombre y cuánto puede medir (`tagPlacement`). */
   tagSide: 'right' | 'left';
@@ -484,6 +539,9 @@ const ApiceCell = memo(function ApiceCell({
   radius,
   pressed,
   sketch,
+  off,
+  chosenText,
+  tagOnPoint = false,
   tabbable,
   tagSide,
   tagRoom,
@@ -503,6 +561,9 @@ const ApiceCell = memo(function ApiceCell({
       aria-label={apiceLabel(apice)}
       aria-pressed={pressed}
       data-sketch={sketch ? 'true' : undefined}
+      data-off={off === undefined ? undefined : 'true'}
+      data-tag={tagOnPoint ? 'point' : undefined}
+      aria-description={off ?? chosenText}
       tabIndex={tabbable ? 0 : -1}
       style={{
         left: shape.x - originX,
@@ -526,8 +587,6 @@ const ApiceCell = memo(function ApiceCell({
           </clipPath>
         </defs>
         {sketch && <polygon className="game-map__ring game-map__ring--sketch" points={grown(spot.points, spot, radius, RING_SKETCH)} />}
-        {pressed && <polygon className="game-map__ring game-map__ring--ink" points={grown(spot.points, spot, radius, RING_INK)} />}
-        {pressed && <polygon className="game-map__ring game-map__ring--paper" points={grown(spot.points, spot, radius, RING_PAPER)} />}
         <g clipPath={`url(#${clip})`}>
           <SuperficieStripes
             axes={apice.axes}
@@ -554,6 +613,48 @@ const ApiceCell = memo(function ApiceCell({
 });
 
 const NO_PATHS: readonly MapPath[] = [];
+const NO_IDS: ReadonlySet<string> = new Set();
+
+/** Lo que lleva una celda de tinta apagada: la marca para la hoja de estilos y lo que dice, sin depender del color. */
+const offAttributes = (text: string | undefined): Record<string, string | undefined> =>
+  text === undefined ? {} : { 'data-off': 'true', 'aria-description': text };
+
+/** El glifo del eje del rótulo del Arco, en píxeles. */
+const PATH_GLYPH = 14;
+
+/** Los vértices de la celda que muestra a `id` en este nivel: la suya, la del «+N» de su zona o la de su grupo. */
+function cellOfApice(layout: MapLayout, id: string): readonly MapVertex[] | null {
+  for (const block of layout.blocks) {
+    const spot = block.spots.find((candidate) => candidate.id === id);
+    if (spot !== undefined) return spot.points;
+    if (block.moreCell !== null && block.ids.includes(id)) return block.moreCell.points;
+  }
+  const loose = layout.terrain?.spots.find((candidate) => candidate.id === id);
+  if (loose !== undefined) return loose.points;
+  return layout.groups.find((item) => item.ids.includes(id))?.points ?? null;
+}
+
+/** El punto medio del borde de abajo de la celda, 4 px más abajo: de ahí cuelga lo que la página muestra del Ápice elegido. */
+const ANCHOR_DROP = 4;
+function bottomAnchor(points: readonly MapVertex[]): PathPoint {
+  const bottom = Math.max(...points.map(([, y]) => y));
+  const edge = points.filter(([, y]) => y >= bottom - 0.5);
+  return { x: edge.reduce((sum, [x]) => sum + x, 0) / edge.length, y: bottom + ANCHOR_DROP };
+}
+
+/**
+ * Para encuadrar una Acción Común elegida: el nivel en que cada uno de sus Ápices es una parada distinta (si varios caen en
+ * un mismo grupo, el Arco se encoge o desaparece). Se prefiere el más cercano aunque no quepan todos en la ventana.
+ */
+export const distinctStops =
+  (ids: readonly string[]) =>
+  (layout: MapLayout): boolean => {
+    const points = pathPoints(layout, ids);
+    return points.length >= 2 && new Set(points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`)).size === ids.length;
+  };
+
+/** Lo menos que se mueve el punto de `onAnchor` para volver a avisar, en píxeles. */
+const ANCHOR_EPSILON = 0.5;
 
 export function GameMap({
   items,
@@ -567,6 +668,12 @@ export function GameMap({
   fill = false,
   sketchId = null,
   focus = null,
+  dimmedIds,
+  onAnchor,
+  level,
+  onLevelChange,
+  hideZoomControls = false,
+  startClose = false,
 }: Props) {
   const ref = useRef<HTMLElement>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
@@ -612,39 +719,57 @@ export function GameMap({
   }, []);
 
   // RF-7 (021) · 7.4: el encuadre inicial; lo que la persona mueve vale mientras el conjunto de Ápices sea el mismo.
-  const home = useMemo(() => frameMap(shown, viewport), [shown, viewport]);
-  const frame = custom !== null && custom.key === idsKey ? custom.frame : home;
+  const home = useMemo(
+    () => (startClose ? frameOn(shown, shown.map((apice) => apice.id), viewport) : frameMap(shown, viewport)),
+    [shown, viewport, startClose],
+  );
+  /** La escala del nivel más lejano cuando hubo que alejarlo para que cupiera todo. */
+  const farScale = home.level === 2 ? home.scale : undefined;
+  /** El encuadre llevado a `wanted` (`frameAtLevel`): el mismo centro, pero nunca una ventana vacía; con un Ápice elegido, centrado en él. */
+  const atLevel = (base: MapFrame, wanted: MapLevel): MapFrame => frameAtLevel(shown, base, wanted, viewport, selectedId, farScale);
+  // Con `level` desde fuera manda la página: el encuadre guardado se lleva a ese nivel.
+  const rawFrame = custom !== null && custom.key === idsKey ? custom.frame : home;
+  const frame = useMemo(
+    () => (level === undefined ? rawFrame : frameAtLevel(shown, rawFrame, level, viewport, selectedId, farScale)),
+    // `selectedId` solo cuenta al cambiar de nivel; no se recentra cada vez que se elige otro Ápice.
+    [rawFrame, level, shown, viewport, farScale],
+  );
   const layout = useMemo(() => layoutMap(shown, frame.level, frame.scale), [shown, frame.level, frame.scale]);
 
   const move = (next: (current: MapFrame) => MapFrame) =>
-    setCustom((current) => ({
-      key: idsKey,
-      frame: next(current !== null && current.key === idsKey ? current.frame : home),
-    }));
-
-  /** `step` 1 aleja y -1 acerca; el centro de la ventana se conserva (RF-7 (021) · 7.1). */
-  const zoom = (step: 1 | -1) =>
-    move((current) => {
-      const level = clampLevel(current.level + step);
-      if (level === current.level) return current;
-      // El nivel más lejano usa la escala del encuadre inicial cuando hizo falta alejarlo para que cupiera todo.
-      const scale = level === 2 && home.level === 2 ? home.scale : LEVEL_SCALE[level];
-      return {
-        level,
-        scale,
-        x: (current.x * scale) / current.scale,
-        y: (current.y * scale) / current.scale,
-      };
+    setCustom((current) => {
+      const base = current !== null && current.key === idsKey ? current.frame : home;
+      return { key: idsKey, frame: next(level === undefined ? base : atLevel(base, level)) };
     });
 
-  // El teselado vacío (RF-4 (021) · 4.1): las celdas H3 que tocan la ventana, más un margen; se rehace al cambiar de nivel,
-  // de ventana o de casilla, no en cada píxel de arrastre.
+  /** Pone el encuadre que el mapa calculó (acercar un grupo, encuadrar una Acción Común) y avisa si cambió el nivel. */
+  const place = (next: MapFrame) => {
+    setCustom({ key: idsKey, frame: next });
+    if (next.level !== frame.level) onLevelChange?.(next.level);
+  };
+
+  /** `step` 1 aleja y -1 acerca; el centro de la ventana se conserva (RF-7 (021) · 7.1). Con `level` desde fuera solo lo pide. */
+  const zoom = (step: 1 | -1) => {
+    const wanted = clampLevel(frame.level + step);
+    if (wanted === frame.level) return;
+    if (level === undefined) setCustom({ key: idsKey, frame: atLevel(frame, wanted) });
+    onLevelChange?.(wanted);
+  };
+
+  /** «Ver todo»: el encuadre inicial, con su nivel. */
+  const reset = () => {
+    setCustom(null);
+    if (home.level !== frame.level) onLevelChange?.(home.level);
+  };
+
+  // La trama (RF-4 (021) · 4.1, «E3 · Celda»): solo las siete celdas de cada zona del nivel cercano; los niveles alejados no
+  // llevan. Se rehace al cambiar de nivel, de ventana o de casilla, no en cada píxel de arrastre.
   const snapX = Math.round(frame.x / TESSELLATION_SNAP);
   const snapY = Math.round(frame.y / TESSELLATION_SNAP);
   const tessellation = useMemo(
     () =>
-      tessellationPath(layout, {
-        // `tessellationPath` recibe el centro del área, no su esquina.
+      zonesTessellationPath(layout, {
+        // El área es su centro y su tamaño, no su esquina.
         x: snapX * TESSELLATION_SNAP,
         y: snapY * TESSELLATION_SNAP,
         width: viewport.width + 2 * TESSELLATION_SNAP,
@@ -653,18 +778,54 @@ export function GameMap({
     [layout, snapX, snapY, viewport],
   );
 
-  /** Las Acciones Comunes con al menos dos puntos a la vista: sus celdas de ruta y los lugares posibles de su rótulo (RF-18 (021) · 18.7). */
-  const drawn = useMemo(
-    () =>
-      paths.flatMap((path) => {
-        const points = pathPoints(layout, path.apiceIds);
-        if (points.length === 0) return [];
-        const cells = pathCells(layout, path.apiceIds);
-        const candidates = path.draft === true ? [] : pathLabelCandidates(layout, path.apiceIds);
-        return [{ path, points, cells, candidates }];
-      }),
-    [paths, layout],
+  /** Las Acciones Comunes con al menos dos puntos a la vista, cada una con su Arco (RF-18 (021) · 18.7). */
+  const drawn = useMemo<DrawnPath[]>(() => {
+    const apices = apiceCenters(layout);
+    return paths.flatMap((path) => {
+      const points = pathPoints(layout, path.apiceIds);
+      if (points.length < 2) return [];
+      const arc = buildArc(points, layout.radius, { apices });
+      return arc === null ? [] : [{ path, arc }];
+    });
+  }, [paths, layout]);
+
+  // Lo elegido apaga el resto: el Ápice elegido (si está en el mapa) y los de la Acción Común elegida se quedan encendidos.
+  const dimmed = dimmedIds ?? NO_IDS;
+  const chosen = selectedId !== null && byId.has(selectedId) ? selectedId : null;
+  const pickedPath = selectedPathId === null ? undefined : paths.find((candidate) => candidate.id === selectedPathId);
+  // «Conectar»: mientras haya Ápices marcados (`chosenIds`), los demás se apagan como al elegir uno (celda.md, regla 4).
+  const marked = useMemo(() => (chosenIds === undefined ? [] : [...chosenIds].filter((id) => byId.has(id))), [chosenIds, byId]);
+  const picked = chosen !== null || pickedPath !== undefined || marked.length > 0;
+  const keep = useMemo(
+    () => new Set<string>([...(chosen === null ? [] : [chosen]), ...(pickedPath?.apiceIds ?? []), ...marked]),
+    [chosen, pickedPath, marked],
   );
+  /** Qué dice una celda apagada, o `undefined` si está encendida: por el filtro o por lo elegido. */
+  const offOf = (id: string): string | undefined =>
+    dimmed.has(id) ? OFF_BY_FILTER : picked && !keep.has(id) ? OFF_BY_PICK : undefined;
+  /** Lo mismo para una celda que reúne varios Ápices (el «+N» y el grupo): apagada solo si todos lo están. */
+  const offOfAll = (ids: readonly string[]): string | undefined => {
+    if (ids.length === 0 || ids.some((id) => offOf(id) === undefined)) return undefined;
+    return ids.every((id) => dimmed.has(id)) ? OFF_BY_FILTER : OFF_BY_PICK;
+  };
+
+  /** Los Arcos con su estado: el borrador nunca se apaga; los demás, si no son de lo elegido o todos sus Ápices están fuera del filtro. */
+  const arcItems = useMemo<ArcItem[]>(
+    () =>
+      drawn.map(({ path, arc }) => {
+        const draft = path.draft === true;
+        const visible = path.apiceIds.filter((id) => byId.has(id));
+        const off =
+          !draft &&
+          ((chosen !== null && !path.apiceIds.includes(chosen)) ||
+            (pickedPath !== undefined && path.id !== pickedPath.id) ||
+            (marked.length > 0 && chosen === null && pickedPath === undefined) ||
+            (visible.length > 0 && visible.every((id) => dimmed.has(id))));
+        return { id: path.id, arc, closed: path.closed, draft, selected: path.id === selectedPathId, off };
+      }),
+    [drawn, byId, chosen, pickedPath, selectedPathId, dimmed, marked],
+  );
+  const offPaths = useMemo(() => new Set(arcItems.filter((item) => item.off).map((item) => item.id)), [arcItems]);
 
   const offsetX = Math.round(viewport.width / 2 - frame.x);
   const offsetY = Math.round(viewport.height / 2 - frame.y);
@@ -677,10 +838,11 @@ export function GameMap({
     for (const block of layout.blocks)
       for (const spot of block.spots) {
         const apice = byId.get(spot.id);
-        if (apice !== undefined && (spot.id === selectedId || chosenIds?.has(spot.id) === true)) pressed.push({ spot, name: apice.name });
+        // Solo el elegido muestra su nombre sin apuntarlo: los marcados en «Conectar» lo muestran al apuntarlos (`tagOnPoint`).
+        if (apice !== undefined && spot.id === selectedId) pressed.push({ spot, name: apice.name });
       }
-    return planLabels(layout, drawn, labelAreas(viewport, barPx, offsetX, offsetY), selectedPathId, pressed);
-  }, [layout, drawn, viewport, barPx, offsetX, offsetY, selectedPathId, byId, selectedId, chosenIds]);
+    return planLabels(layout, drawn, labelAreas(viewport, barPx, offsetX, offsetY, !hideZoomControls), selectedPathId, pressed);
+  }, [layout, drawn, viewport, barPx, offsetX, offsetY, hideZoomControls, selectedPathId, byId, selectedId]);
 
   /** Todo lo que se puede enfocar en el nivel a la vista, para moverse con las flechas (RF-8 (021) · 8.4). */
   const spots = useMemo(() => {
@@ -698,7 +860,7 @@ export function GameMap({
     for (const group of layout.groups) all.push({ id: groupId(group.key), x: group.x, y: group.y });
     for (const { path } of drawn) {
       const label = plan.paths.get(path.id);
-      if (label != null) all.push({ id: pathId(path.id), x: label.x, y: label.y });
+      if (label != null) all.push({ id: pathId(path.id), x: label.x + label.w / 2, y: label.y + label.h / 2 });
     }
     return all;
   }, [layout, drawn, plan]);
@@ -728,7 +890,7 @@ export function GameMap({
 
   const chooseGroup = (group: MapGroup) => {
     pendingFocus.current = new Set(group.ids);
-    setCustom({ key: idsKey, frame: frameOn(shown, group.ids, viewport) });
+    place(frameOn(shown, group.ids, viewport));
   };
 
   /** Si el lugar enfocado con el teclado queda fuera de la ventana, el mapa se centra en él. */
@@ -771,7 +933,7 @@ export function GameMap({
     if (framed.current === selectedId || !byId.has(selectedId)) return;
     framed.current = selectedId;
     if (spots.some((spot) => spot.id === selectedId)) follow(selectedId);
-    else setCustom({ key: idsKey, frame: frameOn(shown, [selectedId], viewport) });
+    else place(frameOn(shown, [selectedId], viewport));
   });
 
   /** La ventana medida ahora mismo: en el primer cuadro el estado todavía trae la de respaldo (RF-4 (024)). */
@@ -783,7 +945,9 @@ export function GameMap({
   };
 
   // RF-4 (024) · 4.1 a 4.4, D-T5 (024): al abrir una Acción Común, el mapa se encuadra en sus Ápices, en el nivel más cercano en
-  // que caben y la ruta se dibuja (`frameFit`); una sola vez por Acción Común elegida, y el Ápice elegido manda sobre ella.
+  // que caben y la ruta se dibuja con paradas distintas (`distinctStops`: nunca dos Ápices en un mismo grupo, que borraría el Arco;
+  // normalmente, el nivel cercano) y, si ninguno las junta, en el cercano centrado en una; una sola vez por Acción Común elegida,
+  // y el Ápice elegido manda sobre ella.
   const framedPath = useRef<string | null>(null);
   useLayoutEffect(() => {
     if (selectedPathId === null) {
@@ -797,11 +961,7 @@ export function GameMap({
     if (selectedId !== null) return;
     const ids = path.apiceIds.filter((id) => byId.has(id));
     if (ids.length === 0) return; // sin Ápices a la vista, el mapa queda en el encuadre inicial (RF-18 (021) · 18.7)
-    const routeDrawn = ids.length > 1 ? (candidate: MapLayout) => pathPoints(candidate, ids).length > 0 : undefined;
-    setCustom({
-      key: idsKey,
-      frame: frameFit(shown, ids, measuredViewport(), undefined, routeDrawn),
-    });
+    place(frameFit(shown, ids, measuredViewport(), undefined, ids.length > 1 ? distinctStops(ids) : undefined));
   });
 
   // RF-3 (024), D-T3 (024): el recorrido lleva el mapa a lo que cada paso señala. Con varios Ápices (una Acción Común) se
@@ -814,11 +974,65 @@ export function GameMap({
     const ids = focus.ids.filter((id) => byId.has(id));
     if (ids.length === 0) return;
     const routeDrawn = ids.length > 1 ? (candidate: MapLayout) => pathPoints(candidate, ids).length > 0 : undefined;
-    setCustom({
-      key: idsKey,
-      frame: frameFit(shown, ids, measuredViewport(), undefined, routeDrawn, focus.reserve?.() ?? 0),
-    });
+    place(frameFit(shown, ids, measuredViewport(), undefined, routeDrawn, focus.reserve?.() ?? 0));
   });
+
+  // Dónde cae lo elegido, en el lienzo: la celda del Ápice elegido, o el medio del Arco de la Acción Común elegida.
+  const anchorWorld = useMemo<PathPoint | null>(() => {
+    if (chosen !== null) {
+      const points = cellOfApice(layout, chosen);
+      return points === null ? null : bottomAnchor(points);
+    }
+    if (pickedPath === undefined) return null;
+    const arc = drawn.find(({ path }) => path.id === pickedPath.id)?.arc;
+    const samples = arc?.segments.flatMap((segment) => segment.samples) ?? [];
+    return samples[Math.floor((samples.length - 1) / 2)] ?? null;
+  }, [layout, drawn, chosen, pickedPath]);
+
+  // `onAnchor`: tras cada cambio de encuadre, arrastre o cambio de tamaño de la ventana, una vez por cuadro y solo si el punto
+  // se movió más de medio píxel. Fuera de la ventana del mapa, o sin elección, es `null`.
+  const anchorNow = useRef(onAnchor);
+  anchorNow.current = onAnchor;
+  const anchored = useRef<{ x: number; y: number } | null>(null);
+  const wantsAnchor = onAnchor !== undefined;
+  const anchorX = anchorWorld?.x;
+  const anchorY = anchorWorld?.y;
+  useEffect(() => {
+    if (!wantsAnchor) return undefined;
+    let frameId = 0;
+    const measure = () => {
+      frameId = 0;
+      const element = ref.current;
+      let next: { x: number; y: number } | null = null;
+      if (element !== null && anchorX !== undefined && anchorY !== undefined) {
+        const x = anchorX + offsetX;
+        const y = anchorY + offsetY;
+        if (x >= 0 && x <= viewport.width && y >= 0 && y <= viewport.height) {
+          const box = element.getBoundingClientRect();
+          next = { x: box.left + element.clientLeft + x, y: box.top + element.clientTop + y };
+        }
+      }
+      const last = anchored.current;
+      const same =
+        next === null || last === null
+          ? next === last
+          : Math.abs(next.x - last.x) <= ANCHOR_EPSILON && Math.abs(next.y - last.y) <= ANCHOR_EPSILON;
+      if (same) return;
+      anchored.current = next;
+      anchorNow.current?.(next);
+    };
+    const schedule = () => {
+      if (frameId === 0) frameId = requestAnimationFrame(measure);
+    };
+    schedule();
+    window.addEventListener('resize', schedule);
+    window.addEventListener('scroll', schedule, true);
+    return () => {
+      if (frameId !== 0) cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('scroll', schedule, true);
+    };
+  }, [wantsAnchor, anchorX, anchorY, offsetX, offsetY, viewport]);
 
   /** Las celdas de Ápice piden esto al lienzo; no cambia, y lo último que saben lo leen de `latest`. */
   const handlers = useMemo<CellHandlers>(
@@ -937,6 +1151,9 @@ export function GameMap({
         radius={layout.radius}
         pressed={apice.id === selectedId || chosenIds?.has(apice.id) === true}
         sketch={apice.id === sketchId}
+        off={offOf(apice.id)}
+        chosenText={chosenIds?.has(apice.id) === true ? CHOSEN_FOR_PATH : undefined}
+        tagOnPoint={chosenIds?.has(apice.id) === true && apice.id !== selectedId}
         tabbable={spot.id === tabStop}
         tagSide={tag.side}
         tagRoom={tag.room}
@@ -987,20 +1204,24 @@ export function GameMap({
     );
   };
 
-  const more = (block: MapBlock) =>
-    block.moreCell === null
-      ? null
-      : inkCell(
-          block.moreCell,
-          'game-map__more',
-          moreId(block.key),
-          `${countText(block.more)} más en esta zona`,
-          () => setMoreKey(block.key),
-          `+${block.more}`,
-          {
-            'aria-haspopup': 'dialog',
-          },
-        );
+  const more = (block: MapBlock) => {
+    if (block.moreCell === null) return null;
+    // El «+N» reúne a los Ápices que no tienen celda propia en la zona.
+    const inside = new Set(block.spots.map((spot) => spot.id));
+    const hidden = block.ids.filter((id) => !inside.has(id));
+    return inkCell(
+      block.moreCell,
+      'game-map__more',
+      moreId(block.key),
+      `${countText(block.more)} más en esta zona`,
+      () => setMoreKey(block.key),
+      `+${block.more}`,
+      {
+        'aria-haspopup': 'dialog',
+        ...offAttributes(offOfAll(hidden.length > 0 ? hidden : block.ids)),
+      },
+    );
+  };
 
   const group = (item: MapGroup) => {
     const placed = item.unlocated ? plan.groups.get(item.key) : undefined;
@@ -1013,6 +1234,7 @@ export function GameMap({
           `${countText(item.ids.length)}${item.unlocated ? ' sin ubicación' : ''}, acercar`,
           () => chooseGroup(item),
           String(item.ids.length),
+          offAttributes(offOfAll(item.ids)),
         )}
         {placed !== undefined && (
           <span
@@ -1027,56 +1249,24 @@ export function GameMap({
     );
   };
 
-  const routeCell = (
-    path: MapPath,
-    cellShape: {
-      cell: string;
-      x: number;
-      y: number;
-      points: readonly MapVertex[];
-    },
-  ) => (
-    <g key={`${path.id}:${cellShape.cell}`}>
-      <polygon
-        className="game-map__route"
-        points={pointsText(cellShape.points)}
-        data-closed={path.closed ? 'true' : undefined}
-        data-draft={path.draft === true ? 'true' : undefined}
-        data-selected={path.id === selectedPathId ? 'true' : undefined}
-      />
-      {path.axis != null && (
-        <Glifo
-          axis={path.axis}
-          size={layout.radius * 0.9}
-          tile={false}
-          mode="macizo"
-          k={0.36}
-          x={cellShape.x - layout.radius * 0.45}
-          y={cellShape.y - layout.radius * 0.45}
-          className={`game-map__glyph game-map__glyph--${axisIdentity(path.axis).key}`}
-        />
-      )}
-    </g>
+  /** El rótulo del Arco: el glifo del eje y el nombre en tinta sobre papel, sin caja; abre la Acción Común. */
+  const pathLabelButton = (path: MapPath, box: ArcLabelBox) => (
+    <button
+      key={path.id}
+      type="button"
+      className="block game-map__path-label"
+      aria-label={`Acción Común: ${pathText(path)}`}
+      aria-pressed={path.id === selectedPathId}
+      data-closed={path.closed ? 'true' : undefined}
+      data-off={offPaths.has(path.id) ? 'true' : undefined}
+      style={{ left: box.x, top: box.y, maxInlineSize: box.w, blockSize: box.h }}
+      onClick={() => onSelectPath?.(path.id)}
+      {...spotProps(pathId(path.id))}
+    >
+      {path.axis != null && <Glifo axis={path.axis} size={PATH_GLYPH} tile={false} mode="macizo" className="game-map__path-glyph" />}
+      <span className="game-map__path-name">{pathText(path)}</span>
+    </button>
   );
-
-  const pathLabelButton = (path: MapPath, label: PathLabel) => {
-    return (
-      <button
-        key={path.id}
-        type="button"
-        className="block game-map__path-label"
-        aria-label={`Acción Común: ${pathText(path)}`}
-        aria-pressed={path.id === selectedPathId}
-        data-closed={path.closed ? 'true' : undefined}
-        data-align={label.align}
-        style={{ left: label.x, top: label.y, maxInlineSize: label.width }}
-        onClick={() => onSelectPath?.(path.id)}
-        {...spotProps(pathId(path.id))}
-      >
-        {pathText(path)}
-      </button>
-    );
-  };
 
   const { terrain } = layout;
   const openBlock = moreKey === null ? null : (layout.blocks.find((block) => block.key === moreKey) ?? null);
@@ -1099,6 +1289,7 @@ export function GameMap({
         tabIndex={0}
         className="game-map"
         data-level={frame.level}
+        data-picked={picked ? 'true' : undefined}
         data-dragging={dragging ? 'true' : undefined}
         onKeyDown={onCanvasKey}
         onPointerDown={onPointerDown}
@@ -1115,20 +1306,6 @@ export function GameMap({
         <div key={frame.level} className="game-map__world" style={{ transform: `translate(${offsetX}px, ${offsetY}px)` }}>
           <svg className="game-map__ground" width="1" height="1" aria-hidden="true" focusable="false">
             <path className="game-map__tessellation" d={tessellation} />
-            {drawn.map(({ path, points, cells }) =>
-              cells.length === 0 ? (
-                <polyline
-                  key={`${path.id}:line`}
-                  className="game-map__line"
-                  points={points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ')}
-                  data-closed={path.closed ? 'true' : undefined}
-                  data-draft={path.draft === true ? 'true' : undefined}
-                  data-selected={path.id === selectedPathId ? 'true' : undefined}
-                />
-              ) : (
-                cells.map((item) => routeCell(path, item))
-              ),
-            )}
           </svg>
           {/* El borde de zona va encima de las celdas (que son botones HTML) para verse entero, como en el sistema. */}
           <svg className="game-map__ground game-map__outlines" width="1" height="1" aria-hidden="true" focusable="false">
@@ -1136,6 +1313,8 @@ export function GameMap({
               <polygon key={block.key} className="game-map__zone-outline" points={pointsText(block.outline)} />
             ))}
           </svg>
+          {/* Los Arcos apagados (en `trama`) van bajo los Ápices, antes que las celdas en el documento. */}
+          <ArcLayer arcs={arcItems} layer="off" />
           {layout.blocks.map((block) => {
             const placed = plan.zones.get(block.key);
             return (
@@ -1179,6 +1358,8 @@ export function GameMap({
             </span>
           )}
           {layout.groups.map(group)}
+          {/* Los Arcos vivos van sobre el borde y las celdas (sus discos caen dentro de ellas) y bajo los rótulos y la celda apuntada. */}
+          <ArcLayer arcs={arcItems} layer="live" />
           {drawn.map(({ path }) => {
             const label = plan.paths.get(path.id);
             return label == null ? null : pathLabelButton(path, label);
@@ -1192,35 +1373,37 @@ export function GameMap({
             {bar.label}
           </span>
         </div>
-        <div className="game-map__controls" onPointerDown={(event) => event.stopPropagation()}>
-          <button
-            type="button"
-            className="block icon-button game-map__control"
-            aria-label="Acercar"
-            aria-disabled={frame.level === 0}
-            onClick={() => zoom(-1)}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="block icon-button game-map__control"
-            aria-label="Alejar"
-            aria-disabled={frame.level === 2}
-            onClick={() => zoom(1)}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M5 12h14" />
-            </svg>
-          </button>
-          <button type="button" className="block icon-button game-map__control" aria-label="Ver todo" onClick={() => setCustom(null)}>
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
-            </svg>
-          </button>
-        </div>
+        {!hideZoomControls && (
+          <div className="game-map__controls" onPointerDown={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="block icon-button game-map__control"
+              aria-label="Acercar"
+              aria-disabled={frame.level === 0}
+              onClick={() => zoom(-1)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="block icon-button game-map__control"
+              aria-label="Alejar"
+              aria-disabled={frame.level === 2}
+              onClick={() => zoom(1)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M5 12h14" />
+              </svg>
+            </button>
+            <button type="button" className="block icon-button game-map__control" aria-label="Ver todo" onClick={reset}>
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
+              </svg>
+            </button>
+          </div>
+        )}
       </section>
       <Dialog open={openBlock !== null} labelledBy={titleId} onClose={() => setMoreKey(null)} className="game-map__dialog">
         <h2 id={titleId} className="game-map__dialog-title">
@@ -1243,7 +1426,7 @@ export function GameMap({
                       onSelect(id);
                     }}
                   >
-                    <Superficie axes={apice.axes} status={apice.status} width={64} height={44} scale={PATTERN_SCALE} decorative />
+                    <CeldaSuperficie axes={apice.axes} status={apice.status} ancho={48} grosor={2} />
                     <span className="game-map__entry-name">{apice.name}</span>
                   </button>
                 </li>

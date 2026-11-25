@@ -29,7 +29,7 @@ export function ApiceNew({ client = api }: { client?: OpClient<ApiOps> }) {
       <section>
         <h1>Proponer un ápice</h1>
         <p>Para proponer un ápice necesitas entrar con tu cuenta.</p>
-        <Link href="/entrar">Entrar</Link>
+        <Link href="/entrar" className="c-enlace">Entrar</Link>
       </section>
     );
   }

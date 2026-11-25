@@ -15,17 +15,42 @@ function setup(props: Partial<Parameters<typeof GamePanel>[0]> = {}) {
   return { ...result, onClose };
 }
 
+function setupDefaultSection(): string {
+  const { container } = setup();
+  return container.querySelector('.game-panel__bar .c-rot')!.textContent ?? '';
+}
+
 describe('GamePanel', () => {
   it('RF-14 (021) · 14.1: es una región complementaria con su nombre, su contenido y «Cerrar»', () => {
     const { container, onClose } = setup();
     const panel = screen.getByRole('complementary', { name: 'Ápice' });
     within(panel).getByRole('heading', { name: 'Huerta' });
     const close = within(panel).getByRole('button', { name: 'Cerrar' });
-    expect(close.classList.contains('icon-button')).toBe(true);
+    expect(close.textContent).toBe('Cerrar');
     expect(close.querySelector('svg.icono--cerrar')).not.toBeNull();
     fireEvent.click(close);
     expect(onClose).toHaveBeenCalledTimes(1);
     expectBlocks(container);
+  });
+
+  it('«E3 · Celda»: la línea de sección dice el tipo (`section`) y la región conserva su nombre accesible (`label`)', () => {
+    setup({ label: 'Editar ápice', section: 'Ápice' });
+    const panel = screen.getByRole('complementary', { name: 'Editar ápice' });
+    expect(panel.querySelector('.game-panel__bar .c-rot')!.textContent).toBe('Ápice');
+    expect(setupDefaultSection()).toBe('Ápice');
+  });
+
+  it('«E3 · Celda»: abre con la línea de sección (rótulo a la izquierda, «Cerrar» a la derecha) y no es una caja', () => {
+    const { container } = setup();
+    const bar = container.querySelector('.game-panel__bar')!;
+    expect(bar.classList.contains('c-seccion')).toBe(true);
+    expect(bar.firstElementChild!.classList.contains('c-rot')).toBe(true);
+    expect(bar.firstElementChild!.textContent).toBe('Ápice');
+    expect(bar.lastElementChild).toBe(screen.getByRole('button', { name: 'Cerrar' }));
+    expect(screen.getByRole('button', { name: 'Cerrar' }).classList.contains('block')).toBe(false);
+    const panel = screen.getByRole('complementary', { name: 'Ápice' });
+    expect(panel.classList.contains('block') || panel.classList.contains('lot')).toBe(false);
+    expect(panel.querySelector('.icon-button')).toBeNull();
   });
 
   it('D-T23 (021): ya no se amplía: no hay «Ampliar» ni «Reducir»', () => {

@@ -1,11 +1,13 @@
 // RF-20 (021) · 20.1 a 20.4, RF-5 (010) · 5.1, RF-2 (010), RF-3 (010), RF-7 (010), RF-4 (010) · 4.3, D-T32 (021): el panel
 // de una Acción Común.
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import type { Axis, ApiceStatus } from '../../shared/domain/apice';
 import { SessionProvider, type SessionState } from '../app/session';
 import { ApiClientError } from '../data/api';
 import type { CommonActionDetail, CommonActionSource } from '../data/commonActions';
+import { expectBlocks } from '../testing/expectBlocks';
 import { fakeClient } from '../testing/facilitationDoubles';
 import { CommonActionView } from './CommonActionView';
 
@@ -56,7 +58,7 @@ function setup(session: SessionState, first: CommonActionDetail | null = detail(
       <CommonActionView id="c1" source={source} client={client} onChange={onChange} />
     </SessionProvider>,
   );
-  return { calls, onChange, source, set: (next: CommonActionDetail | null) => (current = next) };
+  return { container: document.body, calls, onChange, source, set: (next: CommonActionDetail | null) => (current = next) };
 }
 
 describe('CommonActionView', () => {
@@ -69,6 +71,77 @@ describe('CommonActionView', () => {
     within(screen.getByRole('list', { name: 'Participantes (2)' })).getByText('@beto');
     const apices = screen.getByRole('list', { name: 'Ápices que une' });
     expect(within(apices).getByRole('link', { name: 'Tanque' }).getAttribute('href')).toBe('/apices/a2');
+  });
+
+  it('«E3 · Celda»: sin cajas; rótulo suave con el estado, nombre, línea de ejes, datos en filas y filas de Ápice con su celda y su etapa', async () => {
+    const { container } = setup(VISITOR);
+    await screen.findByRole('heading', { level: 1 });
+    const article = container.querySelector('article.common-action')!;
+    expect(article.classList.contains('block') || article.classList.contains('lot')).toBe(false);
+    const estado = article.querySelector('.common-action__status')!;
+    expect(estado.classList.contains('c-rot') && estado.classList.contains('c-suave')).toBe(true);
+    expect(estado.getAttribute('data-status')).toBe('abierta');
+    expect(article.querySelector('h1')!.classList.contains('c-nombre')).toBe(true);
+    expect([...article.querySelectorAll('.ejes-linea__eje')].map((e) => e.textContent)).toEqual(['agua']);
+    expect(article.querySelectorAll('.c-dato').length).toBe(2);
+    const filas = article.querySelectorAll('ul[aria-label="Ápices que une"] a.c-fila');
+    expect(filas.length).toBe(3);
+    expect(filas[0]!.querySelector('svg')).not.toBeNull();
+    expect(filas[0]!.querySelector('.c-nm')!.textContent).toBe('Huerta');
+    expect(filas[1]!.querySelector('.c-rot')!.textContent).toBe('prototipo');
+    expectBlocks(article.parentElement!, { nesting: true });
+  });
+
+  it('«E3 · Celda»: con `apiceInfo`, cada fila dibuja la superficie de su Ápice (una franja por eje)', async () => {
+    const source: CommonActionSource = { list: async () => [], get: async () => detail() };
+    const info = new Map<string, { axes: Axis[]; status: ApiceStatus }>([['a1', { axes: ['agua', 'cobijo'], status: 'idea' }]]);
+    const { container } = render(
+      <SessionProvider initial={VISITOR}>
+        <CommonActionView id="c1" source={source} client={fakeClient({}).client} apiceInfo={info} />
+      </SessionProvider>,
+    );
+    await screen.findByRole('heading', { level: 1 });
+    const filas = container.querySelectorAll('ul[aria-label="Ápices que une"] a.c-fila');
+    expect(filas[0]!.querySelector('svg.celda-superficie')).not.toBeNull();
+    expect(filas[1]!.querySelector('svg.celda-superficie')).toBeNull();
+  });
+
+  it('«E3 · Celda»: con datos de al menos dos Ápices dibuja el Arco después del título y antes de la descripción; con menos de dos, no', async () => {
+    const source: CommonActionSource = { list: async () => [], get: async () => detail() };
+    const two = new Map<string, { axes: Axis[]; status: ApiceStatus }>([
+      ['a1', { axes: ['agua'], status: 'idea' }],
+      ['a2', { axes: ['cobijo'], status: 'prototipo' }],
+    ]);
+    const one = new Map<string, { axes: Axis[]; status: ApiceStatus }>([['a1', { axes: ['agua'], status: 'idea' }]]);
+    const view = (info: typeof two) => (
+      <SessionProvider initial={VISITOR}>
+        <CommonActionView id="c1" source={source} client={fakeClient({}).client} apiceInfo={info} />
+      </SessionProvider>
+    );
+    const { container, rerender } = render(view(two));
+    await screen.findByRole('heading', { level: 1 });
+    const arco = container.querySelector('.common-action__arco .pieza-arco');
+    expect(arco).not.toBeNull();
+    const heading = screen.getByRole('heading', { level: 1 });
+    const descripcion = container.querySelector('.common-action__descripcion')!;
+    expect(heading.compareDocumentPosition(arco!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(arco!.compareDocumentPosition(descripcion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    rerender(view(one));
+    expect(container.querySelector('.pieza-arco')).toBeNull();
+  });
+
+  it('«E3 · Celda»: «Sumarme» es el rótulo grande (`.c-barra`) y el resto de acciones, enlaces de texto (`.c-enlace`), sin cajas', async () => {
+    setup(CARO);
+    const sumarme = await screen.findByRole('button', { name: 'Sumarme' });
+    expect(sumarme.classList.contains('c-barra') && sumarme.classList.contains('action-primary')).toBe(true);
+    expect(sumarme.classList.contains('block')).toBe(false);
+    cleanup();
+    setup(ANA);
+    for (const name of ['Editar', 'Cerrar Acción Común', 'Archivar']) {
+      const boton = await screen.findByRole('button', { name });
+      expect(boton.classList.contains('c-enlace') && boton.classList.contains('action-secondary')).toBe(true);
+      expect(boton.classList.contains('block')).toBe(false);
+    }
   });
 
   it('RF-4 (010) · 4.3: dice cuántos ápices une que quien mira no puede ver', async () => {

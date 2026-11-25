@@ -1,4 +1,16 @@
-/* RF-20 (021) · 20.1, D-T32 (021): el panel de una Acción Común. Solo tokens. */
+/* RF-20 (021) · 20.1, D-T32 (021): el panel de una Acción Común. «E3 · Celda»: sin caja; rótulo, nombre, línea de ejes,
+   autoría, descripción, datos con filete suave y acciones (rótulo grande + enlaces de texto). Solo tokens. */
+.common-action {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-inline-size: 0;
+}
+
+.common-action > * {
+  margin-block: 0;
+}
+
 .common-action__head {
   display: flex;
   flex-direction: column;
@@ -11,37 +23,91 @@
   margin: 0;
 }
 
-/* RF-18 (021) · 18.6: el estado se dice en texto, no solo con el color. */
-.common-action__status {
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.common-action__head .c-nombre {
+  overflow-wrap: anywhere;
 }
 
-.common-action__people,
-.common-action__apices {
+/* El Arco de la Acción Común (PiezaArco): 329 × 120; en un teléfono se encoge con el ancho de la columna, sin desbordar. */
+.common-action__arco {
+  min-inline-size: 0;
+}
+
+.common-action__arco .pieza-arco {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+/* RF-18 (021) · 18.6: el estado se dice en texto, no solo con el color: es un rótulo (`.c-rot`). */
+.common-action__descripcion {
+  overflow-wrap: anywhere;
+}
+
+.common-action__descripcion > :first-child {
+  margin-block-start: 0;
+}
+
+.common-action__descripcion > :last-child {
+  margin-block-end: 0;
+}
+
+.common-action__datos {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Los datos con rótulo largo o con lista van en columna (`.c-dato--columna`, `piezas.css`). */
+.common-action__people {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 4px 16px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.common-action__apices {
+  display: flex;
+  flex-direction: column;
+  inline-size: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.common-action__datos .c-dato--columna > p {
+  margin: 0;
+}
+
+/* Acciones: el rótulo grande ocupa el ancho; los enlaces de texto van en una fila que pasa a otra línea. */
 .common-action__actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
-  margin-block: 16px;
+  margin-block: 8px 0;
+}
+
+.common-action__actions > .c-barra {
+  inline-size: 100%;
+}
+
+.common-action__enlaces {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 24px;
+}
+
+.common-action__enlaces:empty {
+  display: none;
 }
 
 .common-action__form {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-block: 16px;
+  margin-block: 8px;
 }
 
-.common-action__form label {
-  font-weight: 700;
+.common-action__form .common-action__actions {
+  margin-block: 8px 0;
 }

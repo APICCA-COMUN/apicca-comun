@@ -1,6 +1,6 @@
 /* RF-7 (008) · 7.2–7.4: campos separados 18 px, etiquetas como rótulo de campo y el ojo de 44 px dentro del campo de 48 px.
    RF-5 (005) · Entrar: el ojo va dentro del campo de contraseña, a la derecha; «Entrar» ocupa todo el ancho y el error
-   va en un recuadro de 3 px en tinta con su ícono antes del texto (el color nunca va solo). Solo colores de tokens. */
+   va con un filete de tinta encima y su ícono antes del texto (el color nunca va solo). Solo colores de tokens. */
 .sign-in-form {
   display: flex;
   flex-direction: column;
@@ -52,8 +52,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  padding: 12px;
-  border-color: var(--text);
+  padding: 12px 0;
   box-shadow: none;
   color: var(--text);
   font-size: var(--type-meta-size);

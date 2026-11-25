@@ -8,7 +8,8 @@ import { Link } from '../app/router';
 import type { Sketch } from '../app/sketch';
 import { usePageTitle } from '../app/usePageTitle';
 import { AxisPicker } from './AxisPicker';
-import { Superficie } from './Superficie';
+import { CeldaSuperficie } from './Celda';
+import { superficieLabel } from './Superficie';
 import './SketchPanel.css';
 
 interface Props {
@@ -38,7 +39,9 @@ export function SketchPanel({ sketch, onChange }: Props) {
         <p>Elige al menos un eje para ver tu Ápice.</p>
       ) : (
         <figure className="sketch-panel__preview">
-          <Superficie axes={sketch.axes} status={sketch.status} width={430} height={112} fluid outline={false} />
+          <div className="sketch-panel__celda">
+            <CeldaSuperficie axes={sketch.axes} status={sketch.status} ancho={176} grosor={2} label={superficieLabel(sketch.axes, sketch.status)} />
+          </div>
           <figcaption>
             <strong>Boceto</strong>
             <span className="sketch-panel__rotulo">

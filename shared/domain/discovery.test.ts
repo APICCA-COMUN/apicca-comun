@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   compareApices,
+  dimmedIds,
   emptyState,
   EXCERPT_LENGTH,
   apiceExcerpt,
@@ -151,5 +152,39 @@ describe('discovery · forma de la consulta', () => {
 
   it('RF-11 (003) · 11.2: «mis ápices» sin uid lanza, como archived-own (D-T12 (003))', () => {
     expect(() => listQueryShape({ audience: 'mine', filters: NO_FILTERS })).toThrow(/uid/);
+  });
+});
+
+describe('discovery · dimmedIds («filtrar es apagar»)', () => {
+  const item = (id: string, axes: Axis[], status: ApiceStatus) => ({ id, ...apice(axes, status) });
+  const items = [
+    item('a', ['agua'], 'idea'),
+    item('b', ['agua', 'energía'], 'prototipo'),
+    item('c', ['cobijo'], 'en marcha'),
+    item('d', ['energía'], 'idea'),
+  ];
+  const passing = (filters: ListFilters) => items.filter((i) => matchesFilters(i, filters)).map((i) => i.id);
+
+  it('sin filtros no apaga a nadie', () => {
+    expect(dimmedIds(items, NO_FILTERS)).toEqual(new Set());
+    expect(dimmedIds([], { axes: ['agua'], status: null })).toEqual(new Set());
+  });
+
+  it('apaga justo a los que no pasan matchesFilters, y no quita ítems', () => {
+    for (const filters of [
+      { axes: ['agua' as const], status: null },
+      { axes: ['agua' as const, 'cobijo' as const], status: null },
+      { axes: [], status: 'idea' as const },
+    ]) {
+      const dimmed = dimmedIds(items, filters);
+      expect(items.map((i) => i.id).filter((id) => !dimmed.has(id))).toEqual(passing(filters));
+      expect(items).toHaveLength(4);
+    }
+    expect(dimmedIds(items, { axes: ['agua'], status: null })).toEqual(new Set(['c', 'd']));
+  });
+
+  it('combina eje y Etapa: hay que cumplir los dos', () => {
+    expect(dimmedIds(items, { axes: ['agua'], status: 'idea' })).toEqual(new Set(['b', 'c', 'd']));
+    expect(dimmedIds(items, { axes: ['cobijo'], status: 'idea' })).toEqual(new Set(['a', 'b', 'c', 'd']));
   });
 });

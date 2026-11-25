@@ -14,7 +14,7 @@ interface Props {
 
 export function SignInLink({ children = 'Entrar', from }: Props) {
   return (
-    <Link href="/entrar" onClick={() => saveReturnTo(from ?? window.location.pathname)}>
+    <Link href="/entrar" className="c-enlace" onClick={() => saveReturnTo(from ?? window.location.pathname)}>
       {children}
     </Link>
   );

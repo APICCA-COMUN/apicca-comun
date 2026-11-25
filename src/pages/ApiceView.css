@@ -1,76 +1,129 @@
-/* Sistema «APICCA · Mapa»: la ficha es un lote de borde de 3 px sin relleno propio: arriba la superficie del Ápice a todo
-   el ancho, separada del cuerpo por el mismo borde, y debajo el cuerpo con el título, el rótulo y los datos. Solo tokens. */
-
-:is(article).lot.apice-view {
-  padding: 0;
-}
-
-.apice-view > .superficie {
-  border-block-end: var(--stroke-border) solid var(--field-border);
-}
-
-.apice-view__body {
+/* «E3 · Celda»: la ficha del Ápice dentro del panel de Inicio, sin caja ni borde: rótulo, nombre, línea de ejes, la
+   ampliación opcional, descripción, datos en filas con filete suave y las acciones como enlaces de texto. Solo tokens. */
+.apice-view {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem;
+  gap: 12px;
+  min-inline-size: 0;
 }
 
-.apice-view__body > * {
+.apice-view > * {
   margin-block: 0;
 }
 
 .apice-view__head {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  min-width: 0;
+  gap: 8px;
+  min-inline-size: 0;
 }
 
-.apice-view__head h1 {
+.apice-view__head > * {
   margin: 0;
-  font-size: var(--type-title-size);
-  line-height: var(--type-title-line);
 }
 
-/* El rótulo del sistema (`.ap-rotulo`): 800, en mayúsculas y espaciado, en suave: «AGUA · EN MARCHA · ZONA 092A». */
+.apice-view__head .c-nombre {
+  overflow-wrap: anywhere;
+}
+
+/* «ZONA 092A · PROTOTIPO»: el rótulo suave del sistema; si no hay zona, solo la etapa. */
 .apice-view__rotulo {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: var(--type-meta-size);
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  white-space: normal;
 }
 
-/* «Ofrece:» y «Necesita:» (`.ap-dato`): una línea cada uno dentro del cuerpo de la ficha, con su ícono, la etiqueta en 800 y el
-   dato. Sin lotes anidados. */
+.apice-view__descripcion {
+  overflow-wrap: anywhere;
+}
+
+/* Los datos: filas `.c-dato` (ícono, rótulo de 7 em y texto; los de rótulo largo, en columna) con filete suave entre ellas. */
 .apice-view__datos {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
 }
 
-.apice-view__dato {
-  display: flex;
+.apice-view__datos .c-dato {
   align-items: baseline;
-  gap: 0.5rem;
+}
+
+.apice-view__datos .c-dato > .icono {
+  align-self: flex-start;
+  margin-block-start: 5px;
+}
+
+.apice-view__datos .c-dato > h2.c-rot {
   margin: 0;
-  font-size: var(--type-meta-size);
-  line-height: var(--type-meta-line);
 }
 
-.apice-view__dato > .icono {
-  flex: none;
-  align-self: center;
-}
-
-.apice-view__dato > strong {
-  flex: none;
-  font-weight: 800;
-}
-
-.apice-view__dato > span {
+.apice-view__datos .c-dato > .c-cuerpo {
+  flex: 1 1 0;
   min-inline-size: 0;
   overflow-wrap: anywhere;
+}
+
+/* La fila sin ícono (Ubicación, Autoría, Acción Común) alinea su texto con las que lo llevan: 16 px de ícono + 10 de
+   separación. */
+.apice-view__datos .c-dato > .c-rot:first-child {
+  margin-inline-start: 26px;
+}
+
+.apice-view__datos .c-dato.c-dato--columna {
+  align-items: stretch;
+}
+
+/* En columna el rótulo va arriba, sin la sangría del ícono, y la lista ocupa el ancho. */
+.apice-view__datos .c-dato--columna > .c-rot:first-child {
+  margin-inline-start: 0;
+}
+
+.apice-view__datos .c-dato--columna > .apice-view__acciones {
+  flex: none;
+}
+
+.apice-view__acciones {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 4px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.apice-view__accion {
+  color: var(--text);
+  font-size: var(--type-body-size);
+  font-weight: 800;
+  line-height: 21px;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+/* Las acciones: enlaces de texto en una fila que pasa a otra línea si no caben. */
+.apice-view__enlaces {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 24px;
+}
+
+.apice-view__enlaces:empty {
+  display: none;
+}
+
+/* Visibilidad y archivo: un texto y su enlace de texto, sin caja. */
+.apice-view > section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding-block-start: 12px;
+  border-block-start: var(--stroke-divider) solid var(--trama);
+}
+
+.apice-view > section > p {
+  margin: 0;
 }

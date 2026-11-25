@@ -13,6 +13,7 @@ import '../../src/styles/tokens.css';
 import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
+import '../../src/styles/piezas.css';
 import { THEMES } from '../../shared/domain/identity';
 import type { Axis } from '../../shared/domain/apice';
 import { App } from '../../src/App';

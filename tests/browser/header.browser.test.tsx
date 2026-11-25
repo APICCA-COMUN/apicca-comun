@@ -1,5 +1,5 @@
 // Cabecera en Chromium real (RF-7 (003) · 7.1, 7.4, 7.8, RF-16 (021) · 16.2, RF-13 (021)): sobre el papel, sin sombra y
-// con un solo borde, el inferior de 3 px en tinta, en una fila con el logo, la navegación, el tema, la cuenta y «Menú»; el
+// sin borde («E3 · Celda»), en una fila con el logo, la navegación, el tema, la cuenta y «Menú»; el
 // menú plegado abre un diálogo con los destinos, el vigente con peso 800 y borde inferior de 3 px; a 360 px (y al 200 %)
 // todo visible, sin desplazamiento horizontal ni texto cortado. Monta `SiteHeader` con sesión de prueba, sin siembra.
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
@@ -11,6 +11,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 import { THEMES, TOKENS, hexToRgb } from '../../shared/domain/identity';
 import { SessionProvider, type SessionState } from '../../src/app/session';
 import { SiteHeader } from '../../src/components/SiteHeader';
@@ -75,18 +76,15 @@ afterAll(async () => {
 });
 
 describe.each(THEMES)('cabecera en el tema %s', (theme) => {
-  it('RF-7 (003) · 7.1: la cabecera va sobre el fondo de la página, sin sombra y con un solo borde, el inferior de 3 px en tinta', async () => {
+  it('RF-7 (003) · 7.1: la cabecera va sobre el fondo de la página, sin sombra y sin ningún borde («E3 · Celda»)', async () => {
     document.documentElement.dataset['theme'] = theme;
     await page.viewport(1280, 800);
     await show(PERSON, '/documentacion');
     const style = getComputedStyle(header());
     expect(style.boxShadow).toBe('none');
-    for (const side of ['Top', 'Right', 'Left'] as const) {
+    for (const side of ['Top', 'Right', 'Bottom', 'Left'] as const) {
       expect(style[`border${side}Width`], side).toBe('0px');
     }
-    expect(style.borderBottomWidth).toBe('3px');
-    expect(style.borderBottomStyle).toBe('solid');
-    expect(style.borderBottomColor).toBe(rgb(TOKENS[theme]['text']));
     expect(['rgba(0, 0, 0, 0)', 'transparent', rgb(TOKENS[theme]['background'])]).toContain(style.backgroundColor);
   });
 
@@ -175,7 +173,7 @@ describe('RF-21 (019) · cabecera compacta', () => {
       expect(visible(menuButton()!), '«Menú»').toBe(true);
       const logo = header().querySelector<HTMLElement>('a[aria-label$="ir al inicio"]')!;
       expect(logo.getAttribute('href')).toBe('/');
-      // Una sola fila de 64 px: el borde de 3 px incluido.
+      // Una sola fila de 64 px, sin borde.
       expect(header().getBoundingClientRect().height).toBeLessThanOrEqual(66);
     },
   );

@@ -54,7 +54,7 @@ export function ConstitutionSection({ id, source = firestoreSectionsSource }: { 
         </>
       )}
       <p>
-        <Link href="/constitucion/historial">Historial de la constitución</Link>
+        <Link href="/constitucion/historial" className="c-enlace">Historial de la constitución</Link>
       </p>
     </div>
   );

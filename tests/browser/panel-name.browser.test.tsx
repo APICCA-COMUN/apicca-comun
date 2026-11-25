@@ -1,7 +1,8 @@
 // RF-11 (024) · 11.1 a 11.3, D-T14 (024) · El nombre a la vista en el panel, en Chromium real: en un teléfono (menos de 900 px) el
 // panel va debajo del mapa y, al abrirse, la página baja hasta él; la ficha de un Ápice (`/apices/:id`) y la de una Acción Común
-// (`/acciones/:id`) muestran el nombre h1 entero dentro de la ventana, sin desplazar el cuerpo del panel; la superficie de la
-// ficha mide cerca de 7rem y va antes del nombre. A 1280 px la columna no cambia.
+// (`/acciones/:id`) muestran el nombre h1 entero dentro de la ventana, sin desplazar el cuerpo del panel; la ficha del Ápice
+// no lleva dibujo propio («E3 · Celda»): abre con el rótulo y el nombre, que quedan al comienzo del panel. A 1280 px la columna
+// no cambia.
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { act } from 'react';
@@ -11,6 +12,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 // La entrada de la cuenta (`SessionEntry`) toma sus estilos de la cabecera, que la aplicación siempre carga.
 import '../../src/components/SiteHeader.css';
 import { SessionProvider, type SessionState } from '../../src/app/session';
@@ -135,13 +137,14 @@ describe.each([
     });
   }
 
-  it('RF-11 (024) · 11.1, D-T14 (024): la superficie de la ficha mide cerca de 7rem y va antes del nombre', async () => {
+  it('RF-11 (024) · 11.1, D-T14 (024): la ficha no lleva dibujo propio y su nombre queda al comienzo del panel, tras el rótulo', async () => {
     await open(width, height, '/apices/a1');
-    const drawing = rectOf('.apice-view > .superficie');
-    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-    expect(drawing.height).toBeLessThanOrEqual(7 * rem + 1);
-    expect(drawing.height).toBeGreaterThan(4 * rem);
-    expect(drawing.bottom).toBeLessThanOrEqual(rectOf('.apice-view__head h1').top);
+    expect(bench!.querySelector('.apice-view .superficie')).toBeNull();
+    const body = rectOf('.game-panel__body');
+    const head = rectOf('.apice-view__head');
+    const name = rectOf('.apice-view__head h1');
+    expect(head.top - body.top).toBeLessThan(80);
+    expect(rectOf('.apice-view__rotulo').bottom).toBeLessThanOrEqual(name.top + 1);
   });
 
   it('RF-11 (024): en la Acción Común, el estado y el título van al comienzo del panel', async () => {
@@ -156,13 +159,13 @@ describe.each([
 });
 
 describe('el nombre en la columna a 1280 × 800', () => {
-  it('RF-11 (024) · 11.1: la ficha no cambia, la superficie conserva su tamaño y el nombre queda a la vista', async () => {
+  it('RF-11 (024) · 11.1: la ficha no cambia, sin dibujo propio, y el nombre queda a la vista', async () => {
     await open(1280, 800, '/apices/a1');
     const visible = rectOf('.game-panel__body');
     const name = rectOf('.game-panel h1');
     expect(name.top).toBeGreaterThanOrEqual(visible.top);
     expect(name.bottom).toBeLessThanOrEqual(visible.bottom);
-    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-    expect(rectOf('.apice-view > .superficie').height).toBeGreaterThan(6 * rem + 1);
+    expect(bench!.querySelector('.apice-view .superficie')).toBeNull();
+    expect(rectOf('.apice-view__head').top - visible.top).toBeLessThan(80);
   });
 });

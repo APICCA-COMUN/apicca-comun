@@ -1,10 +1,10 @@
 // T-18 (021): el lienzo del mapa propio (RF-4 (021), RF-6 (021) · 6.3, RF-7 (021), RF-8 (021), RF-9 (021), D-T17 (021)),
-// ahora un teselado H3 con las superficies del sistema «APICCA · Mapa».
+// ahora un teselado H3 con las superficies del sistema «APICCA · Mapa» y las Acciones Comunes como Arcos («E3 · Celda»).
 // jsdom no mide: el lienzo usa su ventana de respaldo, de 960 × 560 px.
 // T-13 (024) · RF-3 (024), D-T3 (024): el recorrido mueve el mapa (prop `focus`).
 // T-14 (024) · RF-4 (024), D-T5 (024): abrir una Acción Común encuadra sus Ápices.
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MAP_LIMIT } from '../../shared/domain/discovery';
 import type { Location } from '../../shared/domain/location';
 import type { ListedApice } from '../data/apices';
@@ -48,10 +48,19 @@ describe('GameMap · mapa propio', () => {
     }
   });
 
-  it('RF-4 (021) · 4.1: el teselado vacío se dibuja siempre, y cada zona lleva su borde y su rótulo', () => {
+  it('RF-4 (021) · 4.1: la trama solo cubre las zonas, y cada zona lleva su borde y su rótulo', () => {
     const { container } = show(inZone(3, CENTRO));
     const ground = container.querySelector('svg.game-map__ground')!;
     expect(ground.querySelector('path.game-map__tessellation')!.getAttribute('d')!.length).toBeGreaterThan(100);
+    // La trama solo existe en el nivel cercano y bajo las zonas: en los demás niveles no hay.
+    const trama = ground.querySelector('path.game-map__tessellation')!;
+    expect(trama.getAttribute('d')).toMatch(/^M/);
+    fireEvent.click(named('Alejar'));
+    expect(container.querySelector('path.game-map__tessellation')?.getAttribute('d') ?? '').toBe('');
+    fireEvent.click(named('Alejar'));
+    expect(container.querySelector('path.game-map__tessellation')?.getAttribute('d') ?? '').toBe('');
+    fireEvent.click(named('Acercar'));
+    fireEvent.click(named('Acercar'));
     // El borde de zona va en su propia capa, encima de las celdas.
     const outlines = container.querySelector('svg.game-map__outlines')!;
     expect(outlines.querySelectorAll('.game-map__zone-outline')).toHaveLength(1);
@@ -106,12 +115,13 @@ describe('GameMap · mapa propio', () => {
     );
   });
 
-  it('el Ápice elegido lleva el doble anillo, papel por dentro y tinta por fuera; los demás no', () => {
+  it('el Ápice elegido ya no lleva el doble anillo de P1: su estado es aria-pressed (contorno de 4 px en la hoja de estilos)', () => {
     show(inZone(3, CENTRO), { selectedId: 'a2' });
     const [one, two] = [named('Ápice 1, agua, Idea'), named('Ápice 2, agua, Idea')];
-    expect(two.querySelectorAll('.game-map__ring--paper, .game-map__ring--ink')).toHaveLength(2);
+    expect(two.querySelectorAll('.game-map__ring')).toHaveLength(0);
     expect(one.querySelectorAll('.game-map__ring')).toHaveLength(0);
     expect(two.getAttribute('aria-pressed')).toBe('true');
+    expect(one.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('RF-3 (003) · 3.1, 3.3, RF-6 (002) · 6.1: todo control del mapa es un bloque y ningún bloque va dentro de otro', () => {
@@ -337,46 +347,64 @@ describe('GameMap · Acciones Comunes', () => {
   const apart = () => [...inZone(2, CENTRO), listed(3, { location: VECINA })];
   /** El recorrido encuadra los tres Ápices en el nivel en que la ruta se dibuja. */
   const framed = { focus: { token: 1, ids: ['a1', 'a2', 'a3'] } };
-  const routes = () => [...map().querySelectorAll<SVGPolygonElement>('polygon.game-map__route')];
-  const lines = () => [...map().querySelectorAll<SVGPolylineElement>('polyline.game-map__line')];
-  const drawn = () => routes().length + lines().length;
+  const arcs = () => [...map().querySelectorAll<SVGGElement>('g.game-map__arc')];
+  const drawn = () => arcs().length;
+  const lines = () => [...map().querySelectorAll<SVGPathElement>('.game-map__arc-line')];
 
-  it('RF-18 (021) · 18.1, 18.2, 18.4, D-T30 (021): cada Acción Común es una fila de celdas de ruta, con el glifo de su eje, y se nombra con su título', () => {
+  it('RF-18 (021) · 18.1, 18.2, 18.4, D-T30 (021): cada Acción Común es un Arco con un disco por Ápice, y su rótulo la abre y la nombra con su título', () => {
     const onSelectPath = vi.fn();
     show(apart(), { paths: [path({ axis: 'agua' })], onSelectPath, ...framed });
-    expect(routes().length).toBeGreaterThan(0);
-    expect(routes()[0]!.closest('svg')!.getAttribute('aria-hidden')).toBe('true');
-    for (const route of routes()) expect(route.getAttribute('points')!.trim().split(' ')).toHaveLength(6);
-    const glyphs = map().querySelectorAll('.game-map__ground .game-map__glyph--agua');
-    expect(glyphs).toHaveLength(routes().length);
-    fireEvent.click(named('Acción Común: Agua lluvia'));
+    expect(arcs()).toHaveLength(1);
+    const layer = arcs()[0]!.closest('svg')!;
+    expect(layer.getAttribute('aria-hidden')).toBe('true');
+    // Dos tramos para tres Ápices, cada uno dos veces (halo de papel y trazo de tinta); tres discos, cada uno con su halo.
+    expect(arcs()[0]!.querySelectorAll('.game-map__arc-halo')).toHaveLength(2);
+    expect(arcs()[0]!.querySelectorAll('.game-map__arc-line')).toHaveLength(2);
+    expect(arcs()[0]!.querySelectorAll('.game-map__arc-disc')).toHaveLength(3);
+    expect(arcs()[0]!.querySelectorAll('.game-map__arc-disc-halo')).toHaveLength(3);
+    for (const line of lines()) expect(line.getAttribute('d')).toMatch(/^M-?[\d.]+ -?[\d.]+Q/);
+    // El rótulo lleva el glifo del eje y el nombre; no hay celdas de ruta ni polilíneas.
+    const label = named('Acción Común: Agua lluvia');
+    expect(label.querySelector('.glifo')).not.toBeNull();
+    expect(label.querySelector('.game-map__path-name')!.textContent).toBe('Agua lluvia');
+    expect(map().querySelector('.game-map__route, .game-map__line')).toBeNull();
+    fireEvent.click(label);
     expect(onSelectPath).toHaveBeenCalledWith('c1');
   });
 
-  it('RF-9 (003) · 9.3, 9.4: las celdas de ruta van ocultas a los lectores de pantalla y lo que acompañan está en texto', () => {
+  it('RF-9 (003) · 9.3, 9.4: la capa de los Arcos va oculta a los lectores de pantalla, no lleva texto y lo que acompaña está en el rótulo', () => {
     show(apart(), { paths: [path({ axis: 'agua' })], ...framed });
-    expect(routes().length).toBeGreaterThan(0);
-    for (const route of routes()) expect(route.closest('[aria-hidden="true"]')).not.toBeNull();
-    for (const route of routes()) expect(route.textContent).toBe('');
+    expect(drawn()).toBeGreaterThan(0);
+    const layer = arcs()[0]!.closest('svg')!;
+    expect(layer.closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(layer.textContent).toBe('');
     expect(screen.getByRole('button', { name: 'Acción Común: Agua lluvia' })).toBeTruthy();
   });
 
-  it('RF-18 (021) · 18.2: dentro de una misma zona la Acción Común también se dibuja y se nombra', () => {
+  it('el Arco va sobre el borde de las zonas, bajo los rótulos y sin recibir el puntero', () => {
+    const { container } = show(apart(), { paths: [path({ axis: 'agua' })], ...framed });
+    const layers = [...container.querySelectorAll('.game-map__world > svg')];
+    const outlines = container.querySelector('svg.game-map__outlines')!;
+    const arcLayer = container.querySelector('svg.game-map__arcs')!;
+    expect(layers.indexOf(arcLayer)).toBeGreaterThan(layers.indexOf(outlines));
+    expect(arcLayer.getAttribute('focusable')).toBe('false');
+  });
+
+  it('RF-18 (021) · 18.2: dentro de una misma zona la Acción Común también se dibuja', () => {
     show(inZone(3, CENTRO), { paths: [path({ axis: 'agua' })] });
-    expect(drawn()).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Acción Común: Agua lluvia' })).toBeTruthy();
+    expect(drawn()).toBe(1);
   });
 
-  it('una ruta sin eje va sin glifo', () => {
+  it('una Acción Común sin eje va sin glifo en su rótulo', () => {
     show(apart(), { paths: [path({ axis: null })], ...framed });
-    expect(routes().length).toBeGreaterThan(0);
-    expect(map().querySelectorAll('.game-map__ground .glifo')).toHaveLength(0);
+    expect(drawn()).toBe(1);
+    expect(named('Acción Común: Agua lluvia').querySelector('.glifo')).toBeNull();
   });
 
-  it('RF-18 (021) · 18.6: la Acción Común cerrada se distingue por su forma y por el texto «Cerrada»', () => {
+  it('RF-18 (021) · 18.6: la Acción Común cerrada se distingue por su trazo y por el texto «Cerrada»', () => {
     show(apart(), { paths: [path({ closed: true, axis: 'agua' })], ...framed });
-    expect(drawn()).toBeGreaterThan(0);
-    for (const item of [...routes(), ...lines()]) expect(item.getAttribute('data-closed')).toBe('true');
+    expect(drawn()).toBe(1);
+    expect(arcs()[0]!.getAttribute('data-closed')).toBe('true');
     expect(named('Acción Común: Agua lluvia · Cerrada').textContent).toBe('Agua lluvia · Cerrada');
   });
 
@@ -387,7 +415,7 @@ describe('GameMap · Acciones Comunes', () => {
   });
 
   it('RF-18 (021) · 18.8, RF-8 (021) · 8.4: el rótulo entra en el foco itinerante y se alcanza con las flechas', () => {
-    show(inZone(3, CENTRO), { paths: [path()] });
+    show(apart(), { paths: [path()], ...framed });
     const label = named('Acción Común: Agua lluvia');
     expect(label.tabIndex).toBe(-1);
     const all = [...map().querySelectorAll<HTMLButtonElement>('button.game-map__apice, button.game-map__path-label')];
@@ -397,15 +425,19 @@ describe('GameMap · Acciones Comunes', () => {
 
   it('D-T31 (021): la Acción Común en borrador se dibuja aparte, sin rótulo', () => {
     show(apart(), { paths: [path({ id: 'draft', draft: true, axis: 'agua' })], selectedPathId: null, ...framed });
-    expect(drawn()).toBeGreaterThan(0);
-    for (const item of [...routes(), ...lines()]) expect(item.getAttribute('data-draft')).toBe('true');
+    expect(drawn()).toBe(1);
+    expect(arcs()[0]!.getAttribute('data-draft')).toBe('true');
     expect(screen.queryByRole('button', { name: /^Acción Común:/ })).toBeNull();
   });
 
-  it('RF-20 (021) · 20.1: la Acción Común elegida se marca con aria-pressed y con el contorno grueso', () => {
+  it('RF-20 (021) · 20.1: la Acción Común elegida se marca con aria-pressed y con el trazo grueso', () => {
+    const { unmount } = show(apart(), { paths: [path({ axis: 'agua' })], selectedPathId: null, ...framed });
+    const plain = Number(lines()[0]!.getAttribute('stroke-width'));
+    unmount();
     show(apart(), { paths: [path({ axis: 'agua' })], selectedPathId: 'c1', ...framed });
     expect(named('Acción Común: Agua lluvia').getAttribute('aria-pressed')).toBe('true');
-    for (const item of [...routes(), ...lines()]) expect(item.getAttribute('data-selected')).toBe('true');
+    expect(arcs()[0]!.getAttribute('data-selected')).toBe('true');
+    expect(Number(lines()[0]!.getAttribute('stroke-width'))).toBeCloseTo(plain * 1.6, 5);
   });
 
   it('RF-20 (021) · 20.4, D-T32 (021): elegir desde fuera del mapa un Ápice que no está a la vista lo lleva a su celda', () => {
@@ -532,7 +564,7 @@ describe('GameMap · abrir una Acción Común la encuadra (RF-4 (024))', () => {
   const open = (selectedPathId: string | null, selectedId: string | null = null) => (
     <GameMap items={items} paths={paths} selectedPathId={selectedPathId} selectedId={selectedId} onSelect={() => {}} />
   );
-  const line = (id: string) => screen.queryByRole('button', { name: `Acción Común: Acción ${id}` });
+  const arc = (id: string) => map().querySelector(`g.game-map__arc[data-arc="${id}"]`);
 
   it('RF-4 (024) · 4.1: al elegir una Acción Común cercana, el mapa pasa al nivel cercano con sus Ápices a la vez a la vista', () => {
     const { rerender } = render(open(null));
@@ -541,14 +573,14 @@ describe('GameMap · abrir una Acción Común la encuadra (RF-4 (024))', () => {
     expect(level()).toBe('0');
     expect(named('Ápice 1, agua, Idea')).toBeTruthy();
     expect(named('Ápice 2, agua, Idea')).toBeTruthy();
-    expect(line('cerca')).toBeTruthy();
+    expect(arc('cerca')).toBeTruthy();
   });
 
   it('RF-4 (024): con Ápices en zonas lejanas, el nivel es el más cercano en que caben y la ruta se dibuja', () => {
     const { rerender } = render(open(null));
     rerender(open('lejos'));
     expect(Number(level())).toBeGreaterThanOrEqual(0);
-    expect(line('lejos')).toBeTruthy();
+    expect(arc('lejos')).toBeTruthy();
   });
 
   it('RF-4 (024): con un solo Ápice a la vista, encuadra ese', () => {
@@ -628,5 +660,257 @@ describe('GameMap · el nombre del Ápice elegido y los rótulos de zona', () =>
     }
     expect(plan.zones.get(second!.key)!.flipped).toBe(true);
     expect(first).toBeDefined();
+  });
+});
+
+describe('GameMap · apagado (dimmedIds y lo elegido)', () => {
+  const items = [...inZone(3, CENTRO), listed(4, { location: VECINA })];
+  const arcPath = (id: string, apiceIds: string[]): MapPath => ({ id, title: `Acción ${id}`, closed: false, apiceIds, axis: 'agua' });
+  const offCells = () => cells().filter((button) => button.getAttribute('data-off') === 'true');
+
+  it('sin filtro ni elección, nada está apagado y la raíz no lleva data-picked', () => {
+    show(items);
+    expect(offCells()).toHaveLength(0);
+    expect(map().getAttribute('data-picked')).toBeNull();
+  });
+
+  it('`dimmedIds` apaga las celdas, que siguen siendo botones, con un texto que no depende del color', () => {
+    show(items, { dimmedIds: new Set(['a1', 'a2']) });
+    expect(offCells().map((button) => button.getAttribute('aria-label'))).toEqual(['Ápice 1, agua, Idea', 'Ápice 2, agua, Idea']);
+    for (const button of offCells()) {
+      expect(button.getAttribute('aria-description')).toBe('Fuera de los filtros');
+      expect(button.tagName).toBe('BUTTON');
+    }
+    expect(named('Ápice 3, agua, Idea').getAttribute('data-off')).toBeNull();
+    expect(named('Ápice 3, agua, Idea').getAttribute('aria-description')).toBeNull();
+    expect(map().getAttribute('data-picked')).toBeNull();
+  });
+
+  it('con un Ápice elegido la raíz lleva data-picked y se apaga todo salvo ese Ápice', () => {
+    show(items, { selectedId: 'a2' });
+    expect(map().getAttribute('data-picked')).toBe('true');
+    expect(offCells().map((button) => button.getAttribute('aria-label')).sort()).toEqual(['Ápice 1, agua, Idea', 'Ápice 3, agua, Idea', 'Ápice 4, agua, Idea']);
+    expect(named('Ápice 2, agua, Idea').getAttribute('data-off')).toBeNull();
+    expect(named('Ápice 1, agua, Idea').getAttribute('aria-description')).toBe('Sin relación con lo elegido');
+  });
+
+  it('con una Acción Común elegida se apaga todo salvo sus Ápices y su Arco; los otros Arcos van apagados', () => {
+    const paths = [arcPath('uno', ['a1', 'a4']), arcPath('dos', ['a2', 'a3'])];
+    show(items, { paths, selectedPathId: 'uno', focus: { token: 1, ids: ['a1', 'a2', 'a3', 'a4'] } });
+    expect(map().getAttribute('data-picked')).toBe('true');
+    expect(offCells().map((button) => button.getAttribute('aria-label'))).toEqual(['Ápice 2, agua, Idea', 'Ápice 3, agua, Idea']);
+    const arc = (id: string) => map().querySelector(`g.game-map__arc[data-arc="${id}"]`)!;
+    expect(arc('uno').getAttribute('data-off')).toBeNull();
+    expect(arc('uno').getAttribute('data-selected')).toBe('true');
+    expect(arc('dos').getAttribute('data-off')).toBe('true');
+    // Lo apagado se dibuja primero: nunca tapa lo vivo.
+    const order = [...map().querySelectorAll('g.game-map__arc')].map((element) => element.getAttribute('data-arc'));
+    expect(order).toEqual(['dos', 'uno']);
+  });
+
+  it('QA celda 1 · 1: el Arco apagado va en la trama, bajo los Ápices y el «+N»; el vivo, sobre ellos', () => {
+    const many = [...inZone(9, CENTRO), listed(20, { location: VECINA })];
+    const paths = [arcPath('uno', ['a1', 'a20']), arcPath('dos', ['a2', 'a3'])];
+    show(many, { paths, selectedPathId: 'uno', focus: { token: 1, ids: ['a1', 'a2', 'a3', 'a20'] } });
+    const world = map().querySelector('.game-map__world')!;
+    const children = [...world.querySelectorAll('svg.game-map__arcs, button.game-map__cell')];
+    const off = world.querySelector('svg.game-map__arcs[data-layer="off"]')!;
+    const live = world.querySelector('svg.game-map__arcs[data-layer="live"]')!;
+    expect(off.querySelector('g.game-map__arc[data-arc="dos"]')).not.toBeNull();
+    expect(off.querySelector('g.game-map__arc[data-arc="uno"]')).toBeNull();
+    expect(live.querySelector('g.game-map__arc[data-arc="uno"]')).not.toBeNull();
+    expect(live.querySelector('g.game-map__arc[data-arc="dos"]')).toBeNull();
+    const cellsOnly = children.filter((element) => element.tagName === 'BUTTON');
+    expect(cellsOnly.length).toBeGreaterThan(0);
+    for (const cell of cellsOnly) {
+      expect(children.indexOf(off)).toBeLessThan(children.indexOf(cell));
+      expect(children.indexOf(live)).toBeGreaterThan(children.indexOf(cell));
+    }
+    // Todas las celdas, también el «+N», quedan entre las dos capas.
+    expect(cellsOnly.some((cell) => /más en esta zona/.test(cell.getAttribute('aria-label') ?? ''))).toBe(true);
+  });
+
+  it('un Arco cuyos Ápices están todos fuera del filtro se apaga; el borrador nunca', () => {
+    const paths = [arcPath('uno', ['a1', 'a4']), { ...arcPath('borrador', ['a2', 'a3']), draft: true }];
+    show(items, { paths, dimmedIds: new Set(['a1', 'a2', 'a3', 'a4']), focus: { token: 1, ids: ['a1', 'a2', 'a3', 'a4'] } });
+    const arc = (id: string) => map().querySelector(`g.game-map__arc[data-arc="${id}"]`)!;
+    expect(arc('uno').getAttribute('data-off')).toBe('true');
+    expect(arc('borrador').getAttribute('data-off')).toBeNull();
+  });
+
+  it('el «+N» se apaga solo si todos los Ápices que reúne están apagados', () => {
+    const many = inZone(9, CENTRO);
+    const all = new Set(many.map((item) => item.id));
+    const { unmount } = show(many, { dimmedIds: new Set(['a1']) });
+    expect(screen.getByRole('button', { name: /más en esta zona/ }).getAttribute('data-off')).toBeNull();
+    unmount();
+    show(many, { dimmedIds: all });
+    const more = screen.getByRole('button', { name: /más en esta zona/ });
+    expect(more.getAttribute('data-off')).toBe('true');
+    expect(more.getAttribute('aria-description')).toBe('Fuera de los filtros');
+  });
+
+  it('lo apagado no usa colores literales ni deja de ser un bloque', () => {
+    const { container } = show(items, { dimmedIds: new Set(['a1']), selectedId: 'a2' });
+    expectBlocks(container);
+    for (const element of container.querySelectorAll<HTMLElement>('[style]')) {
+      expect(element.getAttribute('style')).not.toMatch(/#[0-9a-f]{3,8}\b|rgb|hsl|url\(/i);
+    }
+  });
+});
+
+describe('GameMap · nivel llevado desde fuera y controles', () => {
+  const items = [...inZone(2, CENTRO), listed(3, { location: MEDELLIN })];
+
+  it('`hideZoomControls` oculta Acercar, Alejar y Ver todo; por defecto se muestran', () => {
+    const { unmount } = show(items);
+    expect(screen.queryByRole('button', { name: 'Acercar' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Alejar' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ver todo' })).not.toBeNull();
+    unmount();
+    show(items, { hideZoomControls: true });
+    for (const name of ['Acercar', 'Alejar', 'Ver todo']) expect(screen.queryByRole('button', { name })).toBeNull();
+    // El teclado sigue cambiando el nivel.
+    fireEvent.keyDown(map(), { key: '+' });
+    expect(level()).toBe('1');
+  });
+
+  it('con `level` el mapa lo sigue y avisa con `onLevelChange` sin cambiarlo por su cuenta', () => {
+    const onLevelChange = vi.fn();
+    const { rerender } = render(<GameMap items={items} selectedId={null} onSelect={() => {}} level={2} onLevelChange={onLevelChange} />);
+    expect(level()).toBe('2');
+    fireEvent.click(named('Acercar'));
+    expect(onLevelChange).toHaveBeenLastCalledWith(1);
+    expect(level()).toBe('2');
+    rerender(<GameMap items={items} selectedId={null} onSelect={() => {}} level={1} onLevelChange={onLevelChange} />);
+    expect(level()).toBe('1');
+    rerender(<GameMap items={items} selectedId={null} onSelect={() => {}} level={0} onLevelChange={onLevelChange} />);
+    expect(level()).toBe('0');
+  });
+
+  it('«E3 · Celda»: con `level`, cambiar de nivel desde fuera nunca deja el mapa sin celdas ni grupos a la vista', () => {
+    const apices = [...inZone(3, CENTRO), ...inZone(2, CHAPINERO, 10), ...inZone(2, MEDELLIN, 20)];
+    const content = () => map().querySelectorAll('button.game-map__apice, button.game-map__group, .game-map__group').length;
+    const view = (level: 0 | 1 | 2) => <GameMap items={apices} selectedId={null} onSelect={() => {}} level={level} onLevelChange={() => {}} />;
+    const { rerender } = render(view(2));
+    for (const next of [0, 1, 0, 2, 1, 0] as const) {
+      rerender(view(next));
+      expect(level()).toBe(String(next));
+      expect(content()).toBeGreaterThan(0);
+    }
+  });
+
+  it('sin `level` el mapa lleva el nivel solo y avisa de cada cambio', () => {
+    const onLevelChange = vi.fn();
+    show(items, { onLevelChange });
+    expect(level()).toBe('2');
+    fireEvent.click(named('Acercar'));
+    expect(level()).toBe('1');
+    expect(onLevelChange).toHaveBeenLastCalledWith(1);
+  });
+
+  it('con `level`, «Ver todo» avisa del nivel del encuadre inicial', () => {
+    const onLevelChange = vi.fn();
+    render(<GameMap items={items} selectedId={null} onSelect={() => {}} level={0} onLevelChange={onLevelChange} />);
+    fireEvent.click(named('Ver todo'));
+    expect(onLevelChange).toHaveBeenLastCalledWith(2);
+  });
+});
+
+describe('GameMap · onAnchor', () => {
+  const items = inZone(3, CENTRO);
+  const frames: FrameRequestCallback[] = [];
+  const realRaf = globalThis.requestAnimationFrame;
+  const realCancel = globalThis.cancelAnimationFrame;
+  const useFrames = () => {
+    frames.length = 0;
+    globalThis.requestAnimationFrame = (callback) => frames.push(callback);
+    globalThis.cancelAnimationFrame = () => {};
+  };
+  const flush = () => act(() => {
+    const pending = frames.splice(0);
+    for (const callback of pending) callback(0);
+  });
+  afterEach(() => {
+    globalThis.requestAnimationFrame = realRaf;
+    globalThis.cancelAnimationFrame = realCancel;
+  });
+
+  it('sin elección avisa con null una sola vez (o ninguna), nunca con un punto', () => {
+    useFrames();
+    const onAnchor = vi.fn();
+    show(items, { onAnchor });
+    flush();
+    for (const call of onAnchor.mock.calls) expect(call[0]).toBeNull();
+    expect(onAnchor.mock.calls.length).toBeLessThanOrEqual(1);
+  });
+
+  it('con un Ápice elegido da el punto medio del borde de abajo de su celda, 4 px más abajo, en coordenadas de la ventana', () => {
+    useFrames();
+    const onAnchor = vi.fn();
+    const { rerender } = show(items, { onAnchor });
+    flush();
+    onAnchor.mockClear();
+    const region = map();
+    region.getBoundingClientRect = () => ({ left: 100, top: 50, right: 1060, bottom: 610, width: 960, height: 560, x: 100, y: 50, toJSON: () => ({}) });
+    rerender(<GameMap items={items} selectedId="a2" onSelect={() => {}} onAnchor={onAnchor} />);
+    flush();
+    expect(onAnchor).toHaveBeenCalledTimes(1);
+    const point = onAnchor.mock.calls[0]![0] as { x: number; y: number };
+    // La celda de a2 en el lienzo: el punto medio de sus vértices más bajos, 4 px más abajo, más lo que mueve el lienzo.
+    const spot = layoutMap(items.map((item) => ({ id: item.id, location: item.location })), 0).blocks.flatMap((block) => block.spots).find((candidate) => candidate.id === 'a2')!;
+    const low = Math.max(...spot.points.map(([, y]) => y));
+    const edge = spot.points.filter(([, y]) => y >= low - 0.5);
+    const middle = edge.reduce((sum, [x]) => sum + x, 0) / edge.length;
+    const shift = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(world().style.transform)!;
+    expect(point.x).toBeCloseTo(100 + middle + Number(shift[1]) , 0);
+    expect(point.y).toBeCloseTo(50 + low + 4 + Number(shift[2]), 0);
+  });
+
+  it('solo avisa de nuevo si el punto se mueve más de 0,5 px', () => {
+    useFrames();
+    const onAnchor = vi.fn();
+    const { rerender } = show(items, { onAnchor, selectedId: 'a2' });
+    flush();
+    onAnchor.mockClear();
+    rerender(<GameMap items={items} selectedId="a2" onSelect={() => {}} onAnchor={onAnchor} />);
+    flush();
+    expect(onAnchor).not.toHaveBeenCalled();
+  });
+
+  it('con una Acción Común elegida da la muestra central de su Arco, y al quitar la elección vuelve a null', () => {
+    useFrames();
+    const onAnchor = vi.fn();
+    const paths: MapPath[] = [{ id: 'c1', title: 'Agua lluvia', closed: false, apiceIds: ['a1', 'a2', 'a3'], axis: 'agua' }];
+    const { rerender } = show(items, { onAnchor, paths, selectedPathId: 'c1' });
+    flush();
+    const last = onAnchor.mock.calls.at(-1)![0] as { x: number; y: number } | null;
+    expect(last).not.toBeNull();
+    expect(Number.isFinite(last!.x) && Number.isFinite(last!.y)).toBe(true);
+    rerender(<GameMap items={items} paths={paths} selectedPathId={null} selectedId={null} onSelect={() => {}} onAnchor={onAnchor} />);
+    flush();
+    expect(onAnchor.mock.calls.at(-1)![0]).toBeNull();
+  });
+});
+
+describe('GameMap · rótulos del Arco junto a las celdas', () => {
+  it('los rótulos de zona esquivan las celdas de Ápice vecinas', () => {
+    const apices: MapApice[] = [...inZone(3, CENTRO), ...inZone(3, VECINA, 4)].map((apice) => ({ id: apice.id, location: apice.location }));
+    const layout = layoutMap(apices, 0);
+    const viewport = { width: 960, height: 560 };
+    const first = layout.blocks[0]!;
+    const areas = labelAreas(viewport, 80, Math.round(viewport.width / 2 - first.x), Math.round(viewport.height / 2 - first.y));
+    const plan = planLabels(layout, [], areas, null);
+    for (const block of layout.blocks) {
+      const rect = plan.zones.get(block.key)!.rect;
+      for (const other of layout.blocks) {
+        for (const spot of other.spots) {
+          const xs = spot.points.map(([x]) => x);
+          const ys = spot.points.map(([, y]) => y);
+          const cell = { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
+          expect(rectsOverlap(rect, cell), `zona ${block.code} contra celda ${spot.id}`).toBe(false);
+        }
+      }
+    }
   });
 });

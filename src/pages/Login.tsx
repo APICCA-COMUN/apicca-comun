@@ -32,10 +32,10 @@ export function LoginPage() {
       <h1>Entrar</h1>
       <SignInForm autoFocus />
       <div className="login__help">
-        <Link href="/olvide">Olvidé mi contraseña</Link>
+        <Link href="/olvide" className="enlace-texto">Olvidé mi contraseña</Link>
         {session.status === 'visitor' && (
           <p>
-            ¿Aún no tienes invitación? <Link href="/solicitar">Pide tu inscripción</Link>
+            ¿Aún no tienes invitación? <Link href="/solicitar" className="enlace-texto">Pide tu inscripción</Link>
           </p>
         )}
       </div>

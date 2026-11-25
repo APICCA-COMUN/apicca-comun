@@ -1,6 +1,6 @@
 // RF-3 (024) · 3.1 a 3.4, D-T3 (024), D-12 (024) · El recorrido de bienvenida mueve el mapa en Chromium real, en una ventana ancha y en
 // un teléfono, con el sistema «APICCA · Mapa»: en el paso del Ápice hay una celda con su nombre dentro del lienzo y fuera de la
-// tarjeta; en el paso de la Acción Común, su rótulo está a la vista; y «Ver todo» deshace el movimiento y vuelve al grupo lejano.
+// tarjeta; en el paso de la Acción Común, su rótulo está a la vista; y el nivel más alejado de la leyenda deshace el movimiento y vuelve al grupo lejano.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { act } from 'react';
@@ -10,6 +10,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 // La entrada de la cuenta (`SessionEntry`) toma sus estilos de la cabecera, que la aplicación siempre carga.
 import '../../src/components/SiteHeader.css';
 import type { Location } from '../../shared/domain/location';
@@ -145,8 +146,9 @@ describe.each([
     await userEvent.hover(target.querySelector('.game-map__hex')!);
     const label = target.querySelector<HTMLElement>('.game-map__tag')!;
     expect(label.textContent!.length).toBeGreaterThan(0);
-    expect(inside(label.getBoundingClientRect(), map)).toBe(true);
-    expect(apart(label.getBoundingClientRect(), tourCard)).toBe(true);
+    // Apuntar la celda desplaza la página hasta ella: el lienzo y la tarjeta se miden de nuevo, en el mismo desplazamiento.
+    expect(inside(label.getBoundingClientRect(), canvas())).toBe(true);
+    expect(apart(label.getBoundingClientRect(), card())).toBe(true);
   });
 
   it('RF-3 (024) · 3.2: en el paso de la Acción Común, su rótulo queda a la vista', async () => {
@@ -160,10 +162,13 @@ describe.each([
     expect(apart(label, card())).toBe(true);
   });
 
-  it('RF-3 (024): «Ver todo» deshace el movimiento y vuelve al grupo lejano', async () => {
+  // «E3 · Celda»: Inicio ya no muestra los botones del mapa (Acercar, Alejar, Ver todo); el nivel lo elige la leyenda-control, y
+  // su nivel más alejado es el que reúne todo en el grupo lejano.
+  it('RF-3 (024): el nivel más alejado de la leyenda deshace el movimiento y vuelve al grupo lejano', async () => {
     await startTour();
     await expect.poll(() => bench!.querySelector('.game-map')?.getAttribute('data-level')).toBe('0');
-    await userEvent.click(named('Ver todo'));
+    expect(bench!.querySelector('.game-map__controls')).toBeNull();
+    await userEvent.click(named('Nivel 2, el más alejado'));
     await expect.poll(() => bench!.querySelector('.game-map')?.getAttribute('data-level')).toBe('2');
   });
 });

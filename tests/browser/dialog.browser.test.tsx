@@ -13,6 +13,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 import { THEMES, TOKENS } from '../../shared/domain/identity';
 import { Dialog } from '../../src/components/Dialog';
 

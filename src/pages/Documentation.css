@@ -2,8 +2,8 @@
    columna de 1040 px como máximo, centrada, con el índice de 200 px junto al artículo de 680 px. Bajo 720 px el índice
    va primero por el orden del DOM (sin `order`). Va directo sobre el fondo, sin lote (RF-10 (005)), con
    `clamp(48px, 6vw, 96px)` arriba y abajo. Sistema «APICCA · Mapa»: las secciones del índice y el pie de páginas se
-   separan con un borde de 3 px en tinta, los enlaces del índice con divisores de 1,5 px en `line` y el enlace
-   vigente lleva el subrayado de 3 px de la navegación. Solo tokens de color. */
+   separan con un filete de tinta de 1,5 px, los enlaces del índice con divisores de 1,5 px en `line` y el enlace
+   vigente lleva el subrayado de 2 px de la navegación. Solo tokens de color. */
 .documentation {
   box-sizing: border-box;
   max-inline-size: 1040px;
@@ -67,9 +67,15 @@
 }
 
 .documentation__index a {
+  /* 44 px de alto como mínimo (el enlace medía 41,5): los enlaces van uno bajo otro, así que un pseudo-elemento se pisaría con el
+     del vecino; el texto no se mueve y la raya baja 2,5 px. */
+  box-sizing: border-box;
+  min-block-size: var(--size-icon-control);
+  /* QA celda 2 · 5: «Ápice» y «Ejes» medían menos de 44 px de ancho. */
+  min-inline-size: var(--size-icon-control);
   display: inline-block;
   padding-block: 10px 7px;
-  border-block-end: var(--stroke-border) solid transparent;
+  border-block-end: var(--stroke-outline) solid transparent;
   font-size: var(--type-label-size);
   text-decoration: none;
 }
@@ -81,7 +87,7 @@
 .documentation__section + .documentation__section {
   margin-block-start: 1.5rem;
   padding-block-start: 1.5rem;
-  border-block-start: var(--stroke-border) solid var(--text);
+  border-block-start: var(--stroke-divider) solid var(--text);
 }
 
 .documentation__section-title {
@@ -113,7 +119,7 @@
   gap: 1rem;
   justify-content: space-between;
   padding-block-start: 24px;
-  border-block-start: var(--stroke-border) solid var(--text);
+  border-block-start: var(--stroke-divider) solid var(--text);
 }
 
 .documentation__pager a {

@@ -22,7 +22,7 @@
   font-weight: 800;
   margin: 0;
   padding-block-end: 1rem;
-  border-block-end: var(--stroke-border) solid var(--text);
+  border-block-end: var(--stroke-divider) solid var(--text);
 }
 
 .facilitation ul,

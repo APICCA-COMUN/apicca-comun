@@ -1,0 +1,311 @@
+/* Piezas de «E3 · Celda» (24-11-2026, Propuesta del asistente): la única forma es la celda hexagonal y todo lo demás son
+   cuatro piezas, sin cajas ni tarjetas: celda (`Celda.tsx`), rótulo (`.c-rot`), filete (`.c-seccion`, `.c-dato`, `.c-art`)
+   y texto (`.c-cuerpo`, `.c-titulo`, `.c-nombre`). Solo tokens: papel = `--background`, tinta = `--text`, suave =
+   `--text-muted`. Radio 0, sin sombras y sin degradados.
+
+   Tamaños: el sitio no baja de 14 px y todo `font-size` sale de la escala (RF-2 (019) · 2.2). El diseño da 12 y 13 px al
+   rótulo, a los nombres y al enlace, y 15 px al cuerpo: aquí van a `meta` (14 px) y el cuerpo, a `body` (16 px, los
+   párrafos no bajan de 16: RF-5 (002) · 5.5). Los títulos de 28 y 30 px van a `heading` (hasta 27 px) y el número de
+   56 px, a `numeral` (34 px). */
+
+/* Rótulo: la pieza de texto corto en mayúsculas. */
+.c-rot {
+  font-size: var(--type-meta-size);
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Un rótulo largo (metadatos de una Acción Común) pasa a otra línea en vez de cortarse contra el borde a 360 px. */
+.c-rot.c-rot--ajuste {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.c-suave {
+  color: var(--text-muted);
+}
+
+/* Filete: la línea de tinta que abre una sección, con su rótulo. */
+.c-seccion {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  box-sizing: border-box;
+  block-size: 30px;
+  padding-top: 7px;
+  border-top: var(--stroke-divider) solid var(--text);
+}
+
+/* Fila de lista: celda, nombre y rótulo suave, a 26 px de ritmo. */
+.c-fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  block-size: 26px;
+  font-size: var(--type-meta-size);
+  line-height: 1;
+  font-weight: 600;
+}
+
+.c-fila > .c-nm {
+  flex-grow: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  line-height: 26px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Fila interactiva (`<a>` o `<button>`): se ve igual, sin caja. Su área tocable llega a 44 px con un pseudo-elemento
+   que sale 9 px por arriba y por abajo (26 + 18 = 44), así el ritmo visual no cambia. Es un área real si la fila está
+   sola; en una pila de filas contiguas cada una cede su orilla a la vecina (gana la de después), de modo que el reparto
+   queda en 26 px por fila. Para 44 px reales, `.c-fila--tocable` sube el ritmo a 44 px. */
+a.c-fila,
+button.c-fila {
+  position: relative;
+  box-sizing: border-box;
+  inline-size: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.c-fila::before,
+button.c-fila::before {
+  content: '';
+  position: absolute;
+  inset-block: -9px;
+  inset-inline: 0;
+}
+
+a.c-fila.c-fila--tocable,
+button.c-fila.c-fila--tocable {
+  block-size: auto;
+  min-block-size: var(--size-icon-control);
+}
+
+a.c-fila.c-fila--tocable::before,
+button.c-fila.c-fila--tocable::before {
+  content: none;
+}
+
+@media (hover: hover) {
+  a.c-fila:hover > .c-nm,
+  button.c-fila:hover > .c-nm {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+}
+
+.c-fila-off {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Texto: título, nombre y cuerpo. */
+.c-titulo {
+  margin: 0;
+  font-size: var(--type-heading-size);
+  line-height: 32px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.c-nombre {
+  margin: 0;
+  font-size: var(--type-heading-size);
+  line-height: 30px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.c-cuerpo {
+  margin: 0;
+  font-size: var(--type-body-size);
+  line-height: 21px;
+  font-weight: 400;
+}
+
+/* Rótulo grande: la acción principal, la única mancha de tinta fuera del mapa. Vale para `<a>` y `<button>`; con cursor
+   se invierte (papel con borde de tinta), como el resto del sitio, sin sombra. El foco lo da `:focus-visible` global. */
+.c-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-sizing: border-box;
+  block-size: 52px;
+  margin: 0;
+  padding: 0 16px;
+  border: var(--stroke-outline) solid var(--text);
+  background-color: var(--text);
+  color: var(--background);
+  font-size: var(--type-meta-size);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: start;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .c-barra:not(:disabled, [aria-disabled='true']):hover {
+    background-color: var(--background);
+    color: var(--text);
+  }
+}
+
+.c-barra:not(:disabled, [aria-disabled='true']):active {
+  background-color: var(--background);
+  color: var(--text);
+}
+
+/* Enlace: texto en rótulo con una raya de tinta debajo, sin caja. La raya (2 px, a 5 px del texto) la dibuja un
+   pseudo-elemento para que la caja real mida 44 px de alto (área tocable) sin mover el dibujo. */
+a.c-enlace,
+button.c-enlace {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-block-size: var(--size-icon-control);
+  margin: 0;
+  padding: 0 0 7px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: var(--type-meta-size);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+a.c-enlace::after,
+button.c-enlace::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 11.5px;
+  block-size: 2px;
+  background-color: currentColor;
+}
+
+/* Estados de las dos piezas de acción (deshabilitado, ocupado, destructiva). El color nunca es la única señal: lo
+   deshabilitado cambia la raya a discontinua y lo destructivo también. */
+button.c-barra:disabled {
+  border-style: dashed;
+  border-color: var(--text-muted);
+  background-color: var(--background);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+button.c-barra[aria-busy='true'] {
+  cursor: progress;
+}
+
+button.c-enlace:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+button.c-enlace:disabled::after {
+  block-size: 0;
+  background-color: transparent;
+  border-block-start: 2px dotted currentColor;
+}
+
+/* Destructiva: la raya va discontinua además del nombre, sin depender del color. */
+.c-enlace--destructiva::after {
+  block-size: 0;
+  background-color: transparent;
+  border-block-start: 2px dashed currentColor;
+}
+
+/* Dato: filete suave, rótulo a la izquierda y valor a la derecha. El rótulo mide 7 em (98 px): cabe «Ubicación», el más largo de
+   los que van al lado (Ofrece, Necesita, Ubicación, Autoría); un rótulo más largo («Acción Común», «Participantes (N)»,
+   «Ápices que une») o un dato con lista usa `.c-dato--columna`, con el rótulo arriba y el valor debajo a todo el ancho. */
+.c-dato {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: var(--stroke-divider) solid var(--trama);
+}
+
+.c-dato > .c-rot {
+  flex-shrink: 0;
+  inline-size: 7em;
+  line-height: 21px;
+}
+
+.c-dato.c-dato--columna {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.c-dato.c-dato--columna > .c-rot {
+  inline-size: auto;
+  margin: 0;
+}
+
+.c-dato > svg {
+  margin-top: 5px;
+}
+
+.c-num {
+  margin: 0;
+  font-size: var(--type-numeral-size);
+  line-height: 1;
+  font-weight: 800;
+}
+
+/* Artículo: una fila con filete suave, de 40 px (44 si es un enlace o un botón). */
+.c-art {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  block-size: 40px;
+  border-top: var(--stroke-divider) solid var(--trama);
+  font-size: var(--type-label-size);
+  line-height: 1;
+  font-weight: 500;
+}
+
+a.c-art,
+button.c-art {
+  min-block-size: var(--size-icon-control);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Colores forzados: la raya y el borde toman el color del sistema. */
+@media (forced-colors: active) {
+  .c-barra {
+    border-color: CanvasText;
+  }
+
+  a.c-enlace::after,
+  button.c-enlace::after {
+    background-color: CanvasText;
+  }
+}

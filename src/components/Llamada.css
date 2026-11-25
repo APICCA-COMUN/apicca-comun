@@ -1,0 +1,39 @@
+/* «E3 · Celda»: la línea de llamada (Llamada.tsx). Tinta con halo de papel; sin puntero. */
+.llamada {
+  position: absolute;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.llamada__halo,
+.llamada__trazo {
+  fill: none;
+  stroke-linejoin: miter;
+}
+
+.llamada__halo {
+  stroke: var(--background);
+}
+
+.llamada__trazo {
+  stroke: var(--text);
+}
+
+.llamada__halo-disco {
+  fill: var(--background);
+}
+
+.llamada__disco {
+  fill: var(--text);
+}
+
+@media (forced-colors: active) {
+  .llamada__trazo {
+    stroke: CanvasText;
+  }
+
+  .llamada__disco {
+    fill: CanvasText;
+  }
+}

@@ -1,12 +1,12 @@
-/* RF-21 (021) · 21.2, D-T37 (021): la invitación y el recorrido van dentro del panel de Inicio, bajo el título, como un
-   bloque de 3 px. Sistema «APICCA · Mapa»: sin posición absoluta ni sombra; el mapa queda a la vista al lado. Solo tokens. */
+/* RF-21 (021) · 21.2, D-T37 (021): la invitación y el recorrido van dentro del panel de Inicio, bajo el título, como una
+   fila con filete suave. «E3 · Celda»: sin caja, posición absoluta ni sombra; el mapa queda a la vista al lado. Solo tokens. */
 
 .welcome-card {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   box-sizing: border-box;
-  padding: 1rem 1.25rem;
+  padding: 1rem 0;
   background-color: var(--surface);
   color: var(--text);
 }

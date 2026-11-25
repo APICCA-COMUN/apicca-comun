@@ -81,7 +81,7 @@ export function ForumThread({ source = firestoreForumSource, client = api }: Pro
           No se pudo cargar este hilo. Inténtalo de nuevo en un momento.
         </p>
         <p>
-          <Link href="/foro">Volver al foro</Link>
+          <Link href="/foro" className="c-enlace">Volver al foro</Link>
         </p>
       </div>
     );
@@ -91,7 +91,7 @@ export function ForumThread({ source = firestoreForumSource, client = api }: Pro
       <div className="forum-thread">
         <h1>No encontramos ese hilo</h1>
         <p>
-          Puede que se haya archivado o que el enlace no sea correcto. <Link href="/foro">Volver al foro</Link>
+          Puede que se haya archivado o que el enlace no sea correcto. <Link href="/foro" className="enlace-texto">Volver al foro</Link>
         </p>
       </div>
     );
@@ -202,7 +202,7 @@ export function ForumThread({ source = firestoreForumSource, client = api }: Pro
               </button>
             )}
             {!message.isOpening && (message.authorUid === person.uid || moderates) && (
-              <button type="button" className="block action-secondary" disabled={busy} onClick={() => void run(() => client.call('archiveMessage', { threadId: id, messageId: message.id }))}>
+              <button type="button" className="block action-destructive" disabled={busy} onClick={() => void run(() => client.call('archiveMessage', { threadId: id, messageId: message.id }))}>
                 Archivar mensaje
               </button>
             )}
@@ -223,12 +223,12 @@ export function ForumThread({ source = firestoreForumSource, client = api }: Pro
         <div className="forum-thread__head-row">
           <h1 id="hilo-titulo">{thread.title}</h1>
           {person !== null && !thread.isArchived && (moderates || person.uid === thread.authorUid) && (
-            <button type="button" className="block action-secondary" disabled={busy} onClick={() => void run(() => client.call('archiveThread', { threadId: id }))}>
+            <button type="button" className="block action-destructive" disabled={busy} onClick={() => void run(() => client.call('archiveThread', { threadId: id }))}>
               Archivar hilo
             </button>
           )}
         </div>
-        <Link href="/foro">Volver al foro</Link>
+        <Link href="/foro" className="c-enlace">Volver al foro</Link>
       </section>
       <div className="forum-thread__messages">
         {opening !== null && renderMessage(opening)}

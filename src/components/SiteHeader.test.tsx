@@ -85,19 +85,31 @@ describe('SiteHeader', () => {
     expect(screen.queryByRole('button', { name: /^Avisos/ })).toBeNull();
   });
 
-  it('RF-7 (003) · 7.6: sin sesión «Entrar» es un enlace action-secondary a /entrar', () => {
+  it('RF-7 (003) · 7.6, «E3 · Celda»: sin sesión «Entrar» es un enlace de texto (`.c-enlace`, action-secondary) a /entrar, sin caja', () => {
     const { container } = setup({ status: 'visitor' });
     const link = screen.getByRole('link', { name: 'Entrar' });
     expect(link.getAttribute('href')).toBe('/entrar');
-    expect(link.className).toBe('block action-secondary');
+    expect(link.className).toBe('c-enlace action-secondary');
     expectBlocks(container);
+  });
+
+  it('«E3 · Celda»: «Menú» es un enlace de texto, sin caja', () => {
+    setup({ status: 'visitor' });
+    const menu = within(screen.getByRole('banner')).getByRole('button', { name: 'Menú' });
+    expect(menu.classList.contains('c-enlace') && menu.classList.contains('action-secondary')).toBe(true);
+    expect(menu.classList.contains('block')).toBe(false);
   });
 
   it('RF-15 (021) · 15.3, RF-7 (003) · 7.7, D-T24 (021): con sesión, la cuenta lleva a Lo mío y muestra la inicial, el nombre de usuario y el rol', () => {
     setup(PERSON);
     const link = screen.getByRole('link', { name: 'Lo mío, @ana, Persona inscrita' });
     expect(link.getAttribute('href')).toBe('/?mio=1');
-    expect(link.querySelector('.account-initial')?.textContent).toBe('A');
+    expect(link.querySelector('.account-celda__letra')?.textContent).toBe('A');
+    // «E3 · Celda»: la inicial va dentro de una celda hexagonal (seis vértices), decorativa; el nombre lo da el enlace.
+    const celda = link.querySelector('.account-celda')!;
+    expect(celda.getAttribute('aria-hidden')).toBe('true');
+    expect(celda.querySelector('polygon')!.getAttribute('points')!.split(' ')).toHaveLength(6);
+    expect(link.querySelector('.account-initial')).toBeNull();
     expect(link.querySelector('.account-entry__name')?.textContent).toBe('@ana');
     expect(link.querySelector('.account-entry__role')?.textContent).toBe('Persona inscrita');
     expect(screen.queryByRole('link', { name: 'Entrar' })).toBeNull();

@@ -18,9 +18,11 @@
 
 .doc-blocks blockquote {
   margin-inline: 0;
+  padding-block: 0.75rem;
   padding-inline-start: 1rem;
-  border-inline-start: var(--stroke-border) solid var(--text);
+  border-block: var(--stroke-divider) solid var(--text);
   color: var(--text-muted);
+  font-style: italic;
 }
 
 /* RF-2 (019), D-T3 (019): código en línea con tamaño meta. */
@@ -29,11 +31,11 @@
   font-size: var(--type-meta-size);
 }
 
-/* Sistema «APICCA · Mapa»: el código va en un bloque con borde de 3 px en tinta, sin redondeo ni sombra. */
+/* Sistema «APICCA · Mapa»: el código va entre dos filetes de tinta (1,5 px), sin caja, redondeo ni sombra. */
 .doc-blocks pre {
   overflow-x: auto;
-  padding: 1rem;
-  border: var(--stroke-border) solid var(--text);
+  padding: 1rem 0;
+  border-block: var(--stroke-divider) solid var(--text);
   border-radius: var(--radius-block);
   background-color: var(--surface);
 }

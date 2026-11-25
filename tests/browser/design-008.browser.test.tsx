@@ -1,5 +1,5 @@
-// Medidas de la spec 008 en Chromium real (sistema «APICCA · Mapa»: radio 0, bordes de 3 px, escala de texto del sistema):
-// controles de 48 px, botones de ícono de 44 px y foco a 3 px (RF-2 (008),
+// Medidas de la spec 008 en Chromium real (sistema «E3 · Celda»: radio 0, sin cajas, escala de texto del sistema): campos
+// de 48 px con borde de 3 px, acción principal de 52 px, controles de texto y de ícono de 44 px y foco a 3 px (RF-2 (008),
 // RF-3 (008)), cabecera y pie (RF-4 (008), RF-5 (008)) entrar (RF-7 (008)) Documentación (RF-10 (008)) y Constitución (RF-11 (008)), a 360 y 1280 px. Cada página suma aquí sus medidas al llegar su turno (D-5 (008)).
 // RF-11 (021) sustituye el inicio (RF-6 (008)), Mi tablero (RF-8 (008)) y Prototipado (RF-9 (008)): sus medidas salen con
 // esas páginas, y los enlaces del menú se miden en el menú de juego (RF-13 (021), D-T24 (021)).
@@ -12,6 +12,7 @@ import '../../src/styles/fonts.css';
 import '../../src/styles/base.css';
 import '../../src/styles/blocks.css';
 import '../../src/styles/lots.css';
+import '../../src/styles/piezas.css';
 import { SessionProvider, type SessionState } from '../../src/app/session';
 import { SiteHeader } from '../../src/components/SiteHeader';
 import { SiteFooter } from '../../src/components/SiteFooter';
@@ -38,7 +39,7 @@ afterEach(async () => {
 });
 
 describe.each([360, 1280])('controles a %i px', (width) => {
-  it('RF-2 (008) · 2.1: todo botón y enlace con forma de botón mide 48 px de alto', async () => {
+  it('RF-2 (008) · 2.1: la acción principal mide 52 px y la secundaria y la destructiva, de texto subrayado, 44 px como mínimo', async () => {
     await page.viewport(width, 800);
     const box = mount(`
       <button class="block action-primary">Principal</button>
@@ -47,7 +48,11 @@ describe.each([360, 1280])('controles a %i px', (width) => {
       <a class="block action-secondary" href="#x">Enlace</a>`);
     const all = [...box.querySelectorAll<HTMLElement>('button, a')];
     expect(all).toHaveLength(4);
-    for (const el of all) expect(el.getBoundingClientRect().height, el.outerHTML).toBe(48);
+    for (const el of all) {
+      const height = el.getBoundingClientRect().height;
+      if (el.matches('.action-primary')) expect(height, el.outerHTML).toBe(52);
+      else expect(height, el.outerHTML).toBeGreaterThanOrEqual(44);
+    }
   });
 
   it('RF-2 (008) · 2.2: el botón de ícono sigue midiendo 44 × 44', async () => {
@@ -122,7 +127,7 @@ async function showChrome(session: SessionState, path = '/foro') {
 }
 
 describe.each([360, 1280])('cabecera y pie a %i px', (width) => {
-  it('RF-4 (008) · 4.1: la cabecera va de lado a lado, mide 64 px como mínimo, lleva un borde inferior de 3 px en tinta y un margen lateral de 12 o 24 px', async () => {
+  it('RF-4 (008) · 4.1: la cabecera va de lado a lado, mide 64 px como mínimo, no lleva borde ni sombra y deja un margen lateral de 12 o 24 px', async () => {
     await page.viewport(width, 800);
     const box = await showChrome(VISITOR);
     const header = box.querySelector<HTMLElement>('header.site-header')!;
@@ -130,8 +135,8 @@ describe.each([360, 1280])('cabecera y pie a %i px', (width) => {
     const style = getComputedStyle(inner);
     const frame = getComputedStyle(header);
     expect(header.getBoundingClientRect().height).toBeGreaterThanOrEqual(64);
-    expect(frame.borderBottomWidth).toBe('3px');
-    expect(frame.borderBottomColor).toBe(getComputedStyle(header).color);
+    // «E3 · Celda»: sin caja; el aire la separa de la página.
+    for (const side of ['borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth'] as const) expect(frame[side]).toBe('0px');
     expect(frame.boxShadow).toBe('none');
     expect(style.maxWidth).toBe('none');
     expect(style.paddingLeft).toBe(width === 1280 ? '24px' : '12px');
@@ -170,27 +175,42 @@ describe.each([360, 1280])('cabecera y pie a %i px', (width) => {
     expect(getComputedStyle(other).borderBottomColor).toBe('rgba(0, 0, 0, 0)');
   });
 
-  it('RF-4 (008) · 4.4: «Entrar» mide 44 px de alto', async () => {
+  it('RF-4 (008) · 4.4: «Entrar» es un enlace de texto subrayado, sin caja, de 44 px de alto', async () => {
     await page.viewport(width, 800);
     const box = await showChrome(VISITOR);
-    const enter = box.querySelector<HTMLElement>('header .site-header__actions a.block')!;
+    const enter = box.querySelector<HTMLElement>('header .site-header__actions a.c-enlace[href="/entrar"]')!;
     expect(enter.getBoundingClientRect().height).toBe(44);
+    const style = getComputedStyle(enter);
+    expect(style.borderTopWidth).toBe('0px');
+    expect(style.borderBottomWidth).toBe('0px');
+    expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    expect(style.textTransform).toBe('uppercase');
+    // La raya de tinta de 2 px es el pseudo-elemento: el texto se subraya sin caja.
+    const rule = getComputedStyle(enter, '::after');
+    expect(rule.height).toBe('2px');
+    expect(rule.backgroundColor).toBe(style.color);
   });
 
-  // RF-15 (019) · 15.1, D-T9 (019) afina el color: la inicial pasa a `charcoal` con letra `on-charcoal` (antes, `axis-alimento-fill` y `charcoal`).
-  it('RF-4 (008) · 4.5, RF-15 (019) · 15.1: la inicial es un cuadrado de 44 px, de charcoal, con letra on-charcoal en lead/800', async () => {
+  // «E3 · Celda»: la inicial va dentro de una celda hexagonal de contorno de tinta y sin relleno (ya no es un cuadrado de charcoal).
+  it('RF-4 (008) · 4.5, RF-15 (019) · 15.1: la inicial va en una celda de 44 px de ancho, de contorno de tinta y sin relleno, con la letra en lead/800 y en tinta', async () => {
     await page.viewport(width, 800);
     const box = await showChrome(PERSON);
     const probe = document.createElement('i');
-    probe.style.cssText = 'background-color:var(--charcoal);color:var(--on-charcoal);font-size:var(--type-lead-size)';
+    probe.style.cssText = 'color:var(--text);font-size:var(--type-lead-size)';
     box.append(probe);
     const expected = getComputedStyle(probe);
-    const avatar = box.querySelector<HTMLElement>('header .account-initial')!;
-    const rect = avatar.getBoundingClientRect();
-    const style = getComputedStyle(avatar);
-    expect([rect.width, rect.height]).toEqual([44, 44]);
+    const celda = box.querySelector<HTMLElement>('header .account-celda')!;
+    expect(celda.getBoundingClientRect().width).toBe(44);
+    expect(celda.getBoundingClientRect().height).toBeGreaterThanOrEqual(38);
+    const hex = getComputedStyle(celda.querySelector('polygon')!);
+    expect(hex.fill).toBe('none');
+    expect(hex.stroke).toBe(expected.color);
+    expect(hex.strokeWidth).toBe('2px');
+    const letter = box.querySelector<HTMLElement>('header .account-celda__letra')!;
+    const style = getComputedStyle(letter);
+    expect(letter.textContent).toBe('A');
     expect(style.borderTopLeftRadius).toBe('0px'); // RF-3 (019) · 3.3: sin formas redondas
-    expect(style.backgroundColor).toBe(expected.backgroundColor);
+    expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)');
     expect(style.color).toBe(expected.color);
     expect(style.fontSize).toBe(expected.fontSize);
     expect(style.fontWeight).toBe('800');
@@ -401,11 +421,12 @@ describe.each([360, 1280])('Documentación a %i px', (width) => {
     expect(h2.fontWeight).toBe('800');
   });
 
-  it('RF-10 (008) · 10.6: anterior y siguiente van como texto subrayado de 15 px y peso 700, bajo una línea de 3 px con 24 px de separación', async () => {
+  it('RF-10 (008) · 10.6: anterior y siguiente van como texto subrayado de 15 px y peso 700, bajo un filete de tinta con 24 px de separación', async () => {
     const box = await showDocs();
     const pager = box.querySelector<HTMLElement>('.documentation__pager')!;
     const style = getComputedStyle(pager);
-    expect(style.borderTopWidth).toBe('3px');
+    expect(['1px', '1.5px']).toContain(style.borderTopWidth);
+    expect(style.borderTopColor).toBe(style.color);
     expect(style.paddingTop).toBe('24px');
     const links = [...pager.querySelectorAll<HTMLElement>('a')];
     expect(links.map((a) => a.textContent)).toEqual(['← Uno', 'Tres →']);
@@ -478,7 +499,7 @@ describe.each([360, 1280])('Constitución a %i px', (width) => {
     expect(style.rowGap).toBe('40px');
   });
 
-  it('RF-11 (008) · 11.2, RF-2 (019): el título usa display con línea 1,15; la entrada, lead en text-muted y la cabecera se cierra con un borde de 3 px', async () => {
+  it('RF-11 (008) · 11.2, RF-2 (019): el título usa display con línea 1,15; la entrada, lead en text-muted y la cabecera se cierra con un filete de tinta', async () => {
     const box = await showConstitution();
     const h1 = getComputedStyle(box.querySelector('h1')!);
     const size = resolve(box, 'fontSize', 'var(--type-display-size)'); // RF-2 (019)
@@ -488,19 +509,24 @@ describe.each([360, 1280])('Constitución a %i px', (width) => {
     expect(lead.textContent).toBe('Siete principios mandan sobre todo lo demás: sobre cada función, cada spec y cada línea de código.');
     expect(getComputedStyle(lead).fontSize).toBe(resolve(box, 'fontSize', 'var(--type-lead-size)'));
     expect(getComputedStyle(lead).color).toBe(getComputedStyle(box.querySelector('.constitution__updated')!).color);
-    expect(getComputedStyle(box.querySelector('.constitution__head')!).borderBottomWidth).toBe('3px');
+    const head = getComputedStyle(box.querySelector('.constitution__head')!);
+    expect(['1px', '1.5px']).toContain(head.borderBottomWidth);
+    expect(head.borderBottomColor).toBe(head.color);
   });
 
-  it('RF-11 (008) · 11.3: las tarjetas son cuadradas con borde de 3 px, clamp(20px, 4vw, 28px) de relleno y 28 px de separación', async () => {
+  it('RF-11 (008) · 11.3: las secciones no son cajas: sin radio, sombra ni borde a los lados, con un filete arriba y clamp(20px, 4vw, 28px) de aire arriba y abajo', async () => {
     const box = await showConstitution();
     const cards = [...box.querySelectorAll<HTMLElement>('article.section-block')];
     expect(cards).toHaveLength(3);
     const style = getComputedStyle(cards[0]!);
     expect(style.borderTopLeftRadius).toBe('0px');
-    expect(style.borderTopWidth).toBe('3px');
     expect(style.boxShadow).toBe('none');
+    for (const side of ['borderRightWidth', 'borderBottomWidth', 'borderLeftWidth'] as const) expect(style[side], side).toBe('0px');
+    expect(['1px', '1.5px']).toContain(style.borderTopWidth);
     expect(style.paddingTop).toBe(resolve(box, 'marginTop', 'clamp(20px, 4vw, 28px)'));
-    expect(cards[1]!.getBoundingClientRect().top - cards[0]!.getBoundingClientRect().bottom).toBe(28);
+    expect(style.paddingBottom).toBe(style.paddingTop);
+    // Las secciones van una tras otra, sin separación: el filete de cada una es lo que las parte.
+    expect(cards[1]!.getBoundingClientRect().top - cards[0]!.getBoundingClientRect().bottom).toBe(0);
   });
 
   it('RF-11 (008) · 11.4: el numeral es de 34 px y peso 800; el título, 18/800/1,25; el texto, 16 px con línea 1,55', async () => {
@@ -518,28 +544,28 @@ describe.each([360, 1280])('Constitución a %i px', (width) => {
     expect(parseFloat(text.lineHeight)).toBeCloseTo(24.8, 1);
   });
 
-  it('RF-11 (008) · 11.5: la línea vertical mide 3 px y deja 36 px a la izquierda; cada tarjeta se une a ella con un tramo de 3 px', async () => {
+  it('RF-11 (008) · 11.5: la lista abre con un filete de tinta, sin línea vertical ni tramos que unan las secciones, y sin sangría a la izquierda', async () => {
     const box = await showConstitution();
     const list = box.querySelector<HTMLElement>('.constitution__list')!;
-    expect(getComputedStyle(list).paddingLeft).toBe('36px');
-    const line = getComputedStyle(list, '::before');
-    expect(line.width).toBe('3px');
-    expect(line.backgroundColor).toBe(getComputedStyle(list).color);
+    const style = getComputedStyle(list);
+    expect(['1px', '1.5px']).toContain(style.borderTopWidth);
+    expect(style.borderTopColor).toBe(style.color);
+    expect(style.paddingLeft).toBe('0px');
+    // La línea vertical de 3 px y sus tramos de unión del diseño anterior ya no se dibujan.
+    expect(getComputedStyle(list, '::before').content).toBe('none');
     const items = [...list.querySelectorAll<HTMLElement>('.constitution__item')];
     expect(items).toHaveLength(3);
-    const joint = getComputedStyle(items[0]!, '::before');
-    expect(joint.width).toBe('36px');
-    expect(joint.height).toBe('3px');
+    expect(getComputedStyle(items[0]!, '::before').content).toBe('none');
     const card = list.querySelector('article')!.getBoundingClientRect();
-    expect(card.left - list.getBoundingClientRect().left).toBe(36);
+    expect(card.left - list.getBoundingClientRect().left).toBe(0);
   });
 
-  it('RF-11 (008) · 11.6: el pie va en 14 px y text-muted, con 36 px a la izquierda, después de las tarjetas', async () => {
+  it('RF-11 (008) · 11.6: el pie va en 14 px y text-muted, alineado con las secciones, después de ellas', async () => {
     const box = await showConstitution();
     const foot = box.querySelector<HTMLElement>('.constitution__updated')!;
     const style = getComputedStyle(foot);
     expect(style.fontSize).toBe('14px');
-    expect(style.paddingLeft).toBe('36px');
+    expect(style.paddingLeft).toBe('0px');
     // RF-5 (024) · 5.1: la fecha del pie sale con día, nombre del mes y año, como la ficha.
     expect(foot.textContent).toContain('Última modificación: 3 de septiembre de 2026');
     const list = box.querySelector('.constitution__list')!;

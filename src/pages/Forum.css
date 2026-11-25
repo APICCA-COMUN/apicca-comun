@@ -21,7 +21,7 @@
   justify-content: space-between;
   gap: 20px;
   padding-block-end: 24px;
-  border-block-end: var(--stroke-border) solid var(--text);
+  border-block-end: var(--stroke-divider) solid var(--text);
 }
 
 /* RF-2 (019), D-T3 (019): título display. */
@@ -40,25 +40,27 @@
   align-items: center;
 }
 
-/* El botón de filtro es un cuadrado de `.icon-button`; el pulsado se invierte (blocks.css). */
+/* El botón de filtro es un cuadrado de `.icon-button`; el pulsado lleva una raya de tinta debajo (blocks.css). */
 .forum__filter {
   border-radius: 0;
 }
 
-/* Lista de hilos: borde de 3 px en tinta y radio 0. */
+/* Lista de hilos: filas con filete suave, sin caja y con radio 0. */
 .forum__list {
   display: flex;
   flex-direction: column;
   background-color: var(--surface);
-  border: var(--stroke-border) solid var(--text);
+  border: 0;
+  border-block-start: var(--stroke-divider) solid var(--text);
   border-radius: 0;
 }
 
 .forum__row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px 20px;
+  padding: 16px 0;
 }
 
 .forum__row + .forum__row {
@@ -94,6 +96,13 @@
 .forum__summary a {
   color: var(--text);
   text-decoration: none;
+}
+
+/* El enlace del título (23 px) cubre toda la fila (≥ 76 px) con un pseudo-elemento transparente: área tocable de 44 px o más. */
+.forum__summary a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
 }
 
 .forum__summary span,
@@ -157,7 +166,7 @@
   flex-direction: column;
   gap: 4px;
   padding-block-end: 24px;
-  border-block-end: var(--stroke-border) solid var(--text);
+  border-block-end: var(--stroke-divider) solid var(--text);
 }
 
 .forum-thread__head-row {
@@ -181,7 +190,7 @@
   border-block-start: var(--stroke-divider) solid var(--line);
 }
 
-/* Inicial del autor: cuadrado con borde de 3 px en tinta, sin color de eje. */
+/* Inicial del autor: la letra en rótulo, sin caja ni color de eje. */
 .forum-message__initial {
   display: flex;
   flex: none;
@@ -190,9 +199,9 @@
   box-sizing: border-box;
   inline-size: 44px;
   block-size: 44px;
-  border: var(--stroke-border) solid var(--text);
+  border: 0;
   border-radius: 0;
-  background-color: var(--surface);
+  background-color: transparent;
   color: var(--text);
   font-weight: 800;
 }

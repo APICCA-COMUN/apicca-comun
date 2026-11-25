@@ -3,11 +3,14 @@
 // «Prototipar un Ápice» y de «Conectar» ocupan el lugar de ese panel (composición P1 del sistema «APICCA · Mapa»). Muchas pruebas vienen de Prototipado y
 // de Mi tablero, que esta página reemplaza (RF-11 (021) sustituye RF-18 (003); RF-15 (021), RF-11 (003)).
 // T-13 (024) · RF-3 (024): el recorrido de bienvenida mueve el mapa a lo que señala cada paso.
+// «E3 · Celda»: la columna de Inicio lleva las filas de Ápices y la leyenda-control (al pie del mapa) es el filtro: en el mapa
+// atenúa, en la lista consulta; una línea de llamada une la celda grande con el mapa cuando hay 900 px o más.
 import fs from 'node:fs';
 import path from 'node:path';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useEffect } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDrafts, DraftsContext, type Drafts } from '../app/drafts';
 import { navigate } from '../app/router';
 import { SessionProvider, type SessionState } from '../app/session';
@@ -20,16 +23,28 @@ import type { NoticesSource } from '../data/notices';
 import { fakeClient } from '../testing/facilitationDoubles';
 import { emptyListSource, fakeListSource, listed } from '../testing/listDoubles';
 import { expectOnePrimary, primaryActions } from '../testing/expectActions';
-import { Play } from './Play';
+import { Play, rowsThatFit } from './Play';
 
 // El mapa es el lienzo propio (RF-4 (021)); aquí va el real, con un modo que falla para probar su límite.
-const mapState = vi.hoisted(() => ({ fail: false }));
+const mapState = vi.hoisted(() => ({
+  fail: false,
+  /** Dónde dice el mapa que cae lo elegido (`onAnchor`); `null`, en ningún lugar visible. */
+  anchor: null as { x: number; y: number } | null,
+  /** Las últimas propiedades que la página le dio al mapa. */
+  props: null as { level?: number; onLevelChange?: (level: 0 | 1 | 2) => void; dimmedIds?: ReadonlySet<string>; hideZoomControls?: boolean } | null,
+}));
 vi.mock('../map/GameMap', async (original) => {
   const real = await original<typeof import('../map/GameMap')>();
   return {
     GameMap: (props: Parameters<typeof real.GameMap>[0]) => {
       if (mapState.fail) throw new Error('mapa roto');
-      return <real.GameMap {...props} />;
+      mapState.props = props;
+      // El mapa real no mide en jsdom: la prueba le dice dónde cae lo elegido (y el mapa real no avisa).
+      useEffect(() => {
+        props.onAnchor?.(mapState.anchor);
+      });
+      const { onAnchor: _unused, ...rest } = props;
+      return <real.GameMap {...rest} />;
     },
   };
 });
@@ -37,10 +52,47 @@ vi.mock('../map/GameMap', async (original) => {
 const VISITOR: SessionState = { status: 'visitor' };
 const PERSON: SessionState = { status: 'person', uid: 'u-ana', role: 'member', username: 'ana' };
 
+const realMatchMedia = window.matchMedia;
+const realRect = Element.prototype.getBoundingClientRect;
+
 beforeEach(() => {
   mapState.fail = false;
+  mapState.anchor = null;
+  mapState.props = null;
   window.history.replaceState(null, '', '/');
 });
+
+afterEach(() => {
+  window.matchMedia = realMatchMedia;
+  Element.prototype.getBoundingClientRect = realRect;
+});
+
+/** Con `true`, la ventana mide 900 px o más (columna y mapa lado a lado); con `false`, es un teléfono. */
+function viewport(wide: boolean) {
+  window.matchMedia = ((consulta: string) => ({
+    matches: wide && consulta.includes('900px'),
+    media: consulta,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
+const rect = (left: number, top: number, width: number, height: number): DOMRect =>
+  ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
+
+/** Donde jsdom no sabe medir: el contenedor, la columna y su celda grande (o su Arco) tienen un lugar fijo. */
+function layout() {
+  Element.prototype.getBoundingClientRect = function (this: Element) {
+    if (this.classList.contains('play__body')) return rect(0, 60, 1200, 740);
+    if (this.classList.contains('play__panel')) return rect(24, 60, 344, 740);
+    if (this.classList.contains('celda-grande') || this.classList.contains('pieza-arco')) return rect(40, 200, 280, 280);
+    return realRect.call(this);
+  };
+}
 
 const apiceSource: ApiceSource = {
   onApice(id, callback) {
@@ -80,7 +132,7 @@ function fakeActions(items: CommonActionSummary[] = []) {
     get: async (id) => {
       const found = items.find((item) => item.id === id);
       if (found === undefined) return null;
-      const detail: CommonActionDetail = { ...found, participants: [{ uid: 'u-otra', username: 'otra' }], apices: [], hiddenApices: 0 };
+      const detail: CommonActionDetail = { ...found, participants: [{ uid: 'u-otra', username: 'otra' }], apices: found.apiceIds.map((apiceId) => ({ id: apiceId, name: `Ápice ${apiceId}`, status: 'prototipo' as const })), hiddenApices: 0 };
       return detail;
     },
   };
@@ -151,22 +203,40 @@ describe('Play · el sitio comienza en el mapa', () => {
     expect(body.querySelector('.play__panel')!.contains(home())).toBe(true);
   });
 
-  it('P1: el panel lleva el título, las acciones, el contador, las leyendas y la lista de Ápices en filas, en ese orden', async () => {
+  it('E3 · Celda: la columna lleva la línea «Ápices» con sus filas y, abajo, el título, la entradilla y las acciones, en ese orden; la leyenda va con el mapa', async () => {
     setup(PERSON);
     await map();
     const aside = home();
     const names = [
+      within(aside).getByRole('list', { name: 'Ápices' }),
+      within(aside).getByRole('button', { name: 'Ver como lista' }),
       within(aside).getByRole('heading', { level: 1 }),
       within(aside).getByRole('link', { name: 'Prototipar un Ápice' }),
       within(aside).getByRole('link', { name: 'Conectar' }),
-      within(aside).getByRole('list', { name: 'Etapas' }),
-      within(aside).getByRole('list', { name: 'Ejes' }),
-      within(aside).getByRole('list', { name: 'Ápices' }),
     ];
     names.slice(1).forEach((element, index) => {
       expect(names[index]!.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING, `posición ${index + 1}`).toBeTruthy();
     });
-    expect(within(within(aside).getByRole('list', { name: 'Ápices' })).getAllByRole('listitem')).toHaveLength(3);
+    expect(within(names[0]!).getAllByRole('listitem')).toHaveLength(3);
+    // La leyenda-control reemplaza a los filtros, a las Etapas y a los Ejes de la columna: está con el mapa, no en ella.
+    const legend = screen.getByRole('group', { name: 'Filtrar por eje' }).closest('.play__legend')! as HTMLElement;
+    expect(legend.closest('.play__stage')).not.toBeNull();
+    expect(aside.contains(legend)).toBe(false);
+    within(legend).getByRole('group', { name: 'Etapa' });
+    within(legend).getByRole('group', { name: 'Nivel' });
+    expect(screen.queryByRole('form', { name: 'Filtros' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Filtros' })).toBeNull();
+  });
+
+  it('E3 · Celda: más de 12 Ápices se resumen en una última fila «N Ápices más» que lleva a la lista', async () => {
+    setup(VISITOR, { source: fakeListSource(15).source });
+    await map();
+    const rows = await within(home()).findByRole('list', { name: 'Ápices' });
+    await waitFor(() => expect(within(rows).getAllByRole('listitem')).toHaveLength(13));
+    expect(within(rows).queryByRole('link', { name: /Ápice 13/ })).toBeNull();
+    fireEvent.click(within(rows).getByRole('button', { name: '3 Ápices más' }));
+    expect(window.location.search).toBe('?vista=lista');
+    expect(await screen.findByRole('heading', { name: 'Ápice 13' })).toBeTruthy();
   });
 
   it('P1: elegir una fila de la lista abre la ficha en el mismo panel, y «Cerrar» devuelve el panel de Inicio', async () => {
@@ -198,7 +268,7 @@ describe('Play · el sitio comienza en el mapa', () => {
 });
 
 describe('Play · controles sobre el mapa', () => {
-  it('RF-12 (021) · 12.1: la cabecera lleva el logo, el tema, la cuenta y «Menú»; el panel, el contador, los filtros y el cambio de vista', async () => {
+  it('RF-12 (021) · 12.1: la cabecera lleva el logo, el tema, la cuenta y «Menú»; la columna, la cuenta y el cambio de vista; el mapa, la leyenda', async () => {
     setup(PERSON);
     await map();
     const header = screen.getByRole('banner');
@@ -208,9 +278,9 @@ describe('Play · controles sobre el mapa', () => {
     within(header).getByRole('button', { name: 'Menú' });
     await waitFor(() => expect(counter().textContent).toBe('3 Ápices'));
     const aside = home();
-    within(aside).getByRole('form', { name: 'Filtros' });
     within(aside).getByRole('button', { name: 'Ver como lista' });
     expect(aside.contains(counter())).toBe(true);
+    screen.getByRole('group', { name: 'Filtrar por eje' });
     expect(document.querySelector('.play__hud')).toBeNull();
   });
 
@@ -228,33 +298,106 @@ describe('Play · controles sobre el mapa', () => {
     expect(screen.queryByText(/Aún no hay ápices/)).toBeNull();
   });
 
-  it('RF-12 (021) · 12.3, RF-21 (001): elegir un filtro lo escribe en la dirección, consulta con él y el mapa muestra solo lo que lo cumple', async () => {
-    const { source, requests } = fakeListSource(3, (request) => (request.filters.axes.includes('cobijo') ? [listed(7, { axes: ['cobijo'] })] : []));
+  it('RF-12 (021) · 12.3, RF-21 (001): en el mapa, elegir un eje en la leyenda lo escribe en la dirección y atenúa lo que no lo cumple, sin consultar ni quitar nada', async () => {
+    const items = [listed(1, { axes: ['agua'] }), listed(2, { axes: ['cobijo'] })];
+    const { source, requests } = fakeListSource(2, () => items);
     setup(VISITOR, { source });
     const region = await map();
     await within(region).findByRole('button', building(1));
-    fireEvent.click(within(screen.getByRole('form', { name: 'Filtros' })).getByRole('button', { name: 'Cobijo' }));
+    const cobijo = screen.getByRole('button', { name: 'Cobijo' });
+    expect(cobijo.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(cobijo);
     expect(window.location.search).toBe('?ejes=cobijo');
-    await within(region).findByRole('button', building(7, 'cobijo'));
-    expect(within(region).queryByRole('button', building(1))).toBeNull();
+    expect(cobijo.getAttribute('aria-pressed')).toBe('true');
+    await waitFor(() => expect(within(region).getByRole('button', building(1)).getAttribute('data-off')).toBe('true'));
+    expect(within(region).getByRole('button', building(2, 'cobijo')).hasAttribute('data-off')).toBe(false);
+    // Atenuar no quita: el Ápice y su fila siguen, y la consulta no llevó el filtro.
+    expect(requests.every((request) => request.filters.axes.length === 0)).toBe(true);
+    expect(mapState.props?.dimmedIds?.has('a1')).toBe(true);
+    // La fila fuera del filtro se apaga y lo dice.
+    const row = document.querySelector('.apice-row__link[href="/apices/a1"]')!;
+    expect(row.classList.contains('c-fila-off')).toBe(true);
+    expect(row.closest('li')!.querySelector('.apice-row__description')!.textContent).toContain('fuera del filtro');
+    expect(document.querySelector('.apice-row__link[href="/apices/a2"]')!.classList.contains('c-fila-off')).toBe(false);
+  });
+
+  it('RF-12 (021) · 12.3: la Etapa de la leyenda se elige y se quita al tocarla de nuevo', async () => {
+    setup(VISITOR);
+    await map();
+    const idea = screen.getByRole('button', { name: 'Etapa Idea' });
+    fireEvent.click(idea);
+    expect(window.location.search).toBe('?estado=idea');
+    expect(idea.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(idea);
+    expect(window.location.search).toBe('');
+  });
+
+  it('RF-21 (001), RF-12 (021) · 12.3: en la lista, los filtros de la leyenda van al servidor y el nivel del mapa no se dibuja', async () => {
+    window.history.replaceState(null, '', '/?vista=lista');
+    const { source, requests } = fakeListSource(3, (request) => (request.filters.axes.includes('cobijo') ? [listed(7, { axes: ['cobijo'] })] : []));
+    setup(VISITOR, { source });
+    await screen.findByRole('heading', { name: 'Ápice 1' });
+    expect(screen.queryByRole('group', { name: 'Nivel' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Cobijo' }));
+    expect(window.location.search).toBe('?ejes=cobijo&vista=lista');
+    expect(await screen.findByRole('heading', { name: 'Ápice 7' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Ápice 1' })).toBeNull();
     expect(requests.at(-1)?.filters.axes).toEqual(['cobijo']);
   });
 
-  it('RF-21 (001), RF-12 (021) · 12.3: recargar con filtros en la dirección los conserva', async () => {
+  it('RF-21 (001), RF-12 (021) · 12.3: recargar con filtros en la dirección los conserva (encendidos en la leyenda y atenuando en el mapa)', async () => {
     window.history.replaceState(null, '', '/?ejes=agua&estado=idea');
     const { source, requests } = fakeListSource(2);
     setup(VISITOR, { source });
     await map();
+    expect(requests[0]?.filters).toEqual({ axes: [], status: null });
+    expect(screen.getByRole('button', { name: 'Agua' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Etapa Idea' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('RF-21 (001), RF-12 (021) · 12.3: recargar en la lista con filtros los manda al servidor', async () => {
+    window.history.replaceState(null, '', '/?ejes=agua&estado=idea&vista=lista');
+    const { source, requests } = fakeListSource(2);
+    setup(VISITOR, { source });
+    await screen.findByRole('heading', { name: 'Ápice 1' });
     expect(requests[0]?.filters).toEqual({ axes: ['agua'], status: 'idea' });
   });
 
-  it('RF-12 (021) · 12.4, RF-21 (001): si los filtros no dejan ningún ápice, lo dice con los filtros a la vista, y «Quitar filtros» los limpia', async () => {
-    window.history.replaceState(null, '', '/?ejes=agua');
+  it('RF-12 (021) · 12.4, RF-21 (001): si los filtros no dejan ningún ápice (lista), lo dice y «Quitar filtros» los limpia', async () => {
+    window.history.replaceState(null, '', '/?ejes=agua&vista=lista');
     setup(VISITOR, { source: emptyListSource().source });
     expect(await screen.findByText('Ningún ápice cumple esos filtros.')).toBeTruthy();
-    screen.getByRole('form', { name: 'Filtros' });
+    screen.getByRole('group', { name: 'Filtrar por eje' });
     fireEvent.click(screen.getAllByRole('button', { name: 'Quitar filtros' })[0]!);
+    expect(window.location.search).toBe('?vista=lista');
+  });
+
+  it('RF-12 (021) · 12.4: con filtros activos la leyenda ofrece «Quitar filtros», y sin ellos, no', async () => {
+    setup(VISITOR);
+    await map();
+    expect(screen.queryByRole('button', { name: 'Quitar filtros' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Agua' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar filtros' }));
     expect(window.location.search).toBe('');
+    expect(screen.queryByRole('button', { name: 'Quitar filtros' })).toBeNull();
+  });
+
+  it('E3 · Celda: el nivel del mapa lo elige la leyenda (controlado), parte del que el mapa dice y los controles de zoom propios se esconden', async () => {
+    setup(VISITOR);
+    await map();
+    expect(mapState.props?.hideZoomControls).toBe(true);
+    // Hasta que se elige uno, el mapa manda: no se le pasa `level`.
+    expect(mapState.props?.level).toBeUndefined();
+    const cercano = screen.getByRole('button', { name: 'Nivel 0, el más cercano' });
+    const lejano = screen.getByRole('button', { name: 'Nivel 2, el más alejado' });
+    fireEvent.click(lejano);
+    await waitFor(() => expect(mapState.props?.level).toBe(2));
+    expect(lejano.getAttribute('aria-pressed')).toBe('true');
+    expect(cercano.getAttribute('aria-pressed')).toBe('false');
+    // Si el mapa avisa de otro nivel (rueda o teclado), la leyenda lo sigue.
+    act(() => mapState.props?.onLevelChange?.(0));
+    await waitFor(() => expect(mapState.props?.level).toBe(0));
+    expect(cercano.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('RF-12 (021) · 12.5, RF-4 (012): con cuenta activa va la campana de avisos; sin sesión, no', async () => {
@@ -283,20 +426,10 @@ describe('Play · controles sobre el mapa', () => {
     expect(screen.getByRole('link', { name: 'Prototipar un Ápice' }).className).toContain('action-primary');
     const join = within(home()).getByRole('link', { name: 'Unirme' });
     expect(join.getAttribute('href')).toBe('/solicitar');
-    expect(join.className).toContain('action-secondary');
+    expect(join.className).toContain('c-enlace');
+    expect(primaryActions(container)).not.toContain(join);
     expect(primaryActions(container).map((element) => element.textContent)).toContain('Prototipar un Ápice');
     expect(screen.getAllByRole('link', { name: 'Prototipar un Ápice' })[0]!.querySelector('svg.icono--avanzar')).not.toBeNull();
-  });
-
-  it('RF-12 (021) · 12.1, D-T22 (021): los filtros quedan tras «Filtros», que dice si están abiertos', async () => {
-    setup(VISITOR);
-    await map();
-    const toggle = screen.getByRole('button', { name: 'Filtros' });
-    const form = screen.getByRole('form', { name: 'Filtros' });
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(toggle.getAttribute('aria-controls')).toBe(form.parentElement!.id);
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
   });
 });
 
@@ -405,6 +538,7 @@ describe('Play · paneles sobre el mapa', () => {
     expect(window.location.pathname).toBe('/apices/nuevo');
     const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
     within(aside).getByRole('heading', { level: 1, name: 'Proponer un ápice' });
+    expect(aside.querySelector('.game-panel__bar .c-rot')!.textContent).toBe('Ápice');
     within(aside).getByRole('button', { name: 'Crear ápice' });
     screen.getByRole('region', { name: 'Mapa de ápices' });
   });
@@ -519,15 +653,20 @@ describe('Play · Lo mío', () => {
     await waitFor(() => expect(requests.at(-1)).toMatchObject({ audience: 'member' }));
   });
 
-  it('RF-15 (021) · 15.1, D-T25 (021): con Lo mío, los filtros se aplican en el navegador', async () => {
+  it('RF-15 (021) · 15.1, D-T25 (021): con Lo mío, en el mapa los filtros atenúan y en la lista se aplican en el navegador', async () => {
     window.history.replaceState(null, '', '/?mio=1&ejes=cobijo');
     const items = [listed(1, { axes: ['cobijo'] }), listed(2, { axes: ['agua'] })];
     const { source, requests } = fakeListSource(2, () => items);
-    setup(PERSON, { source });
+    const { unmount } = setup(PERSON, { source });
     const region = await map();
     await within(region).findByRole('button', building(1, 'cobijo'));
-    expect(within(region).queryByRole('button', building(2))).toBeNull();
+    expect(within(region).getByRole('button', building(2)).getAttribute('data-off')).toBe('true');
     expect(requests[0]).toMatchObject({ audience: 'mine', uid: 'u-ana' });
+    unmount();
+    window.history.replaceState(null, '', '/?mio=1&ejes=cobijo&vista=lista');
+    setup(PERSON, { source });
+    expect(await screen.findByRole('heading', { name: 'Ápice 1' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Ápice 2' })).toBeNull();
   });
 
   it('RF-15 (021) · 15.1, RF-19 (019): sin ápices propios, el terreno de partida de Mi tablero', async () => {
@@ -668,6 +807,9 @@ describe('Play · Acciones Comunes', () => {
     expect(window.location.pathname).toBe('/acciones/nueva');
     const aside = await screen.findByRole('complementary', { name: 'Conectar' });
     within(aside).getByText('Elige en el mapa los Ápices que conecta esta Acción Común.');
+    // La línea de sección dice el tipo y el h1, la tarea: no repiten el mismo texto.
+    expect(aside.querySelector('.game-panel__bar .c-rot')!.textContent).toBe('Acción Común');
+    within(aside).getByRole('heading', { level: 1, name: 'Conectar' });
   });
 
   it('RF-19 (021) · 19.1 a 19.3: mientras conecta, elegir un Ápice lo suma (o lo quita) y el panel dice cuántos faltan; con tres, el formulario', async () => {
@@ -994,5 +1136,131 @@ describe('Play · mapa de partida', () => {
     const terrain = await screen.findByRole('region', { name: 'Terreno de partida' });
     expect(within(terrain).getByRole('link').getAttribute('href')).toBe('/apices/nuevo');
     expectOnePrimary(container, 'Propón el primer ápice');
+  });
+});
+
+describe('Play · la línea de llamada (E3 · Celda)', () => {
+  const llamada = () => document.querySelector('.llamada');
+  const startOf = (svg: Element) => svg.querySelector('.llamada__trazo')!.getAttribute('points')!.split(' ')[0];
+  const discOf = (svg: Element) => [svg.querySelector('.llamada__disco')!.getAttribute('cx'), svg.querySelector('.llamada__disco')!.getAttribute('cy')];
+
+  it('con 900 px o más, un Ápice elegido muestra su celda grande de 280 y la línea sale 8 px a la derecha de su borde y llega al lugar del Ápice en el mapa', async () => {
+    viewport(true);
+    layout();
+    mapState.anchor = { x: 700, y: 400 };
+    window.history.replaceState(null, '', '/apices/a2');
+    setup(VISITOR);
+    await map();
+    const big = await waitFor(() => {
+      const found = document.querySelector('.play__ampliacion .celda-grande');
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    expect(big.getAttribute('width')).toBe('280');
+    await waitFor(() => expect(llamada()).not.toBeNull());
+    // Borde derecho de la celda (320) + 8, al medio de su alto (200 + 140) menos el borde del contenedor (60).
+    expect(startOf(llamada()!)).toBe('328.0,280.0');
+    expect(discOf(llamada()!)).toEqual(['700', '340']);
+    expect(llamada()!.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('la línea se va al cerrar el panel del Ápice', async () => {
+    viewport(true);
+    layout();
+    mapState.anchor = { x: 700, y: 400 };
+    window.history.replaceState(null, '', '/apices/a2');
+    setup(VISITOR);
+    await map();
+    await waitFor(() => expect(llamada()).not.toBeNull());
+    fireEvent.click(within(await screen.findByRole('complementary', { name: 'Ápice' })).getByRole('button', { name: 'Cerrar' }));
+    await waitFor(() => expect(llamada()).toBeNull());
+  });
+
+  it('con una Acción Común elegida, la línea sale 6 px a la derecha de su Arco', async () => {
+    viewport(true);
+    layout();
+    mapState.anchor = { x: 700, y: 400 };
+    window.history.replaceState(null, '', '/acciones/c1');
+    const { source } = fakeActions([summary('c1', ['a1', 'a2'])]);
+    const { container } = setup(VISITOR, { actionSource: source });
+    await map();
+    await screen.findByRole('heading', { level: 1, name: 'Acción c1' });
+    // El Arco lo dibuja la vista de la Acción Común (`PiezaArco`, clase `pieza-arco`) en la columna.
+    expect(container.querySelector('.play__panel .pieza-arco')).not.toBeNull();
+    await waitFor(() => expect(llamada()).not.toBeNull());
+    expect(startOf(llamada()!)).toBe('326.0,280.0');
+    expect(discOf(llamada()!)).toEqual(['700', '340']);
+  });
+
+  it('en un teléfono (menos de 900 px) no hay línea, aunque el mapa sepa dónde cae lo elegido; la celda grande sigue en la columna', async () => {
+    viewport(false);
+    layout();
+    mapState.anchor = { x: 700, y: 400 };
+    window.history.replaceState(null, '', '/apices/a2');
+    setup(VISITOR);
+    await map();
+    await waitFor(() => expect(document.querySelector('.play__ampliacion .celda-grande')).not.toBeNull());
+    expect(llamada()).toBeNull();
+  });
+
+  it('si el Ápice elegido no está en la ventana del mapa (sin lugar), no hay línea', async () => {
+    viewport(true);
+    layout();
+    mapState.anchor = null;
+    window.history.replaceState(null, '', '/apices/a2');
+    setup(VISITOR);
+    await map();
+    await waitFor(() => expect(document.querySelector('.play__ampliacion .celda-grande')).not.toBeNull());
+    expect(llamada()).toBeNull();
+  });
+
+  it('sin nada elegido (Inicio) no hay línea; y en un formulario tampoco', async () => {
+    viewport(true);
+    layout();
+    mapState.anchor = { x: 700, y: 400 };
+    const { unmount } = setup(VISITOR);
+    await map();
+    expect(llamada()).toBeNull();
+    unmount();
+    window.history.replaceState(null, '', '/apices/nuevo');
+    setup(PERSON);
+    await map();
+    await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    expect(llamada()).toBeNull();
+  });
+
+  it('si la celda sale de lo que la columna deja ver (se desplazó), la línea se esconde', async () => {
+    viewport(true);
+    mapState.anchor = { x: 700, y: 400 };
+    // La celda cae bajo el borde inferior de la columna (60 + 740 = 800).
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      if (this.classList.contains('play__body')) return rect(0, 60, 1200, 740);
+      if (this.classList.contains('play__panel')) return rect(24, 60, 344, 740);
+      if (this.classList.contains('celda-grande')) return rect(40, 900, 280, 280);
+      return realRect.call(this);
+    };
+    window.history.replaceState(null, '', '/apices/a2');
+    setup(VISITOR);
+    await map();
+    await waitFor(() => expect(document.querySelector('.play__ampliacion .celda-grande')).not.toBeNull());
+    expect(llamada()).toBeNull();
+  });
+});
+
+describe('rowsThatFit', () => {
+  it('«E3 · Celda»: dibuja las filas enteras que caben y, si no caben todas, deja el sitio de «N Ápices más»', () => {
+    // 26 px por fila: 312 px son 12 filas.
+    expect(rowsThatFit(312, 8)).toBe(8);
+    expect(rowsThatFit(312, 12)).toBe(12);
+    expect(rowsThatFit(312, 19)).toBe(11);
+    // Un resto de fila no cuenta.
+    expect(rowsThatFit(337, 19)).toBe(11);
+    expect(rowsThatFit(338, 19)).toBe(12);
+  });
+
+  it('«E3 · Celda»: aunque la ventana sea muy baja quedan tres filas (dos Ápices y «N Ápices más»)', () => {
+    expect(rowsThatFit(0, 19)).toBe(2);
+    expect(rowsThatFit(30, 19)).toBe(2);
+    expect(rowsThatFit(30, 2)).toBe(2);
   });
 });

@@ -181,8 +181,9 @@ function auditPage(): TextAudit {
       .map((element) => `${label(element)} ${size(element)}px`),
     smallFields: fields.filter((element) => size(element) < 16).map((element) => `${label(element)} ${size(element)}px`),
     clipped: withText
-      // El texto solo para lectores de pantalla se recorta a propósito (RF-7 (003) · 7.5).
-      .filter((element) => !element.closest('.visually-hidden'))
+      // El texto solo para lectores de pantalla se recorta a propósito (RF-7 (003) · 7.5): `.visually-hidden` y la cuenta de
+      // Ápices de Inicio (`.play__sr`), que a la vista solo muestra el número.
+      .filter((element) => !element.closest('.visually-hidden, .play__sr'))
       .filter((element) => {
         const { overflowX } = getComputedStyle(element);
         return (overflowX === 'hidden' || overflowX === 'clip') && element.scrollWidth > element.clientWidth;

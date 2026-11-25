@@ -62,7 +62,7 @@ export function ActionPage() {
         <>
           <p role="alert" className="block">{RESET_LINK_INVALID}</p>
           <p>
-            <Link href="/olvide">Pedir otro enlace</Link>
+            <Link href="/olvide" className="c-enlace">Pedir otro enlace</Link>
           </p>
         </>
       )}
@@ -81,7 +81,7 @@ export function ActionPage() {
         <>
           <p role="status" className="block">Tu contraseña cambió.</p>
           <p>
-            <Link href="/entrar">Entrar</Link>
+            <Link href="/entrar" className="c-enlace">Entrar</Link>
           </p>
         </>
       )}

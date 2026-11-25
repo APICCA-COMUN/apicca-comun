@@ -1,15 +1,75 @@
-/* La sección «Acciones Comunes» de la vista de lista: una tarjeta por Acción Común, separadas entre sí. Solo tokens. */
+/* La sección «Acciones Comunes» de la vista de lista. «E3 · Celda»: sin tarjetas; la línea de sección y, debajo, una fila
+   de datos con filete suave por cada Acción Común. Solo tokens. */
 .common-action-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
 }
 
-.common-action-list > h2,
-.common-action-list > p {
+.common-action-list > .c-seccion h2 {
   margin: 0;
 }
 
-.common-action-list > button {
+.common-action-list > p {
+  margin: 12px 0 0;
+}
+
+.common-action-list__item {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.common-action-list__item > * {
+  margin: 0;
+}
+
+.common-action-list__nombre {
+  font-size: var(--type-body-size);
+  line-height: 21px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+/* El rótulo de metadatos va en columna (no es el rótulo de 7 em de `.c-dato`): ocupa todo el ancho de la fila y pasa a otra línea solo
+   cuando no cabe (a 360 px), en vez de cortarse. */
+.common-action-list__item.c-dato > .c-rot {
+  inline-size: auto;
+  max-inline-size: 100%;
+}
+
+/* El nombre es un enlace con raya; el área tocable llega a 44 px con un pseudo-elemento, sin mover el dibujo. */
+.common-action-list__nombre a {
+  position: relative;
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.common-action-list__nombre a::before {
+  content: '';
+  position: absolute;
+  inset-block: -12px;
+  inset-inline: 0;
+}
+
+/* El Arco de la fila: 300 × 96; en una columna más angosta se encoge en vez de desbordar. */
+.common-action-list__arco {
+  max-inline-size: 100%;
+  line-height: 0;
+}
+
+.common-action-list__arco .pieza-arco {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+.common-action-list > .c-enlace {
   align-self: flex-start;
+  margin-block-start: 8px;
+}
+
+.common-action-list > p .c-enlace {
+  vertical-align: middle;
 }

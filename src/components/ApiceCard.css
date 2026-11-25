@@ -1,40 +1,98 @@
-/* Sistema «APICCA · Mapa»: la superficie de la tarjeta ocupa el ancho del bloque, sobre el nombre. */
-article.block > .superficie {
-  margin-block-end: 0.75rem;
-}
-
-/* La lista de tarjetas: una columna con 12 px entre tarjetas (sin ellos, sus bordes de 3 px se tocaban). */
+/* La lista de Ápices: una columna de filas, cada una con su filete suave (`.block`), sin hueco entre ellas. */
 .apice-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
+}
+
+.apice-list > .c-seccion h2 {
+  margin: 0;
 }
 
 .apice-list > button {
   align-self: flex-start;
 }
 
-/* RF-21 (001), RF-10 (021): los ejes de la tarjeta van en fila, sin viñetas; cada uno ya lleva su ícono y su nombre. */
-.apice-card__axes {
+/* «E3 · Celda»: la fila del Ápice en la vista de lista (`ApiceCard`). `.c-dato` pone el filete suave y el aire; la celda de 56 px
+   queda a la izquierda y el cuerpo ocupa el resto. Sin caja. Solo tokens. */
+.apice-card {
+  gap: 14px;
+}
+
+.apice-card__celda {
+  display: block;
+  flex: none;
+  line-height: 0;
+}
+
+.apice-card__cuerpo {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 6px;
+  min-inline-size: 0;
+}
+
+.apice-card__cuerpo > * {
   margin: 0;
-  padding: 0;
-  list-style: none;
+}
+
+/* El nombre, enlazado y en mayúsculas; el área tocable llega a 44 px con un pseudo-elemento, sin mover el dibujo. */
+.apice-card__nombre {
+  font-size: var(--type-body-size);
+  line-height: 21px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.apice-card__nombre a {
+  position: relative;
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.apice-card__nombre a::before {
+  content: '';
+  position: absolute;
+  inset-block: -12px;
+  inset-inline: 0;
+}
+
+/* El rótulo suave puede ocupar varias líneas en una columna estrecha. */
+.apice-card__rotulo {
+  white-space: normal;
+}
+
+/* La descripción, recortada a dos líneas. */
+.apice-card__descripcion {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 
 /* RF-19 (021) · 19.5: la casilla de «Conectar», con su etiqueta al lado. */
 .apice-card__path {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   gap: 8px;
   min-block-size: var(--size-icon-control);
-  font-weight: 700;
+  font-size: var(--type-meta-size);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-/* La fila del Ápice en el panel de Inicio (`FilaApice` del sistema): superficie de 56 × 34, nombre y zona, con un divisor
-   de 1,5 px en `line` entre filas. Solo tokens. */
+/* La fila del Ápice en la columna de Inicio («E3 · Celda»): `.c-fila` de 26 px (`piezas.css`) con su celda de 30 px, el
+   nombre y la zona como rótulo suave. Sin filete entre filas ni caja. El Ápice que se está viendo va subrayado, no solo en
+   otro tono. La celda de una fila atenuada por el filtro se apaga igual que en el mapa (`data-off`). Solo tokens. */
 .apice-rows {
   margin: 0;
   padding: 0;
@@ -43,43 +101,44 @@ article.block > .superficie {
 
 .apice-row {
   position: relative;
-  border-block-end: var(--stroke-divider) solid var(--line);
 }
 
-.apice-row__link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-block-size: var(--size-icon-control);
-  padding-block: 8px;
-  color: var(--text);
-  font-size: var(--type-body-size);
-  font-weight: 700;
-  text-decoration: none;
+.apice-row__celda {
+  display: block;
+  flex: none;
+  line-height: 0;
 }
 
-.apice-row__link:hover .apice-row__name {
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
+.apice-row__celda[data-off='true'] {
+  --axis-agua-fill: var(--background);
+  --axis-alimento-fill: var(--background);
+  --axis-cobijo-fill: var(--background);
+  --axis-energia-fill: var(--background);
+  --axis-comunicacion-fill: var(--background);
+  --glifo-sobre-eje: var(--trama);
+  --contorno-superficie: var(--trama);
 }
 
-/* El Ápice abierto en la ficha: el nombre va subrayado, no solo en otro color. */
 .apice-row__link[aria-current='true'] .apice-row__name {
   text-decoration: underline;
   text-decoration-thickness: 3px;
-  text-underline-offset: 3px;
-}
-
-.apice-row__name {
-  flex: 1 1 auto;
-  min-inline-size: 0;
-  overflow-wrap: anywhere;
+  text-underline-offset: 4px;
 }
 
 .apice-row__zone {
   flex: none;
-  color: var(--text-muted);
+}
+
+/* Con dedo, la fila llega a 44 px (`.c-fila--tocable` del sistema, aquí por ancho de ventana). */
+@media (max-width: 899.98px) {
+  a.apice-row__link {
+    block-size: auto;
+    min-block-size: var(--size-icon-control);
+  }
+
+  a.apice-row__link::before {
+    content: none;
+  }
 }
 
 /* Lo que la fila dice a un lector de pantalla (ejes, Etapa, zona); no se ve. */
@@ -90,4 +149,16 @@ article.block > .superficie {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* La última fila, «N Ápices más»: un botón de texto; en pantalla chica sube a 44 px como las demás filas. */
+@media (max-width: 899.98px) {
+  button.apice-row__mas {
+    block-size: auto;
+    min-block-size: var(--size-icon-control);
+  }
+
+  button.apice-row__mas::before {
+    content: none;
+  }
 }

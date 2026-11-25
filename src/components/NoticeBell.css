@@ -1,7 +1,7 @@
 /* RF-6 (024), RF-4 (012), RNF-3 (012): botón de aviso de 44 px (`icon-button`) con el contador a su lado, en la cabecera
    (sistema «APICCA · Mapa»). El panel cae bajo la cabecera, anclada a `.site-header__inner` (posicionada), alineado a
    su borde final y siempre dentro de la ventana (RNF-5 (012), D-T11 (012)). No hereda el `max-width: 100%` de `.block`,
-   que lo dejaba del ancho del botón. Lleva el borde de 3 px de `.block`; sin sombra. */
+   que lo dejaba del ancho del botón. Va sobre el mapa o la página: papel de fondo, relleno lateral y un filete de tinta arriba y abajo (1,5 px), sin caja ni sombra. */
 .notice-bell {
   display: inline-flex;
   align-items: center;
@@ -14,21 +14,24 @@
   line-height: 1;
 }
 
-.notice-panel {
+.block.notice-panel {
   position: absolute;
   inset-block-start: calc(100% + 8px);
-  inset-inline-end: 12px;
+  inset-inline-end: 16px;
   z-index: 10;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* En un teléfono deja 16 px a cada lado (el margen del sitio): lo de debajo no asoma a la izquierda del panel. */
   inline-size: min(360px, calc(100vw - 32px));
   max-inline-size: none;
-  padding: 1.5rem;
+  padding: 1.5rem 16px;
+  background-color: var(--background);
+  border-block: var(--stroke-divider) solid var(--text);
 }
 
 @media (min-width: 640px) {
-  .notice-panel {
+  .block.notice-panel {
     inset-inline-end: 24px;
   }
 }
@@ -47,7 +50,15 @@
 }
 
 .notice-panel__item {
+  position: relative;
   padding-block: 12px;
+}
+
+/* El enlace del aviso cubre toda la fila (≥ 48 px) con un pseudo-elemento transparente: área tocable de 44 px o más. */
+.notice-panel__item a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
 }
 
 .notice-panel__item + .notice-panel__item {
@@ -62,9 +73,8 @@
   color: var(--text-muted);
 }
 
-/* Lo no leído se dice con peso y con la barra de 3 px a su lado, no con color. */
-.notice-panel__item--unread {
+/* Lo no leído se dice con peso y con la raya de tinta encima (filete horizontal), no con color. */
+.notice-panel__item.notice-panel__item--unread {
   font-weight: 800;
-  padding-inline-start: 12px;
-  border-inline-start: var(--stroke-border) solid var(--text);
+  border-block-start: var(--stroke-outline) solid var(--text);
 }
