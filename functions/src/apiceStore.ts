@@ -189,7 +189,11 @@ export async function saveVersion(ctx: Ctx, id: string, input: SaveVersionInput)
       if (old.precision !== 'exact') continue;
       // Redactar en lugar de borrar: la versión sigue mostrando su zona. Sin zona (versiones anteriores a la spec 021) no hay forma aproximada.
       if (change.mode !== 'remove' && old.zone !== undefined) tx.update(doc.ref, { location: { lat: old.zone.lat, lng: old.zone.lng, precision: 'approximate', zone: old.zone } });
-      else tx.update(doc.ref, { location: null, locationPurged: true });
+      else {
+        // Purgada (`location: null`), una purga futura ya no la encontraría: su punto exacto se borra ahora. El vigente ya se copió a la versión nueva.
+        if (change.mode !== 'remove') tx.delete(ctx.db.doc(EXACT_PATH(id, doc.get('n') as number)));
+        tx.update(doc.ref, { location: null, locationPurged: true });
+      }
     }
     tx.create(ctx.db.doc(`apices/${id}/versions/${n}`), {
       n,

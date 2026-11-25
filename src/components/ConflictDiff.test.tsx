@@ -81,4 +81,11 @@ describe('ConflictDiff · bloques (002)', () => {
     expect(screen.getByRole('group', { name: 'Etapa' }).textContent).toMatch(/Idea.*Prototipo/);
     expect(screen.queryByRole('group', { name: 'Estado' })).toBeNull();
   });
+
+  it('RF-11 (001): «Conservar los míos» y «Descartar» van juntos en un grupo de botones, para quedar separados', () => {
+    render(<ConflictDiff mine={mine} current={current} onKeepMine={vi.fn()} onDiscard={vi.fn()} />);
+    const group = screen.getByRole('button', { name: 'Conservar los míos' }).parentElement!;
+    expect(group.classList.contains('button-group')).toBe(true);
+    expect(group.contains(screen.getByRole('button', { name: 'Descartar' }))).toBe(true);
+  });
 });

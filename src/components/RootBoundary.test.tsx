@@ -28,8 +28,24 @@ describe('RootBoundary', () => {
         <Broken />
       </RootBoundary>,
     );
-    expect(screen.getByRole('alert').textContent).toMatch('Algo salió mal');
+    expect(screen.getByRole('alert').textContent).toMatch('No pudimos mostrar esta página');
     expect(screen.getByRole('link', { name: 'Volver al inicio' }).getAttribute('href')).toBe('/');
     expectBlocks(container);
+  });
+
+  it('RNF-10 (001): el aviso tiene un único main con su título de nivel 1, para heredar el ancho y el margen lateral', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { container } = render(
+      <RootBoundary>
+        <Broken />
+      </RootBoundary>,
+    );
+    const mains = container.querySelectorAll('main');
+    expect(mains).toHaveLength(1);
+    expect(screen.getByRole('main')).toBe(mains[0]);
+    const heading = screen.getByRole('heading', { level: 1 });
+    expect(heading.textContent).toBe('Algo salió mal');
+    expect(mains[0]!.contains(heading)).toBe(true);
+    expect(mains[0]!.contains(screen.getByRole('alert'))).toBe(true);
   });
 });

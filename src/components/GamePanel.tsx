@@ -8,10 +8,13 @@
 // lleva el foco a su título apenas aparece (la ficha puede tardar en cargar); sin él, no lo mueve. Un aviso (`notice`, el de
 // cambios sin guardar) va arriba del contenido; al aparecer, el panel (y la columna o la página, si hace falta) se desplaza hasta
 // mostrarlo y el foco pasa a él, para que «Cerrar» no parezca no hacer nada (QA celda 2 · 4); con `prefers-reduced-motion`,
-// sin animación; si el aviso se va y el foco quedó en el aire, vuelve a «Cerrar». RNF-1 (021): Escape lo cierra, salvo que un control de adentro ya lo haya
+// sin animación. Cada intento frenado trae un `noticeSignal` nuevo: el aviso vuelve a recibir el foco y a ponerse a la vista aunque ya
+// estuviera abierto. Si el aviso se va y el foco quedó en el aire, vuelve al último elemento del panel que lo tuvo antes del
+// aviso (el campo que se editaba; un enlace de la cabecera que provocó el aviso no cuenta, porque está fuera del panel), si
+// sigue ahí y acepta el foco; si no, a «Cerrar». RNF-1 (021): Escape lo cierra, salvo que un control de adentro ya lo haya
 // atendido. Con `embedded`, el panel va dentro de la columna de Inicio, debajo de su cabecera (la ficha del Ápice): no se
 // desplaza por su cuenta, lo hace la columna, y al abrirse lleva la ficha a la vista si no se ve.
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { Icono } from './Glifo';
 import './GamePanel.css';
 
@@ -23,6 +26,8 @@ export interface GamePanelProps {
   onClose: () => void;
   autoFocus?: boolean;
   notice?: ReactNode;
+  /** Cambia con cada intento que abre (o repite) el aviso: lleva de nuevo el foco y la vista al aviso aunque siga abierto. */
+  noticeSignal?: unknown;
   /** Dentro de la columna de Inicio, bajo su cabecera, en vez de ocupar toda la columna. */
   embedded?: boolean;
   children: ReactNode;
@@ -36,13 +41,15 @@ function focusHeading(body: HTMLElement): boolean {
   return true;
 }
 
-export function GamePanel({ label, section = label, onClose, autoFocus = false, notice, embedded = false, children }: GamePanelProps) {
+export function GamePanel({ label, section = label, onClose, autoFocus = false, notice, noticeSignal, embedded = false, children }: GamePanelProps) {
   const body = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLElement>(null);
   const noticeBox = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const hasNotice = Boolean(notice);
   const hadNotice = useRef(false);
+  /** El último elemento del panel (fuera del aviso) que tuvo el foco: a él se vuelve cuando el aviso se va. */
+  const lastFocused = useRef<HTMLElement | null>(null);
 
   // En un teléfono (menos de 900 px) el panel va debajo del mapa, fuera de la ventana: al abrirse, la página baja hasta él.
   // Se espera un cuadro para que el desplazamiento al inicio que hace la ruta al navegar no lo deshaga.
@@ -100,10 +107,19 @@ export function GamePanel({ label, section = label, onClose, autoFocus = false, 
       if (typeof box.scrollIntoView === 'function') box.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
     } else if (!hasNotice && hadNotice.current) {
       const active = document.activeElement;
-      if (active === null || active === document.body) closeButton.current?.focus({ preventScroll: true });
+      if (active === null || active === document.body) {
+        const back = lastFocused.current;
+        if (back !== null && back.isConnected && panel.current?.contains(back)) back.focus({ preventScroll: true });
+        if (document.activeElement !== back) closeButton.current?.focus({ preventScroll: true });
+      }
     }
     hadNotice.current = hasNotice;
-  }, [hasNotice]);
+  }, [hasNotice, noticeSignal]);
+
+  const onFocus = (event: FocusEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement;
+    if (!noticeBox.current?.contains(target)) lastFocused.current = target;
+  };
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
@@ -122,7 +138,7 @@ export function GamePanel({ label, section = label, onClose, autoFocus = false, 
   }, [autoFocus]);
 
   return (
-    <aside ref={panel} className={embedded ? 'game-panel game-panel--embedded' : 'game-panel'} aria-label={label} onKeyDown={onKeyDown}>
+    <aside ref={panel} className={embedded ? 'game-panel game-panel--embedded' : 'game-panel'} aria-label={label} onKeyDown={onKeyDown} onFocus={onFocus}>
       <div className="game-panel__bar c-seccion">
         <span className="c-rot">{section}</span>
         <button ref={closeButton} type="button" className="game-panel__close c-rot" onClick={onClose}>

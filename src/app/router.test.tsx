@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SessionProvider } from './session';
 import { GameMenu } from '../components/GameMenu';
-import { Link, isMapPage, matchPattern, matchRoute, navigate, normalizePath, readLocation, setNavigationGuard, useRoute } from './router';
+import { Link, isMapPage, matchPattern, matchRoute, navigate, normalizePath, readLocation, setNavigationGuard, useRoute, type NavigateOptions } from './router';
 
 afterEach(() => {
   window.history.replaceState(null, '', '/');
@@ -202,6 +202,30 @@ describe('router: guardián de navegación', () => {
     navigate('/documentacion', { unguarded: true });
     expect(window.location.pathname).toBe('/documentacion');
     expect(guard).toHaveBeenCalledTimes(1);
+    release();
+  });
+
+  it('RF-14 (021) · 14.9: onNavigated corre al navegar, con la dirección ya cambiada y antes de avisar a quien escucha la ruta', () => {
+    const { result } = renderHook(() => useRoute());
+    const seen: string[][] = [];
+    const onNavigated = vi.fn(() => seen.push([window.location.pathname, result.current.path]));
+    act(() => navigate('/foro', { onNavigated }));
+    expect(onNavigated).toHaveBeenCalledTimes(1);
+    expect(seen).toEqual([['/foro', '/']]);
+    expect(result.current.path).toBe('/foro');
+  });
+
+  it('RF-14 (021) · 14.9: si el guardián frena, onNavigated no corre; al repetir el navigate con unguarded, sí', () => {
+    const onNavigated = vi.fn();
+    const guard = vi.fn(() => false);
+    const release = setNavigationGuard(guard);
+    navigate('/foro', { onNavigated });
+    expect(onNavigated).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe('/');
+    const [, options] = guard.mock.calls[0] as unknown as [string, NavigateOptions];
+    navigate('/foro', { ...options, unguarded: true });
+    expect(onNavigated).toHaveBeenCalledTimes(1);
+    expect(window.location.pathname).toBe('/foro');
     release();
   });
 

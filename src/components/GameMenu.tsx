@@ -3,7 +3,7 @@
 // Foro), «Facilitación» para quien facilita, lo que toca a la cuenta (nombre de usuario, rol, «Archivados» y «Cerrar
 // sesión», o «Entrar» y «Unirme») y el apoyo. Elegir un destino lo cierra; Esc y «Cerrar» también, y el foco vuelve al
 // botón. «Ápices» es la entrada vigente en el mapa y en sus paneles. «Ver la bienvenida» vuelve a mostrar la
-// invitación (RF-21 (021) · 21.4). Desde 1100 px la cabecera ya muestra las cinco entradas y el menú solo lleva lo demás.
+// invitación (RF-21 (021) · 21.4): la marca se borra solo si la navegación ocurre (con cambios sin guardar, tras descartar). Desde 1100 px la cabecera ya muestra las cinco entradas y el menú solo lleva lo demás.
 import { useId, useState } from 'react';
 import { MAIN_MENU } from '../../shared/domain/navigation';
 import { isCurrentEntry } from '../app/currentSection';
@@ -23,11 +23,12 @@ export function GameMenu() {
   const titleId = useId();
   const close = () => setOpen(false);
 
-  // Primero al mapa, para que ninguna guarda de sesión devuelva a `/entrar` al cerrar (D-T13 (003)).
+  // Primero al mapa, para que ninguna guarda de sesión devuelva a `/entrar` al cerrar (D-T13 (003)). La sesión se cierra
+  // solo cuando la navegación ocurre: con un borrador sin guardar, el guardián pregunta y, si la persona sigue editando, no
+  // se cierra nada; si descarta, `navigate` corre `onNavigated` tras cambiar la dirección.
   const leave = () => {
     close();
-    navigate('/');
-    void signOut();
+    navigate('/', { onNavigated: () => void signOut() });
   };
 
   return (
@@ -62,10 +63,8 @@ export function GameMenu() {
         <Link
           href="/?bienvenida=1"
           className="menu-link game-menu__link game-menu__welcome"
-          onClick={() => {
-            forgetWelcome();
-            close();
-          }}
+          onClick={close}
+          onNavigated={forgetWelcome}
         >
           Ver la bienvenida
         </Link>

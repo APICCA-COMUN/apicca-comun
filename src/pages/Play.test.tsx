@@ -13,7 +13,7 @@ import { useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDrafts, DraftsContext, type Drafts } from '../app/drafts';
 import { navigate } from '../app/router';
-import { SessionProvider, type SessionState } from '../app/session';
+import { SessionProvider, type SessionSource, type SessionState } from '../app/session';
 import type { ApiceDoc, ApiceSource, ListSource } from '../data/apices';
 import type { CommonActionDetail, CommonActionSource, CommonActionSummary } from '../data/commonActions';
 import { ApiClientError } from '../data/api';
@@ -145,16 +145,18 @@ interface Options {
   drafts?: Drafts;
   actionSource?: CommonActionSource;
   handlers?: Record<string, (payload: unknown) => unknown>;
+  /** Una fuente de sesión (con su `signOut`) en lugar de la sesión de partida. */
+  sessionSource?: SessionSource;
 }
 
 function setup(
   session: SessionState,
-  { source = fakeListSource(3).source, noticeSource = quietNotices, drafts = createDrafts(), actionSource = fakeActions().source, handlers = {} }: Options = {},
+  { source = fakeListSource(3).source, noticeSource = quietNotices, drafts = createDrafts(), actionSource = fakeActions().source, handlers = {}, sessionSource }: Options = {},
 ) {
   const { client, calls } = fakeClient({ createApice: () => ({ id: 'a9' }), ...handlers });
   const result = render(
     <DraftsContext.Provider value={drafts}>
-      <SessionProvider initial={session}>
+      <SessionProvider initial={session} {...(sessionSource === undefined ? {} : { source: sessionSource })}>
         <Play source={source} apiceSource={apiceSource} actionSource={actionSource} client={client} noticeSource={noticeSource} noticesSource={quietBell} />
       </SessionProvider>
     </DraftsContext.Provider>,
@@ -650,6 +652,127 @@ describe('Play · paneles sobre el mapa', () => {
     expect(within(aside).getByRole('alert')).toBeTruthy();
     fireEvent.click(within(aside).getByRole('button', { name: 'Descartar cambios' }));
     expect(window.location.pathname).toBe('/foro');
+  });
+
+  it('RF-14 (021) · 14.9: con cambios sin guardar, «Menú → Cerrar sesión» no cierra la sesión hasta que se descarta; «Seguir editando» la deja y conserva el borrador', async () => {
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    const source: SessionSource = {
+      onAuth: (cb) => {
+        cb('u-ana');
+        return () => undefined;
+      },
+      onAccount: (uid, cb) => {
+        cb({ email: 'ana@ejemplo.org', name: uid, username: 'ana', role: 'member', status: 'active' });
+        return () => undefined;
+      },
+      signOut,
+    };
+    window.history.replaceState(null, '', '/apices/nuevo');
+    const { drafts } = setup(PERSON, { sessionSource: source });
+    await map();
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    fireEvent.change(within(aside).getByLabelText('Nombre'), { target: { value: 'Biblioteca' } });
+    const logout = async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Menú' }));
+      await userEvent.click(within(screen.getByRole('dialog', { name: 'Menú' })).getByRole('button', { name: 'Cerrar sesión' }));
+    };
+    await logout();
+    expect(within(aside).getByRole('alert').textContent).toMatch('Tienes cambios sin guardar. ¿Quieres descartarlos?');
+    expect(signOut).not.toHaveBeenCalled();
+    fireEvent.click(within(aside).getByRole('button', { name: 'Seguir editando' }));
+    expect(signOut).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe('/apices/nuevo');
+    expect(drafts.get('apice:new')).toBeDefined();
+    await logout();
+    fireEvent.click(within(aside).getByRole('button', { name: 'Descartar cambios' }));
+    expect(window.location.pathname).toBe('/');
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(drafts.get('apice:new')).toBeUndefined();
+  });
+
+  it('RF-14 (021) · 14.9: sin cambios, «Menú → Cerrar sesión» navega al mapa y cierra la sesión sin preguntar', async () => {
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    const source: SessionSource = {
+      onAuth: (cb) => {
+        cb('u-ana');
+        return () => undefined;
+      },
+      onAccount: (uid, cb) => {
+        cb({ email: 'ana@ejemplo.org', name: uid, username: 'ana', role: 'member', status: 'active' });
+        return () => undefined;
+      },
+      signOut,
+    };
+    window.history.replaceState(null, '', '/apices/nuevo');
+    setup(PERSON, { sessionSource: source });
+    await map();
+    await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    fireEvent.click(screen.getByRole('button', { name: 'Menú' }));
+    await userEvent.click(within(screen.getByRole('dialog', { name: 'Menú' })).getByRole('button', { name: 'Cerrar sesión' }));
+    expect(window.location.pathname).toBe('/');
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Tienes cambios sin guardar. ¿Quieres descartarlos?')).toBeNull();
+  });
+
+  it('RF-21 (021) · 21.4, RF-14 (021) · 14.9: con cambios sin guardar, «Ver la bienvenida» conserva la marca hasta que se descarta; sin cambios, la borra y navega', async () => {
+    window.localStorage.setItem('apicca:bienvenida', '1');
+    window.history.replaceState(null, '', '/apices/nuevo');
+    const { drafts } = setup(PERSON);
+    await map();
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    fireEvent.change(within(aside).getByLabelText('Nombre'), { target: { value: 'Biblioteca' } });
+    const welcome = () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Menú' }));
+      fireEvent.click(within(screen.getByRole('dialog', { name: 'Menú' })).getByRole('link', { name: 'Ver la bienvenida' }));
+    };
+    welcome();
+    expect(within(aside).getByRole('alert')).toBeTruthy();
+    expect(window.localStorage.getItem('apicca:bienvenida')).toBe('1');
+    fireEvent.click(within(aside).getByRole('button', { name: 'Seguir editando' }));
+    expect(window.localStorage.getItem('apicca:bienvenida')).toBe('1');
+    expect(window.location.pathname).toBe('/apices/nuevo');
+    welcome();
+    fireEvent.click(within(aside).getByRole('button', { name: 'Descartar cambios' }));
+    expect(window.localStorage.getItem('apicca:bienvenida')).toBeNull();
+    expect(window.location.pathname).toBe('/');
+    expect(drafts.get('apice:new')).toBeUndefined();
+    expect(await screen.findByRole('region', { name: 'Bienvenida' })).toBeTruthy();
+    window.localStorage.clear();
+  });
+
+  it('RF-14 (021) · 14.9: un segundo intento frenado vuelve a llevar el foco al aviso, y el destino pendiente es el último pedido', async () => {
+    window.history.replaceState(null, '', '/apices/nuevo');
+    setup(PERSON);
+    await map();
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    fireEvent.change(within(aside).getByLabelText('Nombre'), { target: { value: 'Biblioteca' } });
+    const header = screen.getByRole('banner');
+    const attempt = (name: string) => {
+      const link = within(header).getByRole('link', { name });
+      link.focus();
+      fireEvent.click(link);
+    };
+    attempt('Foro');
+    const notice = aside.querySelector('.game-panel__notice')!;
+    expect(document.activeElement).toBe(notice);
+    attempt('Documentación');
+    expect(document.activeElement).toBe(notice);
+    fireEvent.click(within(aside).getByRole('button', { name: 'Descartar cambios' }));
+    expect(window.location.pathname).toBe('/documentacion');
+  });
+
+  it('RF-14 (021) · 14.9: tras «Seguir editando», el foco vuelve al campo que se editaba', async () => {
+    window.history.replaceState(null, '', '/apices/nuevo');
+    setup(PERSON);
+    await map();
+    const aside = await screen.findByRole('complementary', { name: 'Prototipar un Ápice' });
+    const field = within(aside).getByLabelText('Nombre');
+    field.focus();
+    fireEvent.change(field, { target: { value: 'Biblioteca' } });
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('link', { name: 'Foro' }));
+    expect(document.activeElement).toBe(aside.querySelector('.game-panel__notice'));
+    fireEvent.click(within(aside).getByRole('button', { name: 'Seguir editando' }));
+    expect(document.activeElement).toBe(field);
   });
 
   it('RF-14 (021) · 14.9: sin cambios, un navigate hacia fuera no pregunta', async () => {

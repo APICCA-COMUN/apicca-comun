@@ -1,6 +1,8 @@
 // RF-3 (020) · 3.1, D-T4 (020): el único `main` del sitio lo pinta `src/App.tsx`. Ninguna página ni componente
 // escribe otro, así que la regla cubre también las páginas futuras. Los comentarios se quitan antes de buscar,
 // porque algunas cabeceras nombran `<main>` en el texto.
+// Excepción única: `components/RootBoundary.tsx`, el aviso de emergencia del error raíz. Solo se pinta cuando `App` ya no
+// está montada (el límite reemplaza todo su contenido), así que en la página sigue habiendo un solo `main`.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -21,13 +23,24 @@ function withoutComments(code: string): string {
   return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
 }
 
+/** Excepción explícita: el aviso de emergencia del error raíz, que no convive con `App`. */
+const EMERGENCY = 'components/RootBoundary.tsx';
+
 describe('un solo main', () => {
   it('RF-3 (020) · 3.1: fuera de App.tsx, ningún .tsx de src/ escribe <main', () => {
     const files = sources(SRC);
     expect(files.length).toBeGreaterThan(0);
     const app = resolve(SRC, 'App.tsx');
     expect(withoutComments(readFileSync(app, 'utf8')).match(/<main\b/g)).toHaveLength(1);
-    const offenders = files.filter((file) => file !== app && /<main\b/.test(withoutComments(readFileSync(file, 'utf8'))));
+    const offenders = files.filter(
+      (file) => file !== app && relative(SRC, file) !== EMERGENCY && /<main\b/.test(withoutComments(readFileSync(file, 'utf8'))),
+    );
     expect(offenders.map((file) => relative(SRC, file))).toEqual([]);
+  });
+
+  it('RF-3 (020) · 3.1: el aviso de emergencia del error raíz escribe un único <main y lo hace el límite, no una página', () => {
+    const emergency = resolve(SRC, EMERGENCY);
+    expect(withoutComments(readFileSync(emergency, 'utf8')).match(/<main\b/g)).toHaveLength(1);
+    expect(withoutComments(readFileSync(resolve(SRC, 'main.tsx'), 'utf8'))).toMatch(/<RootBoundary>[\s\S]*<App \/>[\s\S]*<\/RootBoundary>/);
   });
 });

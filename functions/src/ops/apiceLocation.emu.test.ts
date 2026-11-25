@@ -275,6 +275,11 @@ describe('editApice con ubicación', () => {
     expect(await edit(ana, 2, { mode: 'precision', precision: 'approximate' })).toEqual({ ok: true, version: 3 });
     expect((await version(2))['location']).toBeNull();
     expect((await version(2))['locationPurged']).toBe(true);
+    // Su punto exacto se borra con la purga (una purga futura ya no la encontraría); el vigente sigue en la versión nueva.
+    expect(await exactOf(2)).toBeUndefined();
+    expect(await exactOf(3)).toEqual(EXACT);
+    expect(await edit(ana, 3, { mode: 'precision', precision: 'exact' })).toEqual({ ok: true, version: 4 });
+    expect((await apice())['location']).toMatchObject({ ...EXACT, precision: 'exact' });
   });
 
   it('RF-2 (016) · 2.2: conservar una ubicación aproximada no toca el historial', async () => {

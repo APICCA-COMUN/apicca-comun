@@ -3,7 +3,7 @@
 // RF-6 (002) · 6.1, 6.3: campos, avisos y envío como bloques; «Crear mi acceso» es la acción principal.
 // Ante cualquier error del servidor conserva lo escrito mientras la página siga abierta.
 // RF-6 (017): inicia sesión con el servicio de autenticación de `src/data/`, como Entrar.
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { messageFor } from '../../shared/domain/messages';
 import { isSignedIn, useSession } from '../app/session';
 import { Link, navigate } from '../app/router';
@@ -50,9 +50,16 @@ export function RegisterPage({ token, ops = realRegisterOps }: { token: string; 
   const [busy, setBusy] = useState(false);
   /** La cuenta ya existe, pero el inicio de sesión falló: no se vuelve a registrar, solo se entra. */
   const [created, setCreated] = useState(false);
+  /** Envío en curso: frena un segundo envío síncrono antes de que `busy` llegue a pintarse. */
+  const sendingRef = useRef(false);
+  /** El aviso de cuenta creada: al desmontarse el formulario, el foco se lleva aquí en vez de perderse en `<body>`. */
+  const createdNotice = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     let current = true;
+    // Otra invitación: se descarta lo que dependía de la anterior (el aviso de cuenta creada y el correo ya comprobado).
+    setCreated(false);
+    setInspection({ kind: 'loading' });
     ops
       .inspect(token)
       .then((view) => {
@@ -70,9 +77,15 @@ export function RegisterPage({ token, ops = realRegisterOps }: { token: string; 
     };
   }, [token, ops]);
 
+  // Al reemplazar el formulario por el aviso, el foco (que estaba en «Crear mi acceso») cae en `<body>`: se lleva al aviso.
+  useEffect(() => {
+    if (created) createdNotice.current?.focus({ preventScroll: true });
+  }, [created]);
+
   async function submit(event: FormEvent): Promise<void> {
     event.preventDefault();
-    if (inspection.kind !== 'ready' || created) return;
+    if (inspection.kind !== 'ready' || created || sendingRef.current) return;
+    sendingRef.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -91,6 +104,7 @@ export function RegisterPage({ token, ops = realRegisterOps }: { token: string; 
       }
       navigate('/');
     } finally {
+      sendingRef.current = false;
       setBusy(false);
     }
   }
@@ -114,7 +128,7 @@ export function RegisterPage({ token, ops = realRegisterOps }: { token: string; 
         </p>
       )}
       {inspection.kind === 'ready' && created && (
-        <p role="status" className="block">
+        <p role="status" className="block" tabIndex={-1} ref={createdNotice}>
           {/* Propuesta del asistente: texto del aviso cuando la cuenta quedó creada pero el inicio de sesión falló. */}
           Tu cuenta quedó creada, pero no pudimos iniciar tu sesión. Entra con tu correo y tu contraseña.{' '}
           <Link href="/entrar" className="enlace-texto">Entrar</Link>

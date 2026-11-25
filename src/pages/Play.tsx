@@ -840,7 +840,7 @@ function Board({
       <div className="play__home play__home--ficha">
         <MapTitle />
         <div className="play__top">
-          <GamePanel key={panelKey} label={PANEL_LABEL.view} autoFocus={focusPanel} embedded onClose={closePanel} notice={discardNotice}>
+          <GamePanel key={panelKey} label={PANEL_LABEL.view} autoFocus={focusPanel} embedded onClose={closePanel} notice={discardNotice} noticeSignal={pending}>
             <ApiceView
               id={panel.id}
               {...(apiceSource === undefined ? {} : { source: apiceSource })}
@@ -919,7 +919,7 @@ function Board({
           ) : withFicha !== null ? (
             withFicha
           ) : (
-            <GamePanel key={panelKey} label={PANEL_LABEL[panel.kind]} section={PANEL_SECTION[panel.kind]} autoFocus={focusPanel} onClose={closePanel} notice={discardNotice}>
+            <GamePanel key={panelKey} label={PANEL_LABEL[panel.kind]} section={PANEL_SECTION[panel.kind]} autoFocus={focusPanel} onClose={closePanel} notice={discardNotice} noticeSignal={pending}>
               {panel.kind === 'edit' && (
                 <ApiceEdit id={panel.id} {...(apiceSource === undefined ? {} : { source: apiceSource })} {...(client === undefined ? {} : { client })} />
               )}

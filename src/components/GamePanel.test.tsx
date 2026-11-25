@@ -89,4 +89,59 @@ describe('GamePanel', () => {
     const alert = within(panel).getByRole('alert');
     expect(alert.compareDocumentPosition(within(panel).getByRole('heading')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it('RF-14 (021) · 14.9: con el aviso abierto, un segundo intento (otro `noticeSignal`) vuelve a llevar el foco y la vista al aviso', () => {
+    const scroll = vi.mocked(Element.prototype.scrollIntoView);
+    scroll.mockClear();
+    const outside = document.createElement('a');
+    outside.href = '#otro';
+    document.body.append(outside);
+    const tree = (signal: object) => (
+      <GamePanel label="Ápice" onClose={vi.fn()} notice={<p role="alert">Tienes cambios sin guardar.</p>} noticeSignal={signal}>
+        <h1>Huerta</h1>
+      </GamePanel>
+    );
+    const { rerender, container } = render(tree({}));
+    const box = container.querySelector<HTMLElement>('.game-panel__notice')!;
+    expect(document.activeElement).toBe(box);
+    expect(scroll).toHaveBeenCalledTimes(1);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+    rerender(tree({}));
+    expect(document.activeElement).toBe(box);
+    expect(scroll).toHaveBeenCalledTimes(2);
+    // Una pintura sin intento nuevo no lo mueve.
+    outside.focus();
+    const signal = {};
+    rerender(tree(signal));
+    expect(document.activeElement).toBe(box);
+    outside.focus();
+    rerender(tree(signal));
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
+  });
+
+  it('RF-14 (021) · 14.9: al irse el aviso, el foco vuelve al campo que lo tenía; si ya no está, a «Cerrar»', () => {
+    const tree = (notice: boolean) => (
+      <GamePanel label="Ápice" onClose={vi.fn()} notice={notice ? <button type="button">Seguir editando</button> : null}>
+        <label>
+          Nombre <input defaultValue="x" />
+        </label>
+      </GamePanel>
+    );
+    const { rerender } = render(tree(false));
+    const field = screen.getByLabelText('Nombre');
+    field.focus();
+    rerender(tree(true));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Seguir editando' }).parentElement);
+    screen.getByRole('button', { name: 'Seguir editando' }).focus();
+    rerender(tree(false));
+    expect(document.activeElement).toBe(field);
+    // Sin un campo al que volver, «Cerrar» recibe el foco.
+    rerender(tree(true));
+    field.remove();
+    screen.getByRole('button', { name: 'Seguir editando' }).focus();
+    rerender(tree(false));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cerrar' }));
+  });
 });

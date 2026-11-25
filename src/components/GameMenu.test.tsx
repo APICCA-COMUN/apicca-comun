@@ -3,6 +3,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { navigate, setNavigationGuard, useRoute, type NavigateOptions } from '../app/router';
 import { SessionProvider, type SessionSource, type SessionState } from '../app/session';
 import { expectBlocks } from '../testing/expectBlocks';
 import { GameMenu } from './GameMenu';
@@ -21,11 +22,43 @@ function setup(session: SessionState, path = '/') {
   );
 }
 
+/** Una fuente de sesión con una persona inscrita; `signOut` es el espía que dice si la sesión se cerró. */
+function personSource(signOut: () => Promise<void>): SessionSource {
+  return {
+    onAuth: (cb) => {
+      cb('u1');
+      return () => undefined;
+    },
+    onAccount: (uid, cb) => {
+      cb({ email: `${uid}@ejemplo.org`, name: uid, username: uid, role: 'member', status: 'active' });
+      return () => undefined;
+    },
+    signOut,
+  };
+}
+
+/** Un guardián que frena todo y guarda el último intento; `confirm` repite ese `navigate` como lo hace «Descartar cambios». */
+function blockingGuard() {
+  let last: { to: string; options: NavigateOptions } | null = null;
+  const release = setNavigationGuard((to, options) => {
+    last = { to, options };
+    return false;
+  });
+  const confirm = () => {
+    if (last === null) throw new Error('el guardián no frenó nada');
+    navigate(last.to, { ...last.options, unguarded: true });
+  };
+  return { release, confirm, attempts: () => last };
+}
+
 const open = () => fireEvent.click(screen.getByRole('button', { name: 'Menú' }));
 const menu = () => screen.getByRole('dialog', { name: 'Menú' });
 const destinations = () => within(within(menu()).getByRole('navigation', { name: 'Secciones' })).getAllByRole('link');
 
-afterEach(() => window.history.replaceState(null, '', '/'));
+afterEach(() => {
+  window.history.replaceState(null, '', '/');
+  window.localStorage.clear();
+});
 
 describe('GameMenu', () => {
   it('RF-21 (021) · 21.4: el menú ofrece volver a ver la invitación y borra la marca de vista', () => {
@@ -124,6 +157,70 @@ describe('GameMenu', () => {
     await userEvent.click(within(menu()).getByRole('button', { name: 'Cerrar sesión' }));
     expect(signOut).toHaveBeenCalledTimes(1);
     expect(window.location.pathname).toBe('/');
+  });
+
+  it('RF-13 (021) · 13.3, D-T13 (003): con un borrador que frena la navegación, «Cerrar sesión» no cierra la sesión; al confirmar, navega al mapa y luego la cierra', async () => {
+    const order: string[] = [];
+    const signOut = vi.fn(async () => {
+      order.push(`signOut@${window.location.pathname}`);
+    });
+    window.history.replaceState(null, '', '/foro');
+    render(
+      <SessionProvider source={personSource(signOut)}>
+        <GameMenu />
+      </SessionProvider>,
+    );
+    const guard = blockingGuard();
+    open();
+    await userEvent.click(within(menu()).getByRole('button', { name: 'Cerrar sesión' }));
+    expect(guard.attempts()?.to).toBe('/');
+    expect(signOut).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe('/foro');
+    // «Seguir editando»: no pasa nada más, y un segundo intento sigue sin cerrar la sesión.
+    open();
+    await userEvent.click(within(menu()).getByRole('button', { name: 'Cerrar sesión' }));
+    expect(signOut).not.toHaveBeenCalled();
+    guard.confirm();
+    expect(order).toEqual(['signOut@/']);
+    expect(window.location.pathname).toBe('/');
+    guard.release();
+  });
+
+  it('RF-13 (021) · 13.3: «Ver la bienvenida» con un borrador que frena la navegación conserva la marca; al confirmar, la borra y llega a /?bienvenida=1', () => {
+    window.localStorage.setItem('apicca:bienvenida', '1');
+    setup(VISITOR, '/foro');
+    const guard = blockingGuard();
+    open();
+    fireEvent.click(screen.getByRole('link', { name: 'Ver la bienvenida' }));
+    expect(window.localStorage.getItem('apicca:bienvenida')).toBe('1');
+    expect(window.location.pathname).toBe('/foro');
+    guard.confirm();
+    expect(window.localStorage.getItem('apicca:bienvenida')).toBeNull();
+    expect(window.location.pathname + window.location.search).toBe('/?bienvenida=1');
+    guard.release();
+  });
+
+  it('RF-21 (021) · 21.4: sin guardián, «Ver la bienvenida» borra la marca antes de que la ruta nueva se pinte', () => {
+    window.localStorage.setItem('apicca:bienvenida', '1');
+    const seen: Array<string | null> = [];
+    const Probe = () => {
+      useRoute();
+      seen.push(window.localStorage.getItem('apicca:bienvenida'));
+      return null;
+    };
+    window.history.replaceState(null, '', '/foro');
+    render(
+      <SessionProvider initial={VISITOR}>
+        <GameMenu />
+        <Probe />
+      </SessionProvider>,
+    );
+    open();
+    seen.length = 0;
+    fireEvent.click(screen.getByRole('link', { name: 'Ver la bienvenida' }));
+    expect(window.location.search).toBe('?bienvenida=1');
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((mark) => mark === null)).toBe(true);
   });
 
   it('RF-13 (021) · 13.5, RF-1 (015), RF-2 (015): el menú muestra el apoyo, con el logo de MangleRojo enlazado a su sitio', () => {

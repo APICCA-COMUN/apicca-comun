@@ -1,7 +1,7 @@
 // T-1.36: formulario de registro por invitación (RF-2 (001)). RF-6 (017): inicia sesión por el servicio de `src/data/`.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiClientError } from '../data/api';
@@ -97,6 +97,47 @@ describe('RegisterPage', () => {
     expect(screen.queryByRole('button', { name: 'Crear mi acceso' })).toBeNull();
     expect(screen.queryByLabelText('Contraseña')).toBeNull();
     expect(o.register).toHaveBeenCalledTimes(1);
+  });
+
+  it('RF-2 (001): al aparecer el aviso de cuenta creada, el foco pasa al aviso y no se pierde en el cuerpo', async () => {
+    const o = ops({ signIn: vi.fn().mockRejectedValue(new Error('red')) });
+    const user = userEvent.setup();
+    render(<RegisterPage token="tok" ops={o} />);
+    await screen.findByLabelText('Correo');
+    await fill(user);
+    await user.click(screen.getByRole('button', { name: 'Crear mi acceso' }));
+    const notice = await screen.findByRole('status');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('RF-2 (001): si cambia la invitación, el aviso de cuenta creada se descarta y se vuelve a comprobar', async () => {
+    const o = ops({ signIn: vi.fn().mockRejectedValue(new Error('red')) });
+    const user = userEvent.setup();
+    const { rerender } = render(<RegisterPage token="tok" ops={o} />);
+    await screen.findByLabelText('Correo');
+    await fill(user);
+    await user.click(screen.getByRole('button', { name: 'Crear mi acceso' }));
+    await screen.findByText(/cuenta quedó creada/i);
+    rerender(<RegisterPage token="otra" ops={o} />);
+    expect(await screen.findByLabelText('Contraseña')).toBeTruthy();
+    expect(screen.queryByText(/cuenta quedó creada/i)).toBeNull();
+    expect(o.inspect).toHaveBeenLastCalledWith('otra');
+  });
+
+  it('RF-2 (001): dos envíos seguidos antes de que la página se repinte registran una sola vez', async () => {
+    let finish: (value: { uid: string }) => void = () => undefined;
+    const o = ops({ register: vi.fn().mockReturnValue(new Promise<{ uid: string }>((done) => (finish = done))) });
+    const user = userEvent.setup();
+    render(<RegisterPage token="tok" ops={o} />);
+    await screen.findByLabelText('Correo');
+    await fill(user);
+    const form = screen.getByRole('button', { name: 'Crear mi acceso' }).closest('form')!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(o.register).toHaveBeenCalledTimes(1);
+    finish({ uid: 'u1' });
+    await waitFor(() => expect(o.signIn).toHaveBeenCalledTimes(1));
   });
 
   it('RF-2 (001): un enlace vencido durante el registro se explica, pide invitación nueva y conserva lo escrito', async () => {

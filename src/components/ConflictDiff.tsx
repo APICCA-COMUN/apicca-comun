@@ -69,12 +69,15 @@ export function ConflictDiff({ mine, current, onKeepMine, onDiscard, busy = fals
           </fieldset>
         ))
       )}
-      <button type="button" className="block action-primary" onClick={onKeepMine} disabled={busy}>
-        Conservar los míos
-      </button>
-      <button type="button" className="block action-secondary" onClick={onDiscard} disabled={busy}>
-        Descartar
-      </button>
+      {/* Los dos botones van en `.button-group` (12 px): sueltos quedaban pegados en la columna del mapa. */}
+      <div className="button-group">
+        <button type="button" className="block action-primary" onClick={onKeepMine} disabled={busy}>
+          Conservar los míos
+        </button>
+        <button type="button" className="block action-secondary" onClick={onDiscard} disabled={busy}>
+          Descartar
+        </button>
+      </div>
     </section>
   );
 }

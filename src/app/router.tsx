@@ -4,7 +4,8 @@
 // RF-11 (021), RF-14 (021) · 14.5, 14.8, D-T21 (021): `isMapPage` dice qué rutas pinta el mapa, y `keepFocus` deja el foco
 // a los paneles.
 // RF-14 (021) · 14.9: un segmento o un hash mal codificado (`%` suelto) ya no lanza
-// `URIError`; y un «guardián de navegación» permite a una página con cambios sin guardar frenar `navigate` hacia fuera.
+// `URIError`; y un «guardián de navegación» permite a una página con cambios sin guardar frenar `navigate` hacia fuera; `onNavigated` difiere una acción hasta que
+// la navegación ocurre.
 import { useEffect, useRef, useSyncExternalStore, type AnchorHTMLAttributes, type MouseEvent } from 'react';
 
 /** Identificador de cada página, más la página no encontrada. */
@@ -176,6 +177,13 @@ export interface NavigateOptions {
   keepFocus?: boolean;
   /** Salta el guardián de navegación: quien ya preguntó a la persona (y ella confirmó) navega sin volver a preguntar. */
   unguarded?: boolean;
+  /**
+   * Una acción diferida: corre solo si la navegación de verdad ocurre. Si el guardián frena, no corre, y como el guardián reenvía
+   * estas mismas opciones al confirmar, corre entonces. Va tras cambiar la dirección y antes de avisar a `useRoute`: la acción
+   * ve ya la ruta nueva en `window.location` y nada se ha pintado todavía con ella (cerrar sesión tras ir al mapa, D-T13 (003);
+   * olvidar la marca de bienvenida antes de que el mapa la lea).
+   */
+  onNavigated?: () => void;
 }
 
 /**
@@ -206,10 +214,11 @@ export function pathOf(to: string): string {
 
 /** Cambia de ruta con `pushState` (o `replaceState`) y avisa a `useRoute`; `to` puede llevar `?query` y `#hash`. */
 export function navigate(to: string, options: NavigateOptions = {}): void {
-  const { replace = false, keepFocus = false, unguarded = false } = options;
+  const { replace = false, keepFocus = false, unguarded = false, onNavigated } = options;
   if (!unguarded && guard !== null && !guard(to, options)) return;
   if (replace) window.history.replaceState(null, '', to);
   else window.history.pushState(null, '', to);
+  onNavigated?.();
   notify(keepFocus);
 }
 
@@ -252,20 +261,24 @@ export function useSearch(): string {
   return useSyncExternalStore(subscribe, readSearch, readSearch);
 }
 
-type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & { href: string };
+type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
+  href: string;
+  /** Corre solo si el clic navega de verdad (no si un guardián lo frena, hasta que la persona confirma); ver `NavigateOptions`. */
+  onNavigated?: () => void;
+};
 
 function isPlainLeftClick(event: MouseEvent<HTMLAnchorElement>): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
 /** Enlace interno: intercepta el clic simple y llama a `navigate`; deja al navegador los demás. */
-export function Link({ href, onClick, target, ...rest }: LinkProps) {
+export function Link({ href, onClick, onNavigated, target, ...rest }: LinkProps) {
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);
     if (event.defaultPrevented || !isPlainLeftClick(event)) return;
     if (target && target !== '_self') return;
     event.preventDefault();
-    navigate(href);
+    navigate(href, onNavigated === undefined ? {} : { onNavigated });
   };
   return <a href={href} onClick={handleClick} {...(target === undefined ? {} : { target })} {...rest} />;
 }

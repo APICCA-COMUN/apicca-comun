@@ -203,7 +203,7 @@ export function Presentacion() {
             </span>
           </h1>
           <p className="presentacion__entradilla">
-            No es una API en el sentido técnico: es un marco para que varias personas se encuentren y creen juntas.
+            Hacia nuevas economías recíprocas
           </p>
           <div className="presentacion__acciones">
             <Link href="/solicitar" className="c-barra presentacion__barra">
