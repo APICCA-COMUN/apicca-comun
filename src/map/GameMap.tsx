@@ -634,12 +634,19 @@ function cellOfApice(layout: MapLayout, id: string): readonly MapVertex[] | null
   return layout.groups.find((item) => item.ids.includes(id))?.points ?? null;
 }
 
-/** El punto medio del borde de abajo de la celda, 4 px más abajo: de ahí cuelga lo que la página muestra del Ápice elegido. */
-const ANCHOR_DROP = 4;
-function bottomAnchor(points: readonly MapVertex[]): PathPoint {
-  const bottom = Math.max(...points.map(([, y]) => y));
-  const edge = points.filter(([, y]) => y >= bottom - 0.5);
-  return { x: edge.reduce((sum, [x]) => sum + x, 0) / edge.length, y: bottom + ANCHOR_DROP };
+/**
+ * Dónde se apoya la línea de llamada del Ápice elegido: dentro de su hexágono, cerca del borde que mira a la columna (la
+ * izquierda), a `ANCHOR_REACH` del camino entre el centro y ese borde. Así el disco queda sobre la celda sin tapar el número
+ * de un grupo o del «+N», que van al centro.
+ */
+const ANCHOR_REACH = 0.72;
+function cellAnchor(points: readonly MapVertex[]): PathPoint {
+  const cx = points.reduce((sum, [x]) => sum + x, 0) / points.length;
+  const cy = points.reduce((sum, [, y]) => sum + y, 0) / points.length;
+  const left = Math.min(...points.map(([x]) => x));
+  const side = points.filter(([x]) => x <= left + 0.5);
+  const sy = side.reduce((sum, [, y]) => sum + y, 0) / side.length;
+  return { x: cx + (left - cx) * ANCHOR_REACH, y: cy + (sy - cy) * ANCHOR_REACH };
 }
 
 /**
@@ -981,7 +988,7 @@ export function GameMap({
   const anchorWorld = useMemo<PathPoint | null>(() => {
     if (chosen !== null) {
       const points = cellOfApice(layout, chosen);
-      return points === null ? null : bottomAnchor(points);
+      return points === null ? null : cellAnchor(points);
     }
     if (pickedPath === undefined) return null;
     const arc = drawn.find(({ path }) => path.id === pickedPath.id)?.arc;

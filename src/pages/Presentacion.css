@@ -1,0 +1,512 @@
+/* Presentación previa al lanzamiento (25-11-2026, Propuesta del asistente), en «E3 · Celda»: la única forma es la celda y
+   lo demás son las cuatro piezas (celda, rótulo, filete y texto), sin cajas. Solo tokens; radio 0, sin sombras ni
+   degradados. Las líneas son horizontales salvo el Arco. La portada repite el Inicio: columna a la izquierda (desde 900 px)
+   y el campo de muestra a la derecha; en un teléfono, una sola columna. */
+
+/* La página no va en la columna de lectura de `main` (lots.css): cada parte pone su propio aire, como el mapa. El
+   `<main class="presentacion">` lo pinta App.tsx. */
+main.presentacion {
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: none;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+
+/* La cabecera de la presentación: el logo a la izquierda y, a la derecha, el tema y «Entrar». Sin navegación: las
+   páginas del mapa llevan aquí mismo. Se alinea con la columna de la portada. */
+.presentacion__cabecera .site-header__actions {
+  margin-inline-start: auto;
+}
+
+.presentacion__cabecera .site-header__inner {
+  padding-inline: 16px;
+}
+
+.presentacion {
+  display: flex;
+  flex-direction: column;
+  gap: 96px;
+  padding-block-end: 96px;
+}
+
+/* --- Portada --------------------------------------------------------------------------------------------------- */
+
+.presentacion__portada {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 40px;
+  padding: 8px 16px 0;
+}
+
+.presentacion__columna {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  min-inline-size: 0;
+}
+
+/* Los dos filetes de arriba (la columna y el campo) van a la misma altura; si el rótulo no cabe, pasa a otra línea. */
+.presentacion__aviso,
+.presentacion__campo-cabeza {
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-self: stretch;
+  block-size: auto;
+  min-block-size: 30px;
+}
+
+.presentacion__aviso > .c-rot {
+  margin: 0;
+}
+
+.presentacion__titulo {
+  margin: 0;
+  font-size: var(--type-hero-size);
+  line-height: var(--type-hero-line);
+  font-weight: var(--type-hero-weight);
+  letter-spacing: -0.01em;
+  /* Una palabra entera por línea si no cabe: nunca se parte una palabra del nombre. */
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+.presentacion__resto {
+  color: var(--text-muted);
+}
+
+.presentacion__entradilla {
+  margin: 0;
+  max-inline-size: 34em;
+  font-size: var(--type-lead-size);
+  line-height: var(--type-lead-line);
+}
+
+.presentacion__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+}
+
+.presentacion__barra {
+  min-inline-size: 260px;
+}
+
+.presentacion__nota {
+  max-inline-size: 30em;
+}
+
+.presentacion__enlace-texto {
+  color: inherit;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+/* El campo: cabeza con filete, el dibujo y, debajo, la leyenda con lo que dice el dibujo. */
+.presentacion__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+.presentacion__mapa {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  max-block-size: 62vh;
+  overflow: hidden;
+}
+
+.presentacion__campo-pie {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* La leyenda empieza en el borde del filete: los botones de 64 px centran su celda de 40. */
+.presentacion__leyenda {
+  margin-inline-start: -12px;
+}
+
+/* En un teléfono los cinco ejes caben en una fila con botones de 56 px (área de toque de 56 × 48). */
+@media (max-width: 419px) {
+  .presentacion__leyenda.leyenda-control__fila--ejes .leyenda-control__boton {
+    min-inline-size: 56px;
+  }
+
+  /* «comunicación» es más ancha que su botón: 4 px entre botones para que no se pegue a «energía». */
+  .presentacion__leyenda {
+    margin-inline-start: -8px;
+    column-gap: 4px;
+  }
+}
+
+.presentacion__estado {
+  min-block-size: 42px;
+}
+
+@media (min-width: 900px) {
+  .presentacion__portada {
+    box-sizing: border-box;
+    grid-template-columns: minmax(0, 456px) minmax(0, 1fr);
+    column-gap: 64px;
+    align-items: start;
+    min-block-size: calc(100dvh - 64px);
+    padding: 24px 48px 0;
+  }
+
+  .presentacion__cabecera .site-header__inner {
+    padding-inline: 48px;
+  }
+}
+
+/* El dibujo del campo. La trama y el borde de zona no engordan al escalar el dibujo. */
+.presentacion__trama {
+  fill: none;
+  stroke: var(--trama);
+  stroke-width: var(--stroke-divider);
+  stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
+}
+
+.presentacion__zona {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: var(--stroke-outline);
+  stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Apagado: la misma celda, sin su color, como en el mapa (`.game-map__apice[data-off='true']`). */
+.presentacion__apice[data-off='true'] {
+  --axis-agua-fill: var(--background);
+  --axis-alimento-fill: var(--background);
+  --axis-cobijo-fill: var(--background);
+  --axis-energia-fill: var(--background);
+  --axis-comunicacion-fill: var(--background);
+  --glifo-sobre-eje: var(--trama);
+  --contorno-superficie: var(--trama);
+}
+
+.presentacion__arco-halo,
+.presentacion__arco-trazo {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.presentacion__arco-halo {
+  stroke: var(--background);
+}
+
+.presentacion__arco-trazo {
+  stroke: var(--text);
+}
+
+.presentacion__arco-disco-halo {
+  fill: var(--background);
+}
+
+.presentacion__arco-disco {
+  fill: var(--text);
+}
+
+/* Movimiento, solo si la persona no pidió reducirlo y siempre por debajo de 5 s: las zonas y los Ápices aparecen de dentro
+   hacia fuera, y el Arco se dibuja tramo a tramo; al cambiar de eje, el color se apaga en 200 ms y el Arco nuevo se dibuja. */
+@media (prefers-reduced-motion: no-preference) {
+  .presentacion__zona,
+  .presentacion__apice {
+    animation: presentacion-aparecer 420ms ease-out both;
+    animation-delay: calc(var(--i, 0) * 50ms);
+  }
+
+  .presentacion__apice * {
+    transition:
+      fill 200ms ease-out,
+      stroke 200ms ease-out;
+  }
+
+  .presentacion__arco-halo,
+  .presentacion__arco-trazo {
+    /* Trazo de 1 y hueco de 2 (el `pathLength` del tramo es 1): antes de empezar no queda ni la punta redonda a la vista. */
+    stroke-dasharray: 1 2;
+    animation: presentacion-dibujar 260ms linear both;
+    animation-delay: calc(var(--espera, 0ms) + var(--t, 0) * 260ms);
+  }
+
+  .presentacion__arco-parada {
+    animation: presentacion-aparecer 160ms ease-out both;
+    animation-delay: calc(var(--espera, 0ms) + var(--t, 0) * 260ms + 200ms);
+  }
+
+  .presentacion__arco[data-inicial='true'] {
+    --espera: 900ms;
+  }
+}
+
+@keyframes presentacion-aparecer {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes presentacion-dibujar {
+  from {
+    stroke-dashoffset: 1.02;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* --- Secciones -------------------------------------------------------------------------------------------------- */
+
+.presentacion__seccion,
+.presentacion__cierre {
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: calc(var(--content-max) + 96px);
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+@media (min-width: 900px) {
+  .presentacion__seccion,
+  .presentacion__cierre {
+    padding-inline: 48px;
+  }
+}
+
+/* Un rótulo que es título de sección: el h2 toma el tamaño del rótulo. */
+h2.presentacion__rotulo {
+  margin: 0;
+  font-size: var(--type-meta-size);
+  line-height: 16px;
+}
+
+/* Tres ideas: tres nombres grandes, cada uno con su filete. */
+.presentacion__ideas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.presentacion__idea {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-block: 20px;
+  border-block-end: var(--stroke-divider) solid var(--trama);
+}
+
+.presentacion__idea-nombre {
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-line);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+@media (min-width: 900px) {
+  .presentacion__ideas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 32px;
+  }
+
+  .presentacion__idea {
+    padding-block: 28px 0;
+    border-block-end: 0;
+  }
+}
+
+/* Qué hay: tres módulos, cada uno con su número, su nombre, una figura y el texto. */
+.presentacion__modulos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 48px;
+  margin: 0;
+  padding: 28px 0 0;
+  list-style: none;
+}
+
+.presentacion__modulo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+.presentacion__num {
+  color: var(--text-muted);
+}
+
+.presentacion__etapas,
+.presentacion__figura,
+.presentacion__pasos-reglas {
+  box-sizing: border-box;
+  block-size: 120px;
+  margin: 0;
+}
+
+.presentacion__etapas {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.presentacion__etapa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.presentacion__figura {
+  display: flex;
+  align-items: flex-end;
+  max-inline-size: 100%;
+  overflow: hidden;
+}
+
+.presentacion__pasos-reglas {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  inline-size: 100%;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 900px) {
+  .presentacion__modulos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 32px;
+  }
+}
+
+/* Cómo entrar: la entradilla a la izquierda; los pasos y las acciones, a la derecha. */
+.presentacion__entrar-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+  padding-block-start: 28px;
+}
+
+.presentacion__pasos {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.presentacion__paso {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  column-gap: 20px;
+  align-items: start;
+  padding-block: 16px;
+  border-block-start: var(--stroke-divider) solid var(--trama);
+}
+
+.presentacion__paso-cifra {
+  color: var(--background);
+  font-size: var(--type-label-size);
+  line-height: 1;
+  font-weight: 800;
+}
+
+.presentacion__paso-titulo {
+  margin: 0 0 4px;
+  font-size: var(--type-subheading-size);
+  line-height: var(--type-subheading-line);
+}
+
+@media (min-width: 900px) {
+  .presentacion__entrar-cuerpo {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    column-gap: 64px;
+  }
+
+  .presentacion__entrar-cuerpo > .presentacion__entradilla {
+    grid-row: span 2;
+  }
+}
+
+/* Cierre: la frase de la documentación, grande, y los cinco ejes en una tira de celdas que encajan. */
+.presentacion__cierre {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.presentacion__frase {
+  max-inline-size: 18em;
+  margin: 0;
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-line);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.presentacion__firma {
+  display: flex;
+  padding-block-end: 21px;
+}
+
+/* Celdas de 48 px de punta plana: cada una entra 12 px en la anterior y las pares bajan media celda, como en el mapa. */
+.presentacion__firma > .celda + .celda {
+  margin-inline-start: -12px;
+}
+
+.presentacion__firma > .celda:nth-child(even) {
+  transform: translateY(20.8px);
+}
+
+/* Colores forzados: la trama, las zonas y el Arco toman los colores del sistema. */
+@media (forced-colors: active) {
+  .presentacion__trama {
+    stroke: GrayText;
+  }
+
+  .presentacion__zona,
+  .presentacion__arco-trazo {
+    stroke: CanvasText;
+  }
+
+  .presentacion__arco-disco {
+    fill: CanvasText;
+  }
+
+  .presentacion__arco-halo {
+    stroke: Canvas;
+  }
+
+  .presentacion__arco-disco-halo {
+    fill: Canvas;
+  }
+
+  /* La cifra va sin ajuste del sistema (sin rectángulo de fondo que la tape), en Canvas sobre la celda en CanvasText. */
+  .presentacion__paso-celda .celda__poligono {
+    fill: CanvasText;
+  }
+
+  .presentacion__paso-cifra {
+    forced-color-adjust: none;
+    color: Canvas;
+  }
+
+  /* Los ejes no elegidos de la leyenda conservan la forma de su celda. */
+  .presentacion__leyenda-apagada {
+    stroke: GrayText;
+  }
+}

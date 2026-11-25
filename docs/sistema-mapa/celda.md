@@ -67,9 +67,9 @@ Cifras que el asistente calculó y que no vienen de la decisión: el alimento da
 1. **El mapa flota.** La trama solo aparece dentro de las zonas. Fuera de ellas no hay teselado de fondo.
 2. **Filtrar es apagar el color.** Lo que no pasa el filtro conserva su patrón y su lugar, en gris de trama. No desaparece nada en el mapa. (En la vista de lista sí se quitan filas.)
 3. **La leyenda es el control.** Ejes, Etapa y nivel son celdas que se encienden y se apagan.
-4. **Elegir es ampliar.** El Ápice elegido se dibuja en grande en la columna, unido a su celda por una línea de llamada: primero horizontal y luego a 60°, con un disco de 4 px y borde de papel. Al elegir, el resto se apaga. La línea de llamada aparece solo en escritorio (≥ 900 px).
+4. **Elegir es ampliar.** El Ápice elegido se dibuja en grande en la columna, unido a su celda por una línea de llamada en arco (la geometría del Arco, con la comba menor y hacia arriba), de trazo fino, con un solo disco de 4 px en la llegada y borde de papel. El disco se apoya dentro del hexágono, cerca del borde que mira a la columna, nunca al centro, donde va el número de un grupo o del «+N». Al elegir, el resto se apaga. La línea de llamada aparece solo en escritorio (≥ 900 px).
 5. **Cuatro piezas.** Celda, rótulo, filete y texto. Sin cajas ni tarjetas. La acción principal es un rótulo grande en tinta, la única mancha negra fuera del mapa.
-6. **Las líneas son horizontales o a 60°,** excepto el Arco.
+6. **Las líneas son horizontales o a 60°,** excepto el Arco y la línea de llamada, que también es un arco (decisión de la persona, 24-11-2026).
 
 ## El Arco
 
@@ -98,6 +98,18 @@ Fuera del mapa, la pieza Arco son celdas pequeñas unidas por arcos. Desaparecen
 - La cadena de celdas `ruta` y el token `ruta`.
 
 `tokens.json` marca `ruta` como retirada. Los trazos `stroke-border` (3 px) de la cabecera, el panel y la ficha quedan como referencia hasta que el código los retire.
+
+## La presentación previa al lanzamiento (25-11-2026)
+
+Propuesta del asistente. La persona eligió que vaya en «/» para quien llega sin sesión y sin fecha de lanzamiento.
+
+- **Misma gramática.** La portada repite el Inicio: la columna a la izquierda y el mapa a la derecha. El mapa es un campo de muestra hecho a mano (`src/pages/presentacionCampo.ts`): 14 zonas de siete celdas con su borde, la trama solo dentro, 20 Ápices con su superficie de patrón y un Arco. Al lado dice «Muestra ilustrativa».
+- **La leyenda es el control.** Cinco botones de eje, uno a la vez. Tocar un eje apaga el color de los Ápices que no lo tienen y dibuja el Arco entre los que sí. Un texto vivo dice lo mismo, porque el dibujo es decorativo.
+- **Título.** Nuevo tamaño `hero` en la escala, de 36 a 80 px. En el h1 «API para Crear y Conectar Acciones Comunes», las letras de la sigla y la palabra «Comunes» van en tinta y el resto en suave: se lee «APICCA» y, al final, «Comunes», de donde sale el COMÚN del nombre.
+- **Movimiento.** Las zonas y los Ápices aparecen de dentro hacia fuera y el Arco se dibuja tramo a tramo. Todo dura menos de 5 s y nada se mueve si la persona pidió reducir el movimiento.
+- **Resto de la página.** Las tres ideas, los tres módulos («Qué hay en APICCA»), cómo entrar y la frase de cierre, con las cuatro piezas y sin cajas. La tira de cinco celdas del cierre encaja como en el mapa.
+
+Los textos están en `respaldos/rediseno-mapa/textos-propuestos.md`, sección «Presentación».
 
 ## Pendiente / por decidir
 

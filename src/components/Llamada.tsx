@@ -1,7 +1,9 @@
-// RF-14 (021) · 14.1 · «E3 · Celda» (24-11-2026, Propuesta del asistente): la línea de llamada que une una columna con una celda del mapa. Solo
-// horizontales y 60° exactos: sale de `desde` en horizontal y, desde el punto donde empieza a subir o bajar, sigue a 60°
-// hasta `hasta`, donde termina en un disco. SVG absoluto, sin puntero y decorativo; las coordenadas son las del contenedor
-// posicionado que lo contiene.
+// RF-14 (021) · 14.1 · «E3 · Celda» (24-11-2026): la línea de llamada que une una columna con una celda del mapa. Es un
+// arco, con la misma geometría que el Arco de las Acciones Comunes (`arcSegment` de `shared/domain/mapArcs.ts`): una curva
+// cuadrática con la comba menor (`ARC_BENDS[0]`), siempre hacia arriba, que termina en un disco. Se distingue del Arco de
+// una Acción Común por el trazo más fino y por llevar un solo disco, en la llegada. SVG absoluto, sin puntero y decorativo;
+// las coordenadas son las del contenedor posicionado que lo contiene.
+import { ARC_BENDS, arcSegment, type ArcSegment } from '../../shared/domain/mapArcs';
 import './Llamada.css';
 
 export interface LlamadaPunto {
@@ -9,33 +11,19 @@ export interface LlamadaPunto {
   y: number;
 }
 
-const S3 = Math.sqrt(3);
 const TRAZO = 1.5;
 const HALO = 3;
 const DISCO = 4;
 const MARGEN = DISCO + HALO + 1;
 
 /**
- * Los vértices de la línea de llamada, o `null` si no cabe.
- *  - Con espacio (`|hasta.x − desde.x| ≥ |dy| / √3`): `desde`, el punto donde empieza el tramo a 60° (a la altura de
- *    `desde`) y `hasta`; si dy es 0, solo la horizontal.
- *  - Sin espacio horizontal para llegar desde la altura de `desde`: solo el tramo a 60°, desde el punto de esa recta que
- *    está en la x de `desde` (otra altura, pero en el borde de la columna).
- *  - Si `hasta.x` coincide con `desde.x`: nada.
- * Funciona hacia la derecha y hacia la izquierda.
+ * El arco de la llamada de `desde` a `hasta`, o `null` si no hay distancia horizontal entre ellos. La comba va siempre
+ * hacia arriba (y menor), tanto hacia la derecha como hacia la izquierda.
  */
-export function llamadaPuntos(desde: LlamadaPunto, hasta: LlamadaPunto): LlamadaPunto[] | null {
+export function llamadaArco(desde: LlamadaPunto, hasta: LlamadaPunto): ArcSegment | null {
   const lado = Math.sign(hasta.x - desde.x);
   if (lado === 0) return null;
-  const hueco = Math.abs(hasta.x - desde.x);
-  const dy = hasta.y - desde.y;
-  const necesita = Math.abs(dy) / S3;
-  if (necesita <= hueco) {
-    const codo = { x: hasta.x - lado * necesita, y: desde.y };
-    return necesita < 0.01 ? [desde, hasta] : necesita > hueco - 0.01 ? [desde, hasta] : [desde, codo, hasta];
-  }
-  const arriba = Math.sign(desde.y - hasta.y) || 1;
-  return [{ x: desde.x, y: hasta.y + arriba * hueco * S3 }, hasta];
+  return arcSegment(desde, hasta, ARC_BENDS[0], lado === 1 ? -1 : 1);
 }
 
 interface LlamadaProps {
@@ -44,16 +32,14 @@ interface LlamadaProps {
 }
 
 export function Llamada({ desde, hasta }: LlamadaProps) {
-  const puntos = llamadaPuntos(desde, hasta);
-  if (puntos === null) return null;
-  const xs = puntos.map((p) => p.x);
-  const ys = puntos.map((p) => p.y);
+  const arco = llamadaArco(desde, hasta);
+  if (arco === null) return null;
+  const xs = arco.samples.map((p) => p.x);
+  const ys = arco.samples.map((p) => p.y);
   const left = Math.min(...xs) - MARGEN;
   const top = Math.min(...ys) - MARGEN;
   const width = Math.max(...xs) - Math.min(...xs) + 2 * MARGEN;
   const height = Math.max(...ys) - Math.min(...ys) + 2 * MARGEN;
-  const lista = puntos.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  const fin = puntos[puntos.length - 1]!;
   return (
     <svg
       className="llamada"
@@ -64,10 +50,10 @@ export function Llamada({ desde, hasta }: LlamadaProps) {
       viewBox={`${left} ${top} ${width} ${height}`}
       style={{ left, top }}
     >
-      <polyline className="llamada__halo" points={lista} style={{ strokeWidth: TRAZO + HALO }} />
-      <circle className="llamada__halo-disco" cx={fin.x} cy={fin.y} r={DISCO + HALO / 2} />
-      <polyline className="llamada__trazo" points={lista} style={{ strokeWidth: TRAZO }} />
-      <circle className="llamada__disco" cx={fin.x} cy={fin.y} r={DISCO} />
+      <path className="llamada__halo" d={arco.d} style={{ strokeWidth: TRAZO + HALO }} />
+      <circle className="llamada__halo-disco" cx={hasta.x} cy={hasta.y} r={DISCO + HALO / 2} />
+      <path className="llamada__trazo" d={arco.d} style={{ strokeWidth: TRAZO }} />
+      <circle className="llamada__disco" cx={hasta.x} cy={hasta.y} r={DISCO} />
     </svg>
   );
 }

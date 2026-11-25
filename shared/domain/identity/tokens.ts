@@ -132,10 +132,13 @@ export const TOKENS: Readonly<Record<ThemeName, Readonly<Record<TokenName, strin
 
 /**
  * Escala de texto del sistema de diseño (RF-1 (008) · 1.2, D-T2 (008)): igual en los dos temas.
- * `display` (h1 y cierre del Inicio) y `heading` (h2 de sección) son fluidos; su máximo no pasa de 2,5 veces el
+ * `hero` (h1 de la presentación), `display` (h1 y cierre del Inicio) y `heading` (h2 de sección) son fluidos; su máximo no pasa de 2,5 veces el
  * mínimo, para cumplir WCAG 1.4.4 con el zoom del navegador (RF-2 (019), D-T3 (019)).
  */
 export const TYPE_SCALE = {
+  // Presentación previa al lanzamiento (25-11-2026, Propuesta del asistente): el título grande de la portada para
+  // visitantes. Fluido, de 36 a 80 px (2,2 veces: dentro del límite de 2,5).
+  hero: { size: 'clamp(36px, 6.4vw, 80px)', line: '0.92', weight: '800' },
   // titulo-sistema (38) en pantalla ancha
   display: { size: 'clamp(28px, 4vw, 38px)', line: '1.05', weight: '800' },
   numeral: { size: '34px', line: '1', weight: '800' },

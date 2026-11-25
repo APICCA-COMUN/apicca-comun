@@ -116,8 +116,9 @@ describe('tokens', () => {
     }
   });
 
-  it('RF-1 (008) · 1.2, RF-2 (019) · 2.3, D-T3 (019): la escala de texto tiene los once estilos con tamaño, altura de línea y peso; display y heading son fluidos', () => {
+  it('RF-1 (008) · 1.2, RF-2 (019) · 2.3, D-T3 (019): la escala de texto tiene los doce estilos con tamaño, altura de línea y peso; hero, display y heading son fluidos', () => {
     expect(TYPE_SCALE).toEqual({
+      hero: { size: 'clamp(36px, 6.4vw, 80px)', line: '0.92', weight: '800' },
       display: { size: 'clamp(28px, 4vw, 38px)', line: '1.05', weight: '800' },
       numeral: { size: '34px', line: '1', weight: '800' },
       heading: { size: 'clamp(22px, 3vw, 27px)', line: '1.1', weight: '800' },
@@ -142,7 +143,7 @@ describe('tokens', () => {
   });
 
   it('RF-2 (019) · 2.3, D-T3 (019): los tamaños fluidos no pasan de 2,5 veces su mínimo (WCAG 1.4.4)', () => {
-    for (const name of ['display', 'heading'] as const) {
+    for (const name of ['hero', 'display', 'heading'] as const) {
       const match = /^clamp\((\d+)px, [\d.]+vw, (\d+)px\)$/.exec(TYPE_SCALE[name].size);
       expect(match, name).not.toBeNull();
       expect(Number(match![2]) / Number(match![1]), name).toBeLessThanOrEqual(2.5);

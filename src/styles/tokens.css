@@ -1,5 +1,8 @@
 /* Generado por `npm run gen-tokens` desde shared/domain/identity/tokens.ts. No editar a mano. */
 :root {
+  --type-hero-size: clamp(36px, 6.4vw, 80px);
+  --type-hero-line: 0.92;
+  --type-hero-weight: 800;
   --type-display-size: clamp(28px, 4vw, 38px);
   --type-display-line: 1.05;
   --type-display-weight: 800;

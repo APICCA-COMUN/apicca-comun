@@ -111,7 +111,7 @@ Usa siempre `Apicca.REGLA[etapa]`; no elijas la regla a mano.
 **Estados**
 - **Foco**: contorno de `trazo-foco` (3 px) en `tinta`, separado `foco-separacion` (3 px), en todo control (`:focus-visible`).
 - **Botón secundario y selector**: al pasar el cursor, o al pulsarlos, se invierten a tinta llena (Propuesta del asistente).
-- **Ápice elegido en el mapa** (E3 · Celda, regla 4): el Ápice se dibuja en grande en la columna, unido a su celda por una línea de llamada (horizontal y luego a 60°, disco de 4 px, borde de papel). Al elegir, el resto se apaga. La línea de llamada solo aparece en escritorio (≥ 900 px). Sustituye al doble anillo de P1.
+- **Ápice elegido en el mapa** (E3 · Celda, regla 4): el Ápice se dibuja en grande en la columna, unido a su celda por una línea de llamada en arco (geometría del Arco, comba menor hacia arriba, trazo fino, un disco de 4 px en la llegada, dentro del hexágono y cerca del borde que mira a la columna, no al centro; borde de papel). Al elegir, el resto se apaga. La línea de llamada solo aparece en escritorio (≥ 900 px). Sustituye al doble anillo de P1.
 
 **Composición de Inicio (P1, con E3 · Celda)**
 - Cabecera de 64 px, sin borde.

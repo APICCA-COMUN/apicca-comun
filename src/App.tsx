@@ -3,7 +3,12 @@
 // RF-11 (021), RF-16 (021) · 16.1, RF-17 (021) · 17.1–17.3, D-T21 (021): `/` y los paneles del ápice pintan el mapa (`Play`),
 // sin cabecera ni pie de sitio, y siempre el mismo elemento, para que el mapa no se vuelva a montar al abrir un panel.
 // `/prototipado` y `/tablero` llevan al mapa sin quedar en el historial.
+// Presentación previa al lanzamiento (25-11-2026): con `presentacionActiva()` (en producción, hasta el lanzamiento), quien llega sin sesión a una página del mapa
+// ve la presentación en «/» (su cabecera, el `<main class="presentacion">` y el pie del sitio); con cuenta (o suspendida) se ve el mapa
+// como siempre. Mientras la sesión carga el `<main>` queda vacío y ocupado, para que nadie vea un instante del que no le toca.
+// Sigue habiendo un solo `<main>` en el sitio (RF-3 (020) · 3.1): la presentación es su contenido, no otro `main`.
 import { useEffect, type ReactElement } from 'react';
+import { presentacionActiva } from './app/presentacion';
 import { isMapPage, navigate, useRoute, type PageId } from './app/router';
 import { useSession } from './app/session';
 import { ReauthDialog } from './components/ReauthDialog';
@@ -26,6 +31,7 @@ import { ForgotPage } from './pages/Forgot';
 import { LoginPage } from './pages/Login';
 import { NotFound } from './pages/NotFound';
 import { Play } from './pages/Play';
+import { Presentacion, PresentacionCabecera } from './pages/Presentacion';
 import { RegisterInfoPage } from './pages/RegisterInfoPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { RequestPage } from './pages/RequestPage';
@@ -52,6 +58,15 @@ function DashboardRedirect() {
     else if (session.status === 'suspended') navigate('/', { replace: true });
   }, [session.status]);
   return session.status === 'loading' ? <p>Cargando…</p> : null;
+}
+
+/** La presentación siempre en «/»: desde otra página del mapa se llega a ella sin dejar rastro en el historial. */
+function PresentacionEnInicio() {
+  const { path } = useRoute();
+  useEffect(() => {
+    if (path !== '/') navigate('/', { replace: true });
+  }, [path]);
+  return <Presentacion />;
 }
 
 /** Página de cada ruta de texto; las del mapa y la no encontrada se resuelven aparte. Cada tarea agrega la suya aquí. */
@@ -100,17 +115,30 @@ const PAGES: Partial<Record<PageId, (params: Record<string, string>) => ReactEle
 
 export function App() {
   const route = useRoute();
+  const session = useSession();
   const map = isMapPage(route.page);
   const page = PAGES[route.page];
+  const enPresentacion = map && presentacionActiva() && (session.status === 'visitor' || session.status === 'loading');
+  const visitante = enPresentacion && session.status === 'visitor';
+  const cargando = enPresentacion && !visitante;
+  const clase = visitante ? 'presentacion' : map && !enPresentacion ? 'main--play' : undefined;
   return (
     <>
-      {!map && <SiteHeader />}
-      <main className={map ? 'main--play' : undefined}>
-        <SuspendedNotice />
-        <ReauthDialog />
-        {map ? <Play /> : page ? page(route.params) : <NotFound />}
+      {visitante ? <PresentacionCabecera /> : !map && <SiteHeader />}
+      <main className={clase} aria-busy={cargando ? true : undefined}>
+        {visitante ? (
+          <PresentacionEnInicio />
+        ) : (
+          !cargando && (
+            <>
+              <SuspendedNotice />
+              <ReauthDialog />
+              {map ? <Play /> : page ? page(route.params) : <NotFound />}
+            </>
+          )
+        )}
       </main>
-      {!map && <SiteFooter />}
+      {(visitante || !map) && <SiteFooter />}
     </>
   );
 }

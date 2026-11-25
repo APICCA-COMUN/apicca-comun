@@ -9,7 +9,7 @@
 .llamada__halo,
 .llamada__trazo {
   fill: none;
-  stroke-linejoin: miter;
+  stroke-linecap: round;
 }
 
 .llamada__halo {

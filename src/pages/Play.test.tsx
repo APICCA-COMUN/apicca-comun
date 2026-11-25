@@ -1232,7 +1232,11 @@ describe('Play · mapa de partida', () => {
 
 describe('Play · la línea de llamada (E3 · Celda)', () => {
   const llamada = () => document.querySelector('.llamada');
-  const startOf = (svg: Element) => svg.querySelector('.llamada__trazo')!.getAttribute('points')!.split(' ')[0];
+  // La llamada es un arco (`M x y Q …`): su salida es el punto del `M`.
+  const startOf = (svg: Element) => {
+    const [, x, y] = /^M(-?[\d.]+) (-?[\d.]+)Q/.exec(svg.querySelector('.llamada__trazo')!.getAttribute('d')!)!;
+    return `${Number(x).toFixed(1)},${Number(y).toFixed(1)}`;
+  };
   const discOf = (svg: Element) => [svg.querySelector('.llamada__disco')!.getAttribute('cx'), svg.querySelector('.llamada__disco')!.getAttribute('cy')];
 
   it('con 900 px o más, un Ápice elegido muestra su celda grande de 280 y la línea sale 8 px a la derecha de su borde y llega al lugar del Ápice en el mapa', async () => {

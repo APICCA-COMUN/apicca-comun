@@ -845,7 +845,7 @@ describe('GameMap · onAnchor', () => {
     expect(onAnchor.mock.calls.length).toBeLessThanOrEqual(1);
   });
 
-  it('con un Ápice elegido da el punto medio del borde de abajo de su celda, 4 px más abajo, en coordenadas de la ventana', () => {
+  it('con un Ápice elegido da un punto dentro de su hexágono, cerca del borde izquierdo (no en el centro, donde va el número de un grupo), en coordenadas de la ventana', () => {
     useFrames();
     const onAnchor = vi.fn();
     const { rerender } = show(items, { onAnchor });
@@ -857,14 +857,22 @@ describe('GameMap · onAnchor', () => {
     flush();
     expect(onAnchor).toHaveBeenCalledTimes(1);
     const point = onAnchor.mock.calls[0]![0] as { x: number; y: number };
-    // La celda de a2 en el lienzo: el punto medio de sus vértices más bajos, 4 px más abajo, más lo que mueve el lienzo.
+    // La celda de a2 en el lienzo: el 72 % del camino del centro a su borde izquierdo, más lo que mueve el lienzo.
     const spot = layoutMap(items.map((item) => ({ id: item.id, location: item.location })), 0).blocks.flatMap((block) => block.spots).find((candidate) => candidate.id === 'a2')!;
-    const low = Math.max(...spot.points.map(([, y]) => y));
-    const edge = spot.points.filter(([, y]) => y >= low - 0.5);
-    const middle = edge.reduce((sum, [x]) => sum + x, 0) / edge.length;
+    const xs = spot.points.map(([x]) => x);
+    const cx = xs.reduce((sum, x) => sum + x, 0) / xs.length;
+    const cy = spot.points.reduce((sum, [, y]) => sum + y, 0) / spot.points.length;
+    const left = Math.min(...xs);
+    const side = spot.points.filter(([x]) => x <= left + 0.5);
+    const sy = side.reduce((sum, [, y]) => sum + y, 0) / side.length;
+    const ax = cx + (left - cx) * 0.72;
+    const ay = cy + (sy - cy) * 0.72;
     const shift = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(world().style.transform)!;
-    expect(point.x).toBeCloseTo(100 + middle + Number(shift[1]) , 0);
-    expect(point.y).toBeCloseTo(50 + low + 4 + Number(shift[2]), 0);
+    expect(point.x).toBeCloseTo(100 + ax + Number(shift[1]), 0);
+    expect(point.y).toBeCloseTo(50 + ay + Number(shift[2]), 0);
+    // Dentro del hexágono, cerca de su borde izquierdo y lejos del centro (el disco de 4 px no tapa el número de un grupo).
+    expect(ax).toBeGreaterThan(left + 4);
+    expect(cx - ax).toBeGreaterThan(12);
   });
 
   it('solo avisa de nuevo si el punto se mueve más de 0,5 px', () => {
