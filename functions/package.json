@@ -15,6 +15,7 @@
     "migrate-database": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/migrate-database.js",
     "apply-auth-templates": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/apply-auth-templates.js",
     "recalculate-zones": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/recalculate-zones.js",
+    "redact-exact-history": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/redact-exact-history.js",
     "seed-demo": "tsc -p tsconfig.scripts.json && node lib-scripts/functions/scripts/seed-demo.js"
   },
   "dependencies": {
